@@ -1,0 +1,1192 @@
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
+from typing import List, Optional, Union, Dict, Any, ClassVar
+from datetime import datetime, timezone, timedelta
+from enum import Enum
+
+# New Teacher-Classroom-Student Models
+class SessionType(str, Enum):
+    FORENOON = "forenoon"
+    AFTERNOON = "afternoon"
+
+class Classroom(BaseModel):
+    classroom_id: str = Field(..., description="Unique classroom identifier")
+    name: str = Field(..., description="Classroom name (e.g., Class 8A)")
+    hashcode: str = Field(..., description="5-digit hashcode for students to join")
+    students: List[str] = Field(default_factory=list, description="List of student IDs")
+    demo_projects: List[str] = Field(default_factory=list, description="List of demo project IDs")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    active: bool = Field(True, description="Whether classroom is active")
+
+class Teacher(BaseModel):
+    teacher_id: str = Field(..., description="Unique teacher identifier")
+    name: str = Field(..., description="Teacher's full name")
+    school_name: str = Field(..., description="School name")
+    date_of_training: str = Field(..., description="Training date (YYYY-MM-DD)")
+    session: SessionType = Field(..., description="Training session time")
+    classrooms: List[Classroom] = Field(default_factory=list, description="List of classrooms")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    active: bool = Field(True, description="Whether teacher account is active")
+
+class TeacherCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    school_name: str = Field(..., min_length=1, max_length=200)
+    date_of_training: str = Field(..., description="Training date (YYYY-MM-DD)")
+    session: SessionType
+
+class ClassroomCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100, description="Classroom name")
+
+class Student(BaseModel):
+    student_id: str = Field(..., description="Unique student identifier")
+    name: str = Field(..., description="Student's full name")
+    teacher_id: str = Field(..., description="Teacher ID this student belongs to")
+    classroom_id: str = Field(..., description="Classroom ID this student belongs to")
+    hashcode: str = Field(..., description="Hashcode used to join")
+    projects: List[dict] = Field(default_factory=list, description="List of student's projects")
+    accessible_demos: List[str] = Field(default_factory=list, description="List of accessible demo project IDs")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    active: bool = Field(True, description="Whether student account is active")
+
+class StudentJoin(BaseModel):
+    hashcode: str = Field(..., min_length=5, max_length=5, description="5-digit hashcode")
+    name: str = Field(..., min_length=1, max_length=100, description="Student's name")
+
+class TeacherResponse(BaseModel):
+    success: bool = True
+    data: Teacher
+
+class TeacherListResponse(BaseModel):
+    success: bool = True
+    data: List[Teacher]
+
+class ClassroomResponse(BaseModel):
+    success: bool = True
+    data: Classroom
+
+class StudentResponse(BaseModel):
+    success: bool = True
+    data: Student
+
+class StudentListResponse(BaseModel):
+    success: bool = True
+    data: List[Student]
+
+class TeacherDashboardResponse(BaseModel):
+    success: bool = True
+    data: dict
+
+
+class ProjectType(str, Enum):
+    TEXT_RECOGNITION = "text-recognition"
+    IMAGE_RECOGNITION = "image-recognition"
+    IMAGE_RECOGNITION_TEACHABLE_MACHINE = "image-recognition-teachable-machine"
+    POSE_RECOGNITION_TEACHABLE_MACHINE = "pose-recognition-teachable-machine"
+    CLASSIFICATION = "classification"
+    REGRESSION = "regression"
+    CUSTOM = "custom"
+    RULE_BASED_PROCESS = "rule-based-process"
+    LIVE_OBJECT_DETECTION = "live-object-detection"
+    EXERCISES = "exercises"
+
+
+class ProjectStatus(str, Enum):
+    DRAFT = "draft"
+    QUEUED = "queued"
+    TRAINING = "training"
+    TRAINED = "trained"
+    TESTING = "testing"
+    FAILED = "failed"
+
+
+class TextExample(BaseModel):
+    text: str = Field(..., description="Text example")
+    label: str = Field(..., description="Label for this example")
+    addedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class ImageExampleAdd(BaseModel):
+    image_url: str = Field(..., description="GCS URL of the uploaded image")
+    label: str = Field(..., description="Label for this image example")
+    filename: str = Field(..., description="Original filename of the image")
+
+class Dataset(BaseModel):
+    filename: str = Field("", description="Name of the dataset file")
+    size: int = Field(0, description="File size in bytes")
+    records: int = Field(0, description="Number of records in the dataset")
+    uploadedAt: Optional[datetime] = Field(None, description="When the dataset was uploaded")
+    gcsPath: str = Field("", description="GCS path to the dataset file")
+    examples: List[TextExample] = Field(default_factory=list, description="Text examples")
+    image_examples: List[ImageExampleAdd] = Field(default_factory=list, description="Image examples")
+    labels: List[str] = Field(default_factory=list, description="Unique labels in dataset")
+
+
+class TrainedModel(BaseModel):
+    filename: str = Field("", description="Name of the model file")
+    accuracy: Optional[float] = Field(None, description="Model accuracy score")
+    loss: Optional[float] = Field(None, description="Model loss value")
+    trainedAt: Optional[datetime] = Field(None, description="When the model was trained")
+    gcsPath: str = Field("", description="GCS path to the model file")
+    labels: List[str] = Field(default_factory=list, description="Labels the model can predict")
+    modelType: str = Field("logistic_regression", description="Type of model used")
+    endpointUrl: str = Field("", description="URL for prediction endpoint")
+
+
+class ProjectConfig(BaseModel):
+    epochs: int = Field(100, ge=1, le=10000, description="Number of training epochs")
+    batchSize: int = Field(32, ge=1, le=10000, description="Training batch size")
+    learningRate: float = Field(0.001, gt=0, le=1, description="Learning rate")
+    validationSplit: float = Field(0.2, gt=0, lt=1, description="Validation split ratio")
+
+
+class Project(BaseModel):
+    id: str = Field(..., description="Unique project identifier")
+    name: str = Field(..., min_length=1, max_length=100, description="Project name")
+    description: str = Field("", max_length=500, description="Project description")
+    type: ProjectType = Field(ProjectType.TEXT_RECOGNITION, description="Project type")
+    status: ProjectStatus = Field(ProjectStatus.DRAFT, description="Current project status")
+    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
+    updatedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Last update timestamp")
+    createdBy: str = Field("", description="User who created the project")
+    
+    # Teacher-Classroom-Student linking
+    teacher_id: str = Field("", description="Teacher ID this project belongs to")
+    classroom_id: str = Field("", description="Classroom ID this project belongs to")
+    student_id: str = Field("", description="Student ID who created this project")
+    
+    # School and class information (legacy, can be derived from teacher/classroom)
+    schoolId: str = Field("", description="School identifier")
+    classId: str = Field("", description="Class identifier")
+    
+    # Dataset information
+    dataset: Dataset = Field(default_factory=lambda: Dataset(), description="Primary dataset")
+    datasets: List[Dataset] = Field(default_factory=list, description="List of all datasets")
+    
+    # Model information
+    model: TrainedModel = Field(default_factory=lambda: TrainedModel(), description="Trained model details")
+    
+    # Training configuration (optional for image-recognition-teachable-machine projects)
+    config: Optional[ProjectConfig] = Field(None, description="Training configuration")
+    
+    # Teachable Machine integration (for image recognition projects)
+    teachable_machine_link: Optional[str] = Field(None, description="Teachable Machine model link for image recognition projects")
+    
+    # Training history and job management
+    trainingHistory: List[dict] = Field(default_factory=list, description="Training history logs")
+    currentJobId: Optional[str] = Field(None, description="Current training job ID")
+    
+    # Lifecycle management
+    expiryTimestamp: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=timezone.utc) + timedelta(days=7),
+        description="Project expiry timestamp (default 7 days)"
+    )
+    
+    # Metadata
+    tags: List[str] = Field(default_factory=list, description="Project tags")
+    notes: str = Field("", max_length=1000, description="Additional notes")
+
+    # Rule Based Process projects edited in Scratch (saved as an .sb3 in Cloud Storage).
+    # Kept on the model so whole-document rewrites (e.g. update_project) don't drop them.
+    rbpEditor: Optional[str] = Field(None, description="Rule Based Process editor: 'scratch' or 'legacy' (built-in block editor)")
+    scratchProjectPath: Optional[str] = Field(None, description="GCS path of the saved Scratch project (.sb3)")
+    scratchSavedAt: Optional[datetime] = Field(None, description="When the Scratch project was last saved")
+    scratchSizeBytes: Optional[int] = Field(None, description="Size of the saved .sb3 in bytes")
+    scratchVersion: Optional[int] = Field(None, description="Save counter used to detect saves from an outdated tab")
+    scratchClientId: Optional[str] = Field(None, description="Editor tab that made the last save")
+
+
+class ProjectCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    description: str = Field("", max_length=500)
+    type: ProjectType = Field(ProjectType.TEXT_RECOGNITION)
+    createdBy: str = Field("")
+    teacher_id: str = Field("", description="Teacher ID this project belongs to")
+    classroom_id: str = Field("", description="Classroom ID this project belongs to")
+    student_id: str = Field("", description="Student ID who created this project")
+    tags: List[str] = Field(default_factory=list)
+    notes: str = Field("", max_length=1000)
+    config: Optional[ProjectConfig] = None
+    teachable_machine_link: Optional[str] = Field(None, description="Teachable Machine model link for image recognition projects")
+
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+    type: Optional[ProjectType] = None
+    status: Optional[ProjectStatus] = None
+    tags: Optional[List[str]] = None
+    notes: Optional[str] = Field(None, max_length=1000)
+    config: Optional[ProjectConfig] = None
+    dataset: Optional[Dataset] = None
+    teachable_machine_link: Optional[str] = Field(None, description="Teachable Machine model link for image recognition projects")
+
+
+class TrainingConfig(BaseModel):
+    epochs: Optional[int] = Field(100, ge=1, le=10000)
+    batchSize: Optional[int] = Field(32, ge=1, le=10000)
+    learningRate: Optional[float] = Field(0.001, gt=0, le=1)
+    validationSplit: Optional[float] = Field(0.2, gt=0, lt=1)
+    modelType: Optional[str] = Field(
+        None,
+        description="Text recognition only: 'logistic_regression' or 'distilbert'. Omit to keep the existing default.",
+    )
+
+
+class ExampleAdd(BaseModel):
+    text: str = Field(..., description="Text example to add")
+    label: str = Field(..., description="Label for this example")
+
+class ExamplesBulkAdd(BaseModel):
+    examples: List[ExampleAdd] = Field(..., description="List of examples to add")
+
+class ImageExamplesBulkAdd(BaseModel):
+    examples: List[ImageExampleAdd] = Field(..., description="List of image examples to add")
+
+class DatasetUpload(BaseModel):
+    records: Optional[int] = Field(None, ge=0)
+    description: Optional[str] = Field("")
+
+
+class TrainingJob(BaseModel):
+    id: str = Field(..., description="Training job identifier")
+    projectId: str = Field(..., description="Project ID")
+    status: str = Field("queued", description="Job status: queued|training|ready|failed")
+    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    startedAt: Optional[datetime] = Field(None, description="When training started")
+    completedAt: Optional[datetime] = Field(None, description="When training completed")
+    error: Optional[str] = Field(None, description="Error message if failed")
+    progress: float = Field(0.0, ge=0.0, le=100.0, description="Training progress percentage")
+    config: Optional[ProjectConfig] = Field(None, description="Training configuration")
+    result: Optional[dict] = Field(None, description="Training results (accuracy, etc.)")
+
+class TrainingJobStatus(str, Enum):
+    QUEUED = "queued"
+    TRAINING = "training"
+    READY = "ready"
+    FAILED = "failed"
+
+
+class FileUploadResponse(BaseModel):
+    success: bool
+    gcsPath: str
+
+
+class TrainingResponse(BaseModel):
+    success: bool
+    message: str
+    jobId: Optional[str] = Field(None, description="Training job ID")
+
+class PredictionRequest(BaseModel):
+    text: str = Field(..., description="Text to predict")
+
+class PredictionResponse(BaseModel):
+    success: bool
+    label: str
+    confidence: float
+    alternatives: List[dict] = Field(default_factory=list, description="Alternative predictions")
+
+
+class ProjectStatusResponse(BaseModel):
+    id: str
+    status: ProjectStatus
+    dataset: Dataset
+    datasets: List[Dataset]
+    model: TrainedModel
+    updatedAt: datetime
+
+
+class PaginationInfo(BaseModel):
+    limit: int
+    offset: int
+    total: int
+
+
+class ProjectListResponse(BaseModel):
+    success: bool = True
+    data: List[Project]
+    pagination: PaginationInfo
+
+
+class ProjectResponse(BaseModel):
+    success: bool = True
+    data: Project
+
+
+class ProjectStatusResponseWrapper(BaseModel):
+    success: bool = True
+    data: ProjectStatusResponse
+
+
+class ErrorResponse(BaseModel):
+    success: bool = False
+    error: str
+    details: Optional[List[str]] = None
+
+# New Demo Project Models
+class DemoProject(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+    
+    demo_project_id: str = Field(..., description="Unique demo project identifier")
+    name: str = Field(..., description="Demo project name")
+    description: str = Field(..., description="Project description")
+    teacher_id: str = Field(..., description="Teacher who created this demo")
+    classroom_id: str = Field(..., description="Classroom this demo belongs to")
+    project_type: str = Field(..., description="Type of project (e.g., 'text_classification', 'image_classification')")
+    dataset_info: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Dataset information")
+    trained_model_info: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Trained model information")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    active: bool = Field(True, description="Whether demo project is active")
+
+class DemoProjectCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100, description="Demo project name")
+    description: str = Field(..., min_length=1, max_length=500, description="Project description")
+    project_type: str = Field(..., description="Type of project")
+    dataset_info: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Dataset information")
+    trained_model_info: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Trained model information")
+
+class DemoProjectResponse(BaseModel):
+    success: bool = True
+    data: DemoProject
+
+class DemoProjectListResponse(BaseModel):
+    success: bool = True
+    data: List[DemoProject]
+
+# New Guest Models
+class Guest(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+    
+    session_id: str = Field(..., description="Unique session ID")
+    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Session creation timestamp")
+    expiresAt: datetime = Field(..., description="Session expiration timestamp")
+    active: bool = Field(True, description="Whether session is active")
+    
+    # Optional metadata fields for tracking
+    ip_address: Optional[str] = Field(None, description="IP address of the guest")
+    user_agent: Optional[str] = Field(None, description="User agent string")
+    last_active: Optional[datetime] = Field(None, description="Last activity timestamp")
+    
+    # Project data stored directly in guest collection
+    project_id: str = Field(..., description="Unique project identifier")
+    name: str = Field(..., description="Project name")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Project creation timestamp")
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Last update timestamp")
+    status: str = Field("draft", description="Project status: draft, training, trained, failed")
+    
+    # Dataset information
+    dataset_type: str = Field("text", description="Type of dataset (text, image, etc.)")
+    dataset: List[Dict[str, str]] = Field(default_factory=list, description="Training examples with input and label")
+    dataset_size: int = Field(0, description="Number of training examples")
+    
+    # Model information
+    model_type: str = Field("logistic_regression", description="Type of model used")
+    model_version: int = Field(1, description="Model version number")
+    ml_config: Dict[str, Any] = Field(default_factory=dict, description="Model configuration parameters")
+    
+    # Training information
+    training_status: str = Field("pending", description="Training status: pending, training, completed, failed")
+    training_logs: List[str] = Field(default_factory=list, description="Training progress logs")
+    trained_at: Optional[datetime] = Field(None, description="When training completed")
+    metrics: Dict[str, float] = Field(default_factory=dict, description="Training metrics (accuracy, loss, f1)")
+    currentJobId: Optional[str] = Field(None, description="Current training job ID")
+    
+    # Test results
+    test_results: List[Dict[str, str]] = Field(default_factory=list, description="Test predictions with input, expected, and predicted")
+    test_accuracy: Optional[float] = Field(None, description="Test accuracy score")
+    last_tested_at: Optional[datetime] = Field(None, description="Last test timestamp")
+    
+    # Scratch integration
+    scratch_api_key: Optional[str] = Field(None, description="Scratch API key for integration")
+    scratch_enabled: bool = Field(False, description="Whether Scratch integration is enabled")
+    usage_count: int = Field(0, description="Number of times project was used")
+    
+    # Access tracking
+    last_accessed_by: Optional[str] = Field(None, description="Last user who accessed the project")
+    last_accessed_at: Optional[datetime] = Field(None, description="Last access timestamp")
+
+class GuestCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100, description="Project name")
+    dataset_type: str = Field("text", description="Type of dataset")
+    session_duration_hours: int = Field(48, ge=1, le=168, description="Session duration in hours (1-168 hours = 1 week max)")
+
+class GuestUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    dataset: Optional[List[Dict[str, str]]] = None
+    ml_config: Optional[Dict[str, Any]] = None
+    training_status: Optional[str] = None
+    status: Optional[str] = None
+    currentJobId: Optional[str] = None
+    metrics: Optional[Dict[str, float]] = None
+    test_results: Optional[List[Dict[str, str]]] = None
+    scratch_enabled: Optional[bool] = None
+
+class GuestResponse(BaseModel):
+    success: bool = True
+    data: Guest
+
+class GuestListResponse(BaseModel):
+    success: bool = True
+    data: List[Guest]
+
+# Simple Guest Session (without project data)
+class GuestSession(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+    
+    session_id: str = Field(..., description="Unique session ID")
+    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Session creation timestamp")
+    expiresAt: datetime = Field(..., description="Session expiration timestamp")
+    active: bool = Field(True, description="Whether session is active")
+    
+    # Optional metadata fields for tracking
+    ip_address: Optional[str] = Field(None, description="IP address of the guest")
+    user_agent: Optional[str] = Field(None, description="User agent string")
+    last_active: Optional[datetime] = Field(None, description="Last activity timestamp")
+
+class GuestSessionResponse(BaseModel):
+    success: bool = True
+    data: GuestSession
+
+# Agent Creation API Models
+class Agent(BaseModel):
+    agent_id: str = Field(..., description="Unique agent identifier")
+    user_id: str = Field(..., description="User ID who created the agent")
+    session_id: str = Field(..., description="Session ID")
+    name: str = Field(..., description="Agent name")
+    role: str = Field(..., description="Agent role")
+    tone: str = Field(..., description="Agent tone")
+    language: str = Field(..., description="Agent language")
+    description: str = Field(..., description="Agent description")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    active: bool = Field(True, description="Whether agent is active")
+
+class Persona(BaseModel):
+    agent_id: str = Field(..., description="Agent ID this persona belongs to")
+    name: str = Field(..., description="Persona name")
+    role: str = Field(..., description="Persona role")
+    tone: str = Field(..., description="Persona tone")
+    language: str = Field("English", description="Persona language")
+    response_length: str = Field("short", description="Response length: minimal, short, long, chatty")
+    guidelines: str = Field("", description="Custom chat guidelines")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class PersonaUpdateRequest(BaseModel):
+    name: Optional[str] = Field(None, description="Persona name")
+    role: Optional[str] = Field(None, description="Persona role")
+    tone: Optional[str] = Field(None, description="Persona tone (friendly, professional, casual)")
+    language: Optional[str] = Field(None, description="Persona language")
+    response_length: Optional[str] = Field(None, description="Response length: minimal, short, long, chatty")
+    guidelines: Optional[str] = Field(None, description="Custom chat guidelines")
+
+class PersonaUpdateResponse(BaseModel):
+    success: bool = True
+    persona: Persona
+    message: str = "Persona updated successfully"
+
+class AgentSettings(BaseModel):
+    agent_id: str = Field(..., description="Agent ID this settings belongs to")
+    model: str = Field("gemini-2.5-flash-lite", description="Model name (e.g., gemini-2.5-flash-lite, gemini-2.5-pro)")
+    embedding_model: str = Field("text-embedding-005", description="Embedding model name")
+    similarity: str = Field("Cosine similarity", description="Similarity method (Cosine similarity, Euclidean Distance, Jaccard Similarity)")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
+    # Valid model names
+    VALID_MODELS: ClassVar[List[str]] = [
+        "gemini-2.5-flash-lite",
+        "gemini-3.5-flash-lite",
+        "gemini-2.5-flash",
+        "gemini-3.8-flash",
+        "gemini-2.5-pro",
+    ]
+    
+    @field_validator('model')
+    @classmethod
+    def validate_model(cls, v):
+        """Validate that model name is one of the supported models"""
+        if v not in cls.VALID_MODELS:
+            raise ValueError(f"Invalid model name: {v}. Supported models: {', '.join(cls.VALID_MODELS)}")
+        return v
+
+class SettingsUpdateRequest(BaseModel):
+    model: Optional[str] = Field(None, description="Model name")
+    embedding_model: Optional[str] = Field(None, description="Embedding model name")
+    similarity: Optional[str] = Field(None, description="Similarity method")
+    
+    # Valid model names
+    VALID_MODELS: ClassVar[List[str]] = [
+        "gemini-2.5-flash-lite",
+        "gemini-3.5-flash-lite",
+        "gemini-2.5-flash",
+        "gemini-3.8-flash",
+        "gemini-2.5-pro",
+    ]
+    
+    @field_validator('model')
+    @classmethod
+    def validate_model(cls, v):
+        """Validate that model name is one of the supported models"""
+        if v is not None and v not in cls.VALID_MODELS:
+            raise ValueError(f"Invalid model name: {v}. Supported models: {', '.join(cls.VALID_MODELS)}")
+        return v
+
+class SettingsUpdateResponse(BaseModel):
+    success: bool = True
+    settings: AgentSettings
+    message: str = "Settings updated successfully"
+
+class KnowledgeType(str, Enum):
+    TEXT = "text"
+    FILE = "file"
+    LINK = "link"
+    QNA = "qna"
+
+class Knowledge(BaseModel):
+    knowledge_id: str = Field(..., description="Unique knowledge identifier")
+    agent_id: str = Field(..., description="Agent ID this knowledge belongs to")
+    type: KnowledgeType = Field(..., description="Knowledge type")
+    content: str = Field(..., description="Knowledge content")
+    embedding: Optional[List[float]] = Field(None, description="Embedding vector")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    priority: int = Field(1, description="Priority (higher = more important)")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# Rule Condition Types (WHEN dropdown options)
+class RuleConditionType(str, Enum):
+    CONVERSATION_STARTS = "Conversation starts"
+    USER_WANTS_TO = "User wants to"
+    USER_TALKS_ABOUT = "User talks about"
+    USER_ASKS_ABOUT = "User asks about"
+    USER_SENTIMENT_IS = "User sentiment is"
+    USER_PROVIDES = "User provides"
+    SENTENCE_CONTAINS = "The sentence contains"
+
+# Rule Action Types (DO dropdown options)
+class RuleActionType(str, Enum):
+    SAY_EXACT_MESSAGE = "Say exact message"
+    ALWAYS_INCLUDE = "Always include"
+    ALWAYS_TALK_ABOUT = "Always talk about"
+    TALK_ABOUT_MENTION = "Talk about/mention"
+    DONT_TALK_ABOUT = "Don't talk about/mention"
+    ASK_FOR_INFORMATION = "Ask for information"
+    FIND_IN_WEBSITE = "Find in website"
+    ANSWER_USING_KB = "Answer Using Knowledge Base"
+
+# Match Type for multiple conditions
+class RuleMatchType(str, Enum):
+    ANY = "ANY"  # OR logic - any condition matches
+    ALL = "ALL"  # AND logic - all conditions must match
+
+class RuleCondition(BaseModel):
+    type: str = Field(..., description="Condition type from RuleConditionType enum")
+    value: Optional[str] = Field("", description="Condition value (empty for 'Conversation starts')")
+    
+    @field_validator('value', mode='before')
+    @classmethod
+    def convert_none_to_empty(cls, v):
+        """Convert None values to empty string"""
+        return "" if v is None else v
+
+class RuleAction(BaseModel):
+    type: str = Field(..., description="Action type from RuleActionType enum")
+    value: str = Field(..., description="Action value/content")
+
+class Rule(BaseModel):
+    rule_id: str = Field(..., description="Unique rule identifier")
+    agent_id: str = Field(..., description="Agent ID this rule belongs to")
+    name: str = Field("", description="Rule name (auto-generated if empty)")
+    conditions: List[RuleCondition] = Field(..., description="List of WHEN conditions")
+    match_type: RuleMatchType = Field(RuleMatchType.ANY, description="Match type: ANY (OR) or ALL (AND)")
+    actions: List[RuleAction] = Field(..., description="List of DO actions")
+    priority: int = Field(1, description="Rule priority (higher = evaluated first)")
+    active: bool = Field(True, description="Whether rule is active")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
+    # Backward compatibility - expose first condition/action as 'when'/'do'
+    @property
+    def when(self) -> Optional[RuleCondition]:
+        return self.conditions[0] if self.conditions else None
+    
+    @property
+    def do(self) -> Optional[RuleAction]:
+        return self.actions[0] if self.actions else None
+
+class ChatLog(BaseModel):
+    chat_id: str = Field(..., description="Unique chat log identifier")
+    agent_id: str = Field(..., description="Agent ID")
+    user_id: str = Field(..., description="User ID")
+    session_id: str = Field(..., description="Session ID")
+    message: str = Field(..., description="User message")
+    response: str = Field(..., description="Agent response")
+    conditions_detected: List[Dict[str, Any]] = Field(default_factory=list, description="Conditions detected")
+    rule_matched: Optional[str] = Field(None, description="Rule ID if rule matched")
+    kb_used: List[str] = Field(default_factory=list, description="Knowledge IDs used")
+    llm_used: bool = Field(True, description="Whether LLM was used")
+    trace: Dict[str, Any] = Field(default_factory=dict, description="Full trace data")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# Request/Response Models
+class AgentCreateRequest(BaseModel):
+    session_id: str = Field(..., description="Session ID")
+    agent_description: str = Field(..., description="Free-text description of the agent")
+    user_id: Optional[str] = Field(None, description="User ID (optional, defaults to session_id if not provided)")
+
+class AgentCreateResponse(BaseModel):
+    success: bool = True
+    data: Agent
+
+class KnowledgeTextRequest(BaseModel):
+    agent_id: str = Field(..., description="Agent ID")
+    session_id: Optional[str] = Field(None, description="Session ID for traceability")
+    content: str = Field(..., description="Text content")
+
+class KnowledgeFileRequest(BaseModel):
+    """Request model for file upload (used with form data, not JSON body)"""
+    agent_id: str = Field(..., description="Agent ID")
+    session_id: Optional[str] = Field(None, description="Session ID for traceability")
+    # Note: file is handled separately via FastAPI's UploadFile
+
+class KnowledgeFileResponse(BaseModel):
+    """Response model for file KB upload"""
+    success: bool = True
+    knowledge_ids: List[str] = Field(..., description="List of created knowledge chunk IDs")
+    chunks_added: int = Field(..., description="Number of chunks created")
+    file_name: str = Field(..., description="Uploaded file name")
+    file_type: str = Field(..., description="File type (pdf, xlsx, csv, txt)")
+    file_url: str = Field(..., description="GCS URL of uploaded file")
+    extracted_chars: int = Field(..., description="Number of characters extracted")
+    message: str = Field(..., description="Status message")
+
+class KnowledgeLinkRequest(BaseModel):
+    agent_id: str = Field(..., description="Agent ID")
+    session_id: Optional[str] = Field(None, description="Session ID for traceability")
+    url: str = Field(..., description="URL to fetch")
+
+class KnowledgeQnARequest(BaseModel):
+    agent_id: str = Field(..., description="Agent ID")
+    question: str = Field(..., description="Question")
+    answer: str = Field(..., description="Answer")
+
+class KnowledgeResponse(BaseModel):
+    success: bool = True
+    knowledge_id: str
+    message: str
+
+class RuleSaveRequest(BaseModel):
+    agent_id: str = Field(..., description="Agent ID")
+    rule_id: Optional[str] = Field(None, description="Rule ID for updates (omit for new rules)")
+    name: str = Field("", description="Rule name (auto-generated if empty)")
+    conditions: List[RuleCondition] = Field(..., description="List of WHEN conditions")
+    match_type: str = Field("ANY", description="Match type: ANY (OR) or ALL (AND)")
+    actions: List[RuleAction] = Field(..., description="List of DO actions")
+    priority: int = Field(1, description="Rule priority")
+
+class RuleResponse(BaseModel):
+    success: bool = True
+    data: Rule
+
+class RuleListResponse(BaseModel):
+    success: bool = True
+    data: List[Rule]
+
+class ChatRequest(BaseModel):
+    agent_id: str = Field(..., description="Agent ID")
+    session_id: str = Field(..., description="Session ID")
+    message: str = Field(..., description="User message")
+    user_id: Optional[str] = Field(None, description="User ID (optional, defaults to session_id if not provided)")
+
+class ChatResponse(BaseModel):
+    success: bool = True
+    response: str
+    trace: Dict[str, Any] = Field(default_factory=dict, description="Full trace data")
+    images: List[Dict[str, Any]] = Field(default_factory=list, description="Related images from search")
+    chat_id: Optional[str] = Field(None, description="Chat log ID")
+
+class ChatTeachRequest(BaseModel):
+    agent_id: str = Field(..., description="Agent ID")
+    chat_id: str = Field(..., description="Chat log ID")
+    approved_response: str = Field(..., description="Approved response to teach")
+
+class ChatTeachResponse(BaseModel):
+    success: bool = True
+    knowledge_id: str
+    message: str
+
+class CleanupRequest(BaseModel):
+    days_old: int = Field(7, ge=1, description="Delete agents older than N days")
+
+class CleanupResponse(BaseModel):
+    success: bool = True
+    deleted_count: int
+    message: str
+
+# Chat History Models (Playground AI-like)
+class ChatMessage(BaseModel):
+    """Individual chat message"""
+    message_id: str
+    role: str = Field(..., description="Message role: 'user' or 'assistant'")
+    content: str = Field(..., description="Message content")
+    created_at: datetime = Field(..., description="Message timestamp")
+    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Additional message metadata")
+
+class Chat(BaseModel):
+    """Chat session with messages"""
+    chat_id: str = Field(..., description="Unique chat identifier")
+    agent_id: str = Field(..., description="Associated agent ID")
+    session_id: str = Field(..., description="Session ID (for ongoing chat)")
+    messages: List[ChatMessage] = Field(default_factory=list, description="List of messages in this chat")
+    created_at: datetime = Field(..., description="Chat creation timestamp")
+    updated_at: datetime = Field(..., description="Last update timestamp")
+    is_active: bool = Field(True, description="True for ongoing chat, False for archived")
+    title: Optional[str] = Field(None, description="Optional chat title")
+    message_count: int = Field(0, description="Total number of messages")
+
+class CreateChatRequest(BaseModel):
+    """Request to create a new chat"""
+    agent_id: str = Field(..., description="Agent ID")
+    session_id: Optional[str] = Field(None, description="Optional session ID")
+
+class CreateChatResponse(BaseModel):
+    """Response after creating a chat"""
+    success: bool = True
+    chat: Chat
+
+class GetChatsResponse(BaseModel):
+    """Response for getting all chats"""
+    success: bool = True
+    chats: List[Chat]
+    ongoing_chat: Optional[Chat] = Field(None, description="The currently active chat")
+
+class GetChatResponse(BaseModel):
+    """Response for getting a single chat"""
+    success: bool = True
+    chat: Chat
+
+class ArchiveChatRequest(BaseModel):
+    """Request to archive a chat"""
+    chat_id: str = Field(..., description="Chat ID to archive")
+
+class ArchiveChatResponse(BaseModel):
+    """Response after archiving a chat"""
+    success: bool = True
+    message: str = "Chat archived successfully"
+
+class DeleteChatResponse(BaseModel):
+    """Response after deleting a chat"""
+    success: bool = True
+    message: str = "Chat deleted successfully"
+
+
+# ---------------------------------------------------------------------------
+# Rule Based Process (isolated workspace persistence)
+# ---------------------------------------------------------------------------
+
+class RbpAnswerRule(BaseModel):
+    type: str = Field("text", description="text | number | int")
+    min: Optional[float] = None
+    max: Optional[float] = None
+    noun: Optional[str] = None
+    # Frontend flags (Edit concept / Python Build) — persist so reload keeps answer mode
+    fromEdit: Optional[bool] = None
+    fromBuild: Optional[bool] = None
+
+
+class RbpTestCase(BaseModel):
+    inputs: List[str] = Field(default_factory=list, alias="in", description="Answers typed during the run")
+    out: str = Field("", description="Expected say/print output")
+
+    model_config = {"populate_by_name": True}
+
+
+class RbpConcept(BaseModel):
+    id: str
+    title: str = ""
+    brief: str = ""
+    vars: List[str] = Field(default_factory=list)
+    answer: RbpAnswerRule = Field(default_factory=RbpAnswerRule)
+    tests: List[RbpTestCase] = Field(default_factory=list)
+
+
+class RbpPan(BaseModel):
+    x: float = 40
+    y: float = 30
+
+
+class RbpWorkspaceState(BaseModel):
+    """Serializable workspace: concepts + block stacks (JSON trees)."""
+    version: int = 1
+    pan: RbpPan = Field(default_factory=RbpPan)
+    zoom: float = Field(1.0, description="Canvas zoom factor from the editor")
+    active_concept_id: Optional[str] = None
+    concepts: List[RbpConcept] = Field(default_factory=list)
+    stacks: List[Dict[str, Any]] = Field(default_factory=list, description="Block stacks with nested block trees")
+    # When true, an empty canvas is intentional (Clear workspace) and must not
+    # be replaced by a built-in concept solution on reload.
+    empty_canvas: bool = False
+
+
+class RuleBasedWorkspace(BaseModel):
+    project_id: str
+    session_id: str
+    state: RbpWorkspaceState = Field(default_factory=RbpWorkspaceState)
+    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updatedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class RuleBasedWorkspaceUpdate(BaseModel):
+    state: RbpWorkspaceState
+
+
+class RuleBasedWorkspaceResponse(BaseModel):
+    success: bool = True
+    data: RuleBasedWorkspace
+
+
+class RuleBasedWorkspaceDeleteResponse(BaseModel):
+    success: bool = True
+    message: str = "Workspace deleted"
+
+
+class ScratchProjectSaveResponse(BaseModel):
+    """Result of saving a Rule Based Process project's Scratch file."""
+    savedAt: datetime
+    sizeBytes: int
+    version: int
+
+
+class ScratchProjectMetaResponse(BaseModel):
+    """Saved-state summary for a Rule Based Process project, without the file itself."""
+    savedAt: Optional[datetime] = None
+    sizeBytes: Optional[int] = None
+    version: int = 0
+    editor: str = "scratch"
+
+
+class RuleBasedAskRequest(BaseModel):
+    prompt: str = Field(..., min_length=1, max_length=4000, description="Question or text for the model")
+
+
+class RuleBasedAskResponse(BaseModel):
+    success: bool = True
+    reply: str = ""
+    prompt: str = ""
+
+
+class LodCaptionObject(BaseModel):
+    class_name: str = Field("", alias="className")
+    score: float = 0
+    color_name: Optional[str] = Field(None, alias="colorName")
+
+    model_config = {"populate_by_name": True}
+
+
+class LodCaptionRequest(BaseModel):
+    image_base64: str = Field(..., min_length=32, max_length=2_500_000)
+    detections: List[LodCaptionObject] = Field(default_factory=list)
+    recent_events: List[str] = Field(default_factory=list, max_length=8)
+
+
+class LodVisionObject(BaseModel):
+    name: str = ""
+    score: float = 0.85
+    box: List[float] = Field(default_factory=list, description="[ymin, xmin, ymax, xmax] in 0-1000")
+
+
+class LodCaptionResponse(BaseModel):
+    success: bool = True
+    caption: str = ""
+    objects: List[LodVisionObject] = Field(default_factory=list)
+
+
+class LodDetectRequest(BaseModel):
+    image_base64: str = Field(..., min_length=32, max_length=2_500_000)
+
+
+class LodDetectResponse(BaseModel):
+    success: bool = True
+    objects: List[LodVisionObject] = Field(default_factory=list)
+
+
+class ExerciseProgress(BaseModel):
+    status: str = Field("not_started", description="not_started | in_progress | completed")
+    notes: str = ""
+    snapshot: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ExercisesWorkspaceState(BaseModel):
+    version: int = 1
+    progress: Dict[str, ExerciseProgress] = Field(default_factory=dict)
+    activeId: Optional[int] = None
+    ex2Result: Optional[Dict[str, Any]] = None
+
+
+class ExercisesWorkspace(BaseModel):
+    project_id: str
+    session_id: str
+    state: ExercisesWorkspaceState = Field(default_factory=ExercisesWorkspaceState)
+    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updatedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ExercisesWorkspaceUpdate(BaseModel):
+    state: ExercisesWorkspaceState
+
+
+class ExercisesWorkspaceResponse(BaseModel):
+    success: bool = True
+    data: ExercisesWorkspace
+
+
+class ExercisesWorkspaceDeleteResponse(BaseModel):
+    success: bool = True
+    message: str = "Workspace deleted"
+
+
+class ExercisesChatExample(BaseModel):
+    user: str = ""
+    assistant: str = ""
+
+
+class ExercisesGenerateRequest(BaseModel):
+    prompt: str = Field(..., min_length=1, max_length=12000)
+    system: Optional[str] = Field(None, max_length=8000)
+    examples: List[ExercisesChatExample] = Field(default_factory=list)
+    model: str = Field("gemini-2.5-flash-lite")
+    temperature: float = Field(0.7, ge=0.0, le=2.0)
+    n: int = Field(1, ge=1, le=10)
+    max_tokens: int = Field(400, ge=32, le=2048)
+
+
+class ExercisesGenerateResponse(BaseModel):
+    success: bool = True
+    outputs: List[str] = Field(default_factory=list)
+    model: str = ""
+    temperature: float = 0.7
+    simulated: bool = False
+
+
+class ExercisesEmbedRequest(BaseModel):
+    texts: List[str] = Field(..., min_length=1, max_length=12)
+    model: str = Field("text-embedding-005")
+
+
+class ExercisesEmbedResponse(BaseModel):
+    success: bool = True
+    embeddings: List[List[float]] = Field(default_factory=list)
+    model: str = ""
+    simulated: bool = False
+    dimensions: int = 0
+
+
+class ExercisesTfidfRow(BaseModel):
+    review: str = Field(..., min_length=1, max_length=4000)
+    sentiment: Optional[str] = Field(None, max_length=80)
+    label: Optional[str] = Field(None, max_length=80)
+    y: Optional[int] = Field(None, ge=0, le=20)
+
+
+class ExercisesTextPrep(BaseModel):
+    drop_missing: bool = True
+    drop_duplicates: bool = True
+    lowercase: bool = True
+    strip_noise: bool = True
+    stopwords: bool = False
+    lemmatize: bool = False
+
+
+class ExercisesTfidfTrainRequest(BaseModel):
+    rows: List[ExercisesTfidfRow] = Field(default_factory=list, min_length=0, max_length=40000)
+    dataset_id: Optional[str] = Field(None, max_length=40)
+    test_size: float = Field(..., ge=0.1, le=0.3)
+    seed: int = Field(..., ge=0, le=2_147_483_647)
+    max_features: int = Field(..., ge=50, le=8000)
+    ngram_min: int = Field(..., ge=1, le=3)
+    ngram_max: int = Field(..., ge=1, le=3)
+    min_df: int = Field(..., ge=1, le=50)
+    regularization_c: float = Field(..., ge=0.1, le=10.0)
+    solver: str = Field(...)
+    max_iter: int = Field(..., ge=50, le=5000)
+    epochs: int = Field(..., ge=10, le=2000)
+    threshold: float = Field(..., ge=0.05, le=0.95)
+    representation: str = Field("tfidf")
+    text_prep: Optional["ExercisesTextPrep"] = None
+
+    @model_validator(mode="after")
+    def require_rows_or_dataset(self):
+        dataset_id = (self.dataset_id or "").strip().lower()
+        self.dataset_id = dataset_id or None
+        if self.dataset_id:
+            return self
+        if len(self.rows) < 4:
+            raise ValueError("Need at least 4 labeled rows, or a department dataset_id.")
+        return self
+
+
+class ExercisesTfidfTestProb(BaseModel):
+    y: int
+    p: float
+    pred: Optional[int] = None
+    label: Optional[str] = None
+    pred_label: Optional[str] = None
+    probs: List[float] = Field(default_factory=list)
+
+
+class ExercisesTfidfWordWeight(BaseModel):
+    word: str
+    weight: float
+    label: str = ""
+
+
+class ExercisesTfidfClassBelief(BaseModel):
+    label: str
+    words: List[str] = Field(default_factory=list)
+
+
+class ExercisesTfidfCurvePoint(BaseModel):
+    epoch: int = 0
+    loss: float
+    acc: float
+    train_acc: float = 0.0
+    prec: float = 0.0
+    rec: float = 0.0
+    f1: float = 0.0
+    pos_words: List[str] = Field(default_factory=list)
+    neg_words: List[str] = Field(default_factory=list)
+    class_words: List[ExercisesTfidfClassBelief] = Field(default_factory=list)
+
+
+class ExercisesTfidfExportedModel(BaseModel):
+    vocab: List[str] = Field(default_factory=list)
+    idf: List[float] = Field(default_factory=list)
+    weights: Union[List[float], List[List[float]]] = Field(default_factory=list)
+    bias: Union[float, List[float]] = 0.0
+    classes: List[str] = Field(default_factory=list)
+    ngram_min: int = 1
+    ngram_max: int = 1
+    representation: str = "tfidf"
+
+
+class ExercisesTfidfTrainResponse(BaseModel):
+    success: bool = True
+    simulated: bool = False
+    n_train: int = 0
+    n_test: int = 0
+    n_features: int = 0
+    n_classes: int = 2
+    classes: List[str] = Field(default_factory=list)
+    class_counts: Dict[str, int] = Field(default_factory=dict)
+    n_positive: int = 0
+    n_negative: int = 0
+    baseline: float = 0.0
+    n_epochs: int = 0
+    epochs: int = 100
+    train_accuracy: float = 0.0
+    test_accuracy: float = 0.0
+    test_precision: float = 0.0
+    test_recall: float = 0.0
+    test_f1: float = 0.0
+    cv_accuracy: float = 0.0
+    solver: str = "lbfgs"
+    regularization_c: float = 1.0
+    max_features: int = 1000
+    ngram_min: int = 1
+    ngram_max: int = 2
+    min_df: int = 1
+    max_iter: int = 500
+    test_size: float = 0.2
+    seed: int = 42
+    threshold: float = 0.5
+    representation: str = "tfidf"
+    curve_kind: str = "holdout"
+    test_probs: List[ExercisesTfidfTestProb] = Field(default_factory=list)
+    confusion_matrix: List[List[int]] = Field(default_factory=list)
+    word_weights: List[ExercisesTfidfWordWeight] = Field(default_factory=list)
+    class_beliefs: List[ExercisesTfidfClassBelief] = Field(default_factory=list)
+    curve: List[ExercisesTfidfCurvePoint] = Field(default_factory=list)
+    model: ExercisesTfidfExportedModel = Field(default_factory=ExercisesTfidfExportedModel)
+
+
+class ExercisesTfidfPredictRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=4000)
+
+
+class ExercisesTfidfTokenScore(BaseModel):
+    word: str
+    contribution: float = 0.0
+    tfidf: float = 0.0
+
+
+class ExercisesTfidfClassProb(BaseModel):
+    label: str
+    p: float
+
+
+class ExercisesTfidfPredictResponse(BaseModel):
+    success: bool = True
+    probability: float = 0.5
+    label: str = ""
+    classes: List[str] = Field(default_factory=list)
+    probs: List[ExercisesTfidfClassProb] = Field(default_factory=list)
+    known_tokens: int = 0
+    chips: List[ExercisesTfidfTokenScore] = Field(default_factory=list)
+    features: List[ExercisesTfidfTokenScore] = Field(default_factory=list)
+
+
+class ExercisesTfidfSampleResponse(BaseModel):
+    success: bool = True
+    csv: str = ""
+    n_rows: int = 0
+
+
+class ExercisesTfidfDatasetInfo(BaseModel):
+    id: str
+    name: str
+    short: str = ""
+    theme: str = ""
+    source: str = ""
+    use_case: str = ""
+    filename: str = ""
+    classes: List[str] = Field(default_factory=list)
+    n_rows: int = 0
+
+
+class ExercisesTfidfDatasetListResponse(BaseModel):
+    success: bool = True
+    datasets: List[ExercisesTfidfDatasetInfo] = Field(default_factory=list)
+
+
+class ExercisesTfidfDatasetExample(BaseModel):
+    label: str
+    text: str
+
+
+class ExercisesTfidfDatasetRow(BaseModel):
+    review: str
+    label: str
+
+
+class ExercisesTfidfInspectStats(BaseModel):
+    empty_text: int = 0
+    empty_label: int = 0
+    extra: int = 0
+    groups: int = 0
+    label_in_text: int = 0
+    mixed_labels: int = 0
+    n_rows: int = 0
+
+
+class ExercisesTfidfDatasetResponse(BaseModel):
+    success: bool = True
+    id: str
+    name: str
+    short: str = ""
+    theme: str = ""
+    source: str = ""
+    use_case: str = ""
+    filename: str = ""
+    classes: List[str] = Field(default_factory=list)
+    counts: Dict[str, int] = Field(default_factory=dict)
+    n_rows: int = 0
+    rows: List[ExercisesTfidfDatasetRow] = Field(default_factory=list)
+    examples: List[ExercisesTfidfDatasetExample] = Field(default_factory=list)
+    inspect: Optional[ExercisesTfidfInspectStats] = None

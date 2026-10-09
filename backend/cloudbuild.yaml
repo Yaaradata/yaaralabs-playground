@@ -1,0 +1,68 @@
+# CI/CD for the YaaraLabs Playground backend.
+# Run by the Cloud Build trigger "yaaralabs-backend-deploy" on every push to main
+# that touches backend/** (see infra/setup_cicd.sh).
+#
+# Only the image is rolled forward. Env vars, secrets, service account and sizing
+# live on the Cloud Run service and are changed with backend/deploy.ps1.
+
+substitutions:
+  _REGION: us-central1
+  _SERVICE: yaaralabs-playground-backend
+  _IMAGE: us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/yaaralabs-playground-backend
+
+steps:
+  # Reuse layers from the last build (pip install of TF/torch is the slow part)
+  - id: Pull cache
+    name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args: ['-c', 'docker pull ${_IMAGE}:latest || echo "no cache image yet"']
+
+  - id: Build
+    name: gcr.io/cloud-builders/docker
+    dir: backend
+    args:
+      - build
+      - --cache-from=${_IMAGE}:latest
+      - -t=${_IMAGE}:${COMMIT_SHA}
+      - -t=${_IMAGE}:latest
+      - .
+
+  - id: Push
+    name: gcr.io/cloud-builders/docker
+    args: ['push', '--all-tags', '${_IMAGE}']
+
+  - id: Deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - update
+      - ${_SERVICE}
+      - --image=${_IMAGE}:${COMMIT_SHA}
+      - --region=${_REGION}
+      - --labels=managed-by=gcp-cloud-build-deploy-cloud-run,commit-sha=${COMMIT_SHA},gcb-build-id=${BUILD_ID}
+      - --quiet
+
+  - id: Smoke test
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        url=$$(gcloud run services describe ${_SERVICE} --region=${_REGION} --format='value(status.url)')
+        for i in 1 2 3 4 5 6; do
+          curl -fsS "$$url/health" && exit 0
+          sleep 10
+        done
+        echo "Health check failed for $$url"; exit 1
+
+images:
+  - ${_IMAGE}:${COMMIT_SHA}
+  - ${_IMAGE}:latest
+
+timeout: 3600s
+options:
+  machineType: E2_HIGHCPU_8
+  dynamicSubstitutions: true
+  logging: CLOUD_LOGGING_ONLY

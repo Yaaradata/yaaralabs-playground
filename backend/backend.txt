@@ -1,0 +1,223 @@
+Based on your current system and requirements, here's the complete schema design and API structure for the teacher-classroom-student system:
+
+## Firestore Schema Design
+
+### 1. `teachers_classrooms` Collection
+```json
+{
+  "teacher_id": "TCH_12345",           // Auto-generated UID
+  "name": "John Doe",
+  "school_name": "ABC High School", 
+  "date_of_training": "2025-08-14",
+  "session": "forenoon",               // forenoon/afternoon/fullday
+  "classrooms": [
+    {
+      "classroom_id": "CLS_001",
+      "name": "Class 8A",
+      "hashcode": "48291",             // 5-digit unique code
+      "students": ["STU_1001", "STU_1002"],
+      "created_at": "2025-08-14T09:00:00Z",
+      "active": true
+    },
+    {
+      "classroom_id": "CLS_002", 
+      "name": "Class 9B",
+      "hashcode": "19385",
+      "students": ["STU_1003"],
+      "created_at": "2025-08-14T14:00:00Z",
+      "active": true
+    }
+  ],
+  "created_at": "2025-08-14T08:00:00Z",
+  "active": true
+}
+```
+
+### 2. `students` Collection  
+```json
+{
+  "student_id": "STU_1001",
+  "name": "Alice Johnson",
+  "teacher_id": "TCH_12345",          // Link to teacher
+  "classroom_id": "CLS_001",          // Link to classroom
+  "hashcode": "48291",                // Hashcode used to join
+  "projects": [
+    {
+      "project_id": "PRJ_001",
+      "project_name": "Fruit Classifier",
+      "data_uploaded": 150,
+      "model_trained": true,
+      "tests_done": 3,
+      "scratch_linked": true,
+      "created_at": "2025-08-14T10:00:00Z"
+    }
+  ],
+  "created_at": "2025-08-14T09:15:00Z",
+  "active": true
+}
+```
+
+### 3. Modified `projects` Collection
+```json
+{
+  "id": "PRJ_001",
+  "name": "Fruit Classifier",
+  "createdBy": "STU_1001",            // Student ID instead of generic user
+  "teacher_id": "TCH_12345",          // NEW: Link to teacher
+  "classroom_id": "CLS_001",          // NEW: Link to classroom
+  "student_name": "Alice Johnson",     // NEW: Student name for easy lookup
+  // ... rest of existing project fields
+}
+```
+
+## API Endpoints Structure
+
+### Teacher Management APIs
+```
+POST   /api/teachers/register          # Create teacher + first classroom
+POST   /api/teachers/{id}/classrooms   # Add new classroom to teacher
+GET    /api/teachers/{id}              # Get teacher details + all classrooms
+GET    /api/teachers/{id}/dashboard    # Teacher dashboard with student stats
+PUT    /api/teachers/{id}              # Update teacher info
+DELETE /api/teachers/{id}              # End teacher session (archive)
+```
+
+### Classroom Management APIs
+```
+GET    /api/classrooms/{hashcode}      # Get classroom by hashcode (for student join)
+PUT    /api/classrooms/{id}            # Update classroom (name, status)
+DELETE /api/classrooms/{id}            # Remove classroom
+```
+
+### Student Management APIs
+```
+POST   /api/students/join              # Student joins with hashcode + name
+GET    /api/students/{id}              # Get student details + projects
+GET    /api/students/{id}/projects     # Get student's projects
+PUT    /api/students/{id}              # Update student info
+DELETE /api/students/{id}              # Remove student from classroom
+```
+
+### Integration APIs
+```
+GET    /api/teachers/{id}/students     # Get all students across all classrooms
+GET    /api/classrooms/{id}/students   # Get students in specific classroom
+GET    /api/classrooms/{id}/projects   # Get all projects in classroom
+```
+
+## Backend Implementation Structure
+
+### 1. New Models (`app/models.py`)
+```python
+# Teacher-Classroom-Student Models
+class SessionType(str, Enum):
+    FORENOON = "forenoon"
+    AFTERNOON = "afternoon"
+
+class Classroom(BaseModel):
+    classroom_id: str
+    name: str
+    hashcode: str
+    students: List[str]
+    created_at: datetime
+    active: bool
+
+class Teacher(BaseModel):
+    teacher_id: str
+    name: str
+    school_name: str
+    date_of_training: str
+    session: SessionType
+    classrooms: List[Classroom]
+    created_at: datetime
+    active: bool
+
+class Student(BaseModel):
+    student_id: str
+    name: str
+    teacher_id: str
+    classroom_id: str
+    hashcode: str
+    projects: List[dict]
+    created_at: datetime
+    active: bool
+```
+
+### 2. New Services (`app/services/`)
+```python
+# app/services/teacher_service.py
+class TeacherService:
+    async def create_teacher(self, teacher_data: TeacherCreate) -> Teacher
+    async def add_classroom(self, teacher_id: str, classroom_data: ClassroomCreate) -> Classroom
+    async def get_teacher_dashboard(self, teacher_id: str) -> dict
+    async def generate_hashcode(self) -> str  # Generate unique 5-digit code
+
+# app/services/student_service.py  
+class StudentService:
+    async def join_classroom(self, hashcode: str, student_name: str) -> Student
+    async def get_student_projects(self, student_id: str) -> List[Project]
+    async def link_project_to_student(self, project_id: str, student_id: str)
+```
+
+### 3. New API Routes (`app/api/`)
+```python
+# app/api/teachers.py
+router = APIRouter(prefix="/api/teachers", tags=["teachers"])
+
+# app/api/students.py
+router = APIRouter(prefix="/api/students", tags=["students"])
+
+# app/api/classrooms.py  
+router = APIRouter(prefix="/api/classrooms", tags=["classrooms"])
+```
+
+### 4. Modified Existing Services
+```python
+# app/services/project_service.py - Modified
+class ProjectService:
+    async def create_project(self, project_data: ProjectCreate, student_id: str) -> Project
+    async def get_projects_by_classroom(self, classroom_id: str) -> List[Project]
+    async def get_projects_by_teacher(self, teacher_id: str) -> List[Project]
+```
+
+### 5. Database Operations
+```python
+# Hashcode generation
+def generate_unique_hashcode() -> str:
+    """Generate unique 5-digit hashcode, check against existing ones"""
+    
+# Student join validation
+async def validate_hashcode_and_join(hashcode: str, student_name: str) -> Student:
+    """Find classroom by hashcode, create student, link to teacher/classroom"""
+
+# Project linking
+async def link_project_to_student(project_id: str, student_id: str):
+    """Update project with student, teacher, classroom references"""
+```
+
+## Data Flow & Integration
+
+### Teacher Workflow
+1. **Register** → Creates teacher doc + first classroom + generates hashcode
+2. **Add Classroom** → Creates new classroom entry + generates new hashcode  
+3. **Dashboard** → Shows all classrooms with student counts and project stats
+
+### Student Workflow
+1. **Join** → Enters hashcode + name → System finds classroom → Creates student doc
+2. **Create Project** → Project automatically linked to student/teacher/classroom
+3. **Work** → All project activity tracked under student profile
+
+### Project Integration
+1. **Creation** → Project gets `student_id`, `teacher_id`, `classroom_id` fields
+2. **Training** → Training jobs linked to student context
+3. **Results** → Models and predictions tracked per student
+
+## Key Features
+
+- **Unique hashcodes**: 5-digit codes for each classroom
+- **Real-time updates**: Teacher dashboard shows live student counts
+- **Project tracking**: All student work linked back to teacher/classroom
+- **Scalable**: Multiple classrooms per teacher, multiple students per classroom
+- **Clean separation**: Two main collections with clear relationships
+
+This design maintains your existing project system while adding the teacher-classroom-student layer on top. Would you like me to proceed with implementing any specific part of this structure?

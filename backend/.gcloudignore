@@ -1,0 +1,2 @@
+# Cloud Build upload: same exclusions as the image
+#!include:.dockerignore

@@ -1,0 +1,13 @@
+# Never bake local secrets or caches into the image
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+logs/
+*.log
+distilbert_results/
+app/data/exercises/runtime/
+.git/
