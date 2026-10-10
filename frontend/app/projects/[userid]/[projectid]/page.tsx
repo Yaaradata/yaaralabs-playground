@@ -3937,7 +3937,7 @@ export default function ProjectDetailsPage() {
                     <span>{selectedProject.name}</span>
             </h1>
           </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             {/* Train Card */}
             <div className="bg-canvas border border-magenta-brand/20 rounded-xl p-8 text-center hover:bg-purple-brand/5 transition-all duration-300 flex flex-col">
               <h2 className="text-2xl md:text-3xl font-bold text-blue-400 mb-6">
@@ -3971,24 +3971,6 @@ export default function ProjectDetailsPage() {
                 className="w-full bg-purple-brand hover:bg-purple-brand/90 text-white py-3 px-6 rounded-lg font-medium transition-all duration-300"
               >
                 Train the AI
-              </button>
-            </div>
-
-            {/* Make Card */}
-            <div className="bg-canvas border border-magenta-brand/20 rounded-xl p-8 text-center hover:bg-purple-brand/5 transition-all duration-300 flex flex-col">
-              <h2 className="text-2xl md:text-3xl font-bold text-orange-400 mb-6">
-                3. Use the AI
-              </h2>
-              <p className="text-fg mb-8 text-sm md:text-base leading-relaxed flex-grow">
-                Put your trained model to work in a prototype built with Scratch blocks
-              </p>
-              <button 
-                onClick={() => {
-                  window.location.href = `/projects/${urlUserId}/${urlProjectId}/make`;
-                }}
-                className="w-full bg-purple-brand hover:bg-purple-brand/90 text-white py-3 px-6 rounded-lg font-medium transition-all duration-300"
-              >
-                Use the AI
               </button>
             </div>
           </div>

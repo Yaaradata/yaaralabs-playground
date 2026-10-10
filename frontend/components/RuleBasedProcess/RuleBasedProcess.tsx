@@ -5,8 +5,7 @@ import { createPortal } from 'react-dom';
 import { mountRuleBasedProcess } from './engine.js';
 import MARKUP from './markup.js';
 import config from '@/lib/config';
-import { THEME_TOGGLE_HTML, bindExerciseTheme } from '../Exercises/theme';
-import '../Exercises/ThemeToggle.css';
+import { bindExerciseTheme } from '../Exercises/theme';
 import '../Exercises/theme-labs.css';
 import '../Exercises/labBuddy/labBuddy.css';
 import { LAB_BUDDY_SVG } from '../Exercises/labBuddy/labBuddySvg';
@@ -24,7 +23,7 @@ type RuleBasedProcessProps = {
   extraTabs?: ReactNode;
   /** Rendered under the Stage / Python tabs. Existing RBP projects omit this. */
   extraPanel?: ReactNode;
-  /** Optional host (e.g. exercise shell header) to show Run / theme controls. */
+  /** Optional host (e.g. exercise shell header) to show Run / toolbar controls. */
   toolbarHostRef?: RefObject<HTMLElement | null>;
 };
 
@@ -201,13 +200,6 @@ export default function RuleBasedProcess({
       root.innerHTML = MARKUP;
       const buddy = root.querySelector('#buddy');
       if (buddy) buddy.innerHTML = LAB_BUDDY_SVG;
-      const fsBtn = root.querySelector('#fullscreen');
-      if (fsBtn?.parentElement) {
-        const wrap = document.createElement('div');
-        wrap.innerHTML = THEME_TOGGLE_HTML;
-        const themeEl = wrap.firstElementChild;
-        if (themeEl) fsBtn.parentElement.insertBefore(themeEl, fsBtn);
-      }
 
       const toolbarHost = toolbarHostRefStable.current?.current ?? null;
       const runbar = root.querySelector('.runbar');
