@@ -143,7 +143,7 @@ HEADER = f"""@import url("https://fonts.googleapis.com/css2?family=Inter:wght@40
 {ROOT_SEL} button:disabled {{ cursor:not-allowed; opacity:.4; }}
 {ROOT_SEL} button:focus-visible, {ROOT_SEL} select:focus-visible, {ROOT_SEL} textarea:focus-visible, {ROOT_SEL} input:focus-visible {{ outline:2px solid var(--li); outline-offset:2px; }}
 {ROOT_SEL} svg {{ display:block; }}
-{ROOT_SEL} ::selection {{ background:rgba(188,108,211,.45); }}
+{ROOT_SEL} ::selection {{ background:rgba(147,51,234,.45); }}
 {ROOT_SEL} .boot{{
   display:none; position:absolute; inset:0; z-index:40; place-items:center; align-content:center;
   gap:12px; background:var(--bg); color:var(--mu); font-weight:600; font-size:14px;
@@ -153,7 +153,7 @@ HEADER = f"""@import url("https://fonts.googleapis.com/css2?family=Inter:wght@40
 {ROOT_SEL}.is-booting > main{{visibility:hidden; pointer-events:none}}
 {ROOT_SEL} .boot .spin{{
   width:22px; height:22px; border-radius:50%;
-  border:2.5px solid rgba(220,252,132,.35);
+  border:2.5px solid rgba(219,254,135,.35);
   border-top-color:var(--li);
   animation:{PREFIX}boot-spin .7s linear infinite;
 }}

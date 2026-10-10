@@ -1,0 +1,13 @@
+file,true_label,source,condition
+test_01.jpg,KYC,"Yes Securities: KYC application form, NRI individual (CDSL)","clean: new document, upright"
+test_02.jpg,invoice,"FATURA Template10_Instance105 (one image per template, original 595x841 upscaled to 1024)","clean: new document, upright"
+test_03.jpg,KYC,"SVC Co-operative Bank: CKYC application form, individual",partial crop: bottom 25% cut off
+test_04.jpg,corporate_action,Eris Lifesciences: revised record date for interim dividend (Feb 2025),"clean: new document, upright"
+test_05.jpg,cheque,Specimen cheque 7 (CTS-2010-like layout),"phone-photo look: perspective skew 9 deg, rotation 4 deg, shadow gradient, on a dark desk"
+test_06.jpg,corporate_action,Vesuvius India: record date for sub-division / stock split (May 2025),"Gaussian blur, radius 3"
+test_07.jpg,invoice,"FATURA Template40_Instance179 (one image per template, original 595x841 upscaled to 1024)",heavy JPEG compression: quality 6
+test_08.jpg,cheque,Specimen cheque 8 (CTS-2010-like layout),partial crop: right 22% cut off
+test_09.jpg,cheque,Specimen cheque 6 (CTS-2010-like layout),"clean: new document, upright"
+test_10.jpg,invoice,"FATURA Template46_Instance49 (one image per template, original 595x841 upscaled to 1024)",motion blur: 15 px horizontal
+test_11.jpg,corporate_action,SIS Ltd: record date for buyback (May 2025),"low light / low contrast: brightness x0.45, contrast x0.5"
+test_12.jpg,KYC,"CDSL: Annexure 2.2, additional KYC form for opening a demat account (non-individuals)","phone-photo look: perspective skew 12 deg, rotation -3 deg, shadow gradient, on a dark desk"

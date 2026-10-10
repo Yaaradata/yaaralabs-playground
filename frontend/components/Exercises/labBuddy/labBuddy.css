@@ -1,0 +1,293 @@
+/* Shared floating robot mascot — SVG body + mood faces via data-mood. */
+
+.lab-buddy {
+  --lab-buddy-size: 96px;
+  --lab-buddy-accent: #5ee7ff;
+  position: relative;
+  width: var(--lab-buddy-size);
+  height: var(--lab-buddy-size);
+  flex: none;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  user-select: none;
+  color: var(--lab-buddy-accent);
+}
+
+.lab-buddy-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  display: block;
+}
+
+.lab-buddy-floor {
+  fill: rgba(0, 0, 0, 0.5);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lab-buddy-shade 3.2s ease-in-out infinite;
+}
+
+.lab-buddy-fig {
+  transform-origin: 60px 110px;
+  animation: lab-buddy-float 3.2s ease-in-out infinite;
+}
+
+.lab-buddy-face {
+  display: none;
+  color: inherit;
+}
+
+.lab-buddy-face .lb-eye,
+.lab-buddy-face .lb-mouth,
+.lab-buddy-face .lb-dot,
+.lab-buddy-face .lb-zzz {
+  stroke: currentColor;
+  fill: currentColor;
+}
+
+.lab-buddy-face .lb-zzz {
+  stroke: none;
+}
+
+.lab-buddy-face path.lb-eye,
+.lab-buddy-face path.lb-mouth {
+  fill: none;
+}
+
+.lab-buddy[data-mood='cheer'] .lab-buddy-face[data-face='cheer'] path.lb-mouth {
+  fill: currentColor;
+  fill-opacity: 0.35;
+}
+
+.lab-buddy[data-mood='sleep'] .lab-buddy-face[data-face='sleep'],
+.lab-buddy[data-mood='idle'] .lab-buddy-face[data-face='idle'],
+.lab-buddy[data-mood='listen'] .lab-buddy-face[data-face='listen'],
+.lab-buddy[data-mood='type'] .lab-buddy-face[data-face='type'],
+.lab-buddy[data-mood='think'] .lab-buddy-face[data-face='think'],
+.lab-buddy[data-mood='speak'] .lab-buddy-face[data-face='speak'],
+.lab-buddy[data-mood='cheer'] .lab-buddy-face[data-face='cheer'],
+.lab-buddy[data-mood='wait'] .lab-buddy-face[data-face='wait'] {
+  display: block;
+}
+
+/* Mood accents */
+.lab-buddy[data-mood='sleep'] {
+  --lab-buddy-accent: #7a93a8;
+}
+.lab-buddy[data-mood='idle'] {
+  --lab-buddy-accent: #5ee7ff;
+}
+.lab-buddy[data-mood='listen'] {
+  --lab-buddy-accent: #3ec6c1;
+}
+.lab-buddy[data-mood='type'] {
+  --lab-buddy-accent: #5ee7ff;
+}
+.lab-buddy[data-mood='think'] {
+  --lab-buddy-accent: #c792db;
+}
+.lab-buddy[data-mood='speak'] {
+  --lab-buddy-accent: #dbfe87;
+}
+.lab-buddy[data-mood='cheer'] {
+  --lab-buddy-accent: #5ee7ff;
+}
+.lab-buddy[data-mood='wait'] {
+  --lab-buddy-accent: #f0c674;
+}
+
+@keyframes lab-buddy-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes lab-buddy-shade {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scaleX(0.82);
+    opacity: 0.55;
+  }
+}
+
+@keyframes lab-buddy-hop {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  35% {
+    transform: translateY(-12px) scale(1.05);
+  }
+  55% {
+    transform: translateY(-2px) scale(0.98);
+  }
+}
+
+@keyframes lab-buddy-nod {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  40% {
+    transform: translateY(2px) rotate(4deg);
+  }
+  70% {
+    transform: translateY(-1px) rotate(-3deg);
+  }
+}
+
+@keyframes lab-buddy-lean {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(-7deg);
+  }
+}
+
+@keyframes lab-buddy-talk {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.03);
+  }
+}
+
+@keyframes lab-buddy-wobble {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-2px) rotate(4deg);
+  }
+  75% {
+    transform: translateY(-2px) rotate(-4deg);
+  }
+}
+
+@keyframes lab-buddy-mouth {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.55);
+  }
+}
+
+@keyframes lab-buddy-scan {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes lab-buddy-zzz {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes lab-buddy-wave {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(18deg);
+  }
+}
+
+.lab-buddy[data-mood='idle'] .lab-buddy-fig {
+  animation: lab-buddy-float 3.2s ease-in-out infinite;
+}
+
+.lab-buddy[data-mood='listen'] .lab-buddy-fig {
+  animation: lab-buddy-lean 2.4s ease-in-out infinite;
+}
+
+.lab-buddy[data-mood='type'] .lab-buddy-fig,
+.lab-buddy[data-mood='think'] .lab-buddy-fig {
+  animation: lab-buddy-nod 2.2s ease-in-out infinite;
+}
+
+.lab-buddy[data-mood='type'] .lab-buddy-face[data-face='type'] .lb-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lab-buddy-scan 1.6s ease-in-out infinite;
+}
+
+.lab-buddy[data-mood='speak'] .lab-buddy-fig {
+  animation: lab-buddy-talk 0.7s ease-in-out infinite;
+}
+
+.lab-buddy[data-mood='speak'] .lb-talk {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lab-buddy-mouth 0.55s ease-in-out infinite;
+}
+
+.lab-buddy[data-mood='cheer'] .lab-buddy-fig {
+  animation: lab-buddy-hop 0.85s ease-out 2;
+}
+
+.lab-buddy[data-mood='cheer'] .lab-buddy-arm-r {
+  transform-box: fill-box;
+  transform-origin: 50% 12%;
+  animation: lab-buddy-wave 0.5s ease-in-out 4;
+}
+
+.lab-buddy[data-mood='wait'] .lab-buddy-fig {
+  animation: lab-buddy-wobble 1.6s ease-in-out infinite;
+}
+
+.lab-buddy[data-mood='sleep'] .lab-buddy-fig {
+  animation: none;
+  transform: translateY(5px);
+  opacity: 0.88;
+}
+
+.lab-buddy[data-mood='sleep'] .lab-buddy-floor {
+  animation: none;
+  opacity: 0.45;
+  transform: scaleX(1.08);
+}
+
+.lab-buddy[data-mood='sleep'] .lb-zzz {
+  fill: currentColor;
+  stroke: none;
+  animation: lab-buddy-zzz 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab-buddy-fig,
+  .lab-buddy-floor,
+  .lab-buddy .lb-talk,
+  .lab-buddy .lb-zzz,
+  .lab-buddy .lab-buddy-arm-r,
+  .lab-buddy .lb-eye {
+    animation: none !important;
+  }
+}

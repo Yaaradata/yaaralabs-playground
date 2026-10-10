@@ -29,7 +29,12 @@ from .exercises_vertex_models import (
 logger = logging.getLogger(__name__)
 
 COLLECTION = "exercises_workspaces"
-_ARR_MARK = "__arr__"
+# Firestore reserves field names like __x__, so the old "__arr__" marker made every save
+# with a list fail. "_arr" is allowed; decoding also accepts the old name.
+_ARR_MARK = "_arr"
+_LEGACY_ARR_MARKS = ("__arr__",)
+_NUMS_MARK = "_nums"
+_NUMS_MIN = 64
 
 
 def encode_for_firestore(value: Any) -> Any:
@@ -49,6 +54,13 @@ def encode_for_firestore(value: Any) -> Any:
             if item is not None
         }
     if isinstance(value, (list, tuple)):
+        # Long number lists (Ex 2 held-out scores) as one string: Firestore indexes every
+        # array element and caps a document at 40,000 index entries, which a 4+ class
+        # model's scores would exceed.
+        if len(value) > _NUMS_MIN and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in value):
+            if all(isinstance(v, int) for v in value):
+                return {_NUMS_MARK: "i|" + ",".join(str(v) for v in value)}
+            return {_NUMS_MARK: "f|" + ",".join(repr(float(v)) if math.isfinite(v) else "0.0" for v in value)}
         return {_ARR_MARK: [encode_for_firestore(item) for item in value]}
     return value
 
@@ -56,12 +68,16 @@ def encode_for_firestore(value: Any) -> Any:
 def decode_from_firestore(value: Any) -> Any:
     """Restore lists that encode_for_firestore wrapped for Firestore."""
     if isinstance(value, dict):
-        if (
-            len(value) == 1
-            and _ARR_MARK in value
-            and isinstance(value[_ARR_MARK], list)
-        ):
-            return [decode_from_firestore(item) for item in value[_ARR_MARK]]
+        if len(value) == 1:
+            (key, inner), = value.items()
+            if key in (_ARR_MARK, *_LEGACY_ARR_MARKS) and isinstance(inner, list):
+                return [decode_from_firestore(item) for item in inner]
+            if key == _NUMS_MARK and isinstance(inner, str):
+                kind, _, body = inner.partition("|")
+                if not body:
+                    return []
+                cast = int if kind == "i" else float
+                return [cast(x) for x in body.split(",")]
         return {key: decode_from_firestore(item) for key, item in value.items()}
     if isinstance(value, list):
         return [decode_from_firestore(item) for item in value]

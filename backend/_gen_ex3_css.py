@@ -137,7 +137,7 @@ HEADER = f"""@import url("https://fonts.googleapis.com/css2?family=Inter:wght@40
 {ROOT_SEL} button:disabled {{ cursor:not-allowed; opacity:.4; }}
 {ROOT_SEL} button:focus-visible, {ROOT_SEL} input:focus-visible, {ROOT_SEL} .cell:focus-visible {{ outline:2px solid var(--li); outline-offset:2px; }}
 {ROOT_SEL} svg {{ display:block; }}
-{ROOT_SEL} ::selection {{ background:rgba(188,108,211,.45); }}
+{ROOT_SEL} ::selection {{ background:rgba(147,51,234,.45); }}
 {ROOT_SEL} .boot {{
   display:none; position:absolute; inset:0; z-index:40; place-items:center; align-content:center;
   gap:12px; background:var(--bg); color:var(--mu); font-weight:600; font-size:14px;
@@ -147,7 +147,7 @@ HEADER = f"""@import url("https://fonts.googleapis.com/css2?family=Inter:wght@40
 {ROOT_SEL}.is-booting > main {{ visibility:hidden; pointer-events:none; }}
 {ROOT_SEL} .boot .spin {{
   width:22px; height:22px; border-radius:50%;
-  border:2.5px solid rgba(220,252,132,.35);
+  border:2.5px solid rgba(219,254,135,.35);
   border-top-color:var(--li);
   animation:{PREFIX}boot-spin .7s linear infinite;
 }}
@@ -180,8 +180,8 @@ EXTRA = f"""
 {ROOT_SEL}[data-theme='light'] {{
   --bg:#f3f5f8; --s0:#ffffff; --s1:#ffffff; --s2:#eef1f6; --b1:#d5dce6; --b2:#c3ccd8;
   --tx:#152033; --mu:rgba(21,32,51,.78); --fa:rgba(21,32,51,.55); --fa2:rgba(21,32,51,.36);
-  --pu:#8b3aa8; --li:#3f6b00; --bl:#1d4ed8; --am:#b45309; --bad:#dc2626;
-  --tp:#3f6b00; --tn:#1d4ed8; --fp:#c2410c; --fn:#dc2626; --pr:#7c3aed;
+  --pu:#9333EA; --li:#3f6b00; --bl:#1d4ed8; --am:#b45309; --bad:#dc2626;
+  --tp:#3f6b00; --tn:#1d4ed8; --fp:#c2410c; --fn:#dc2626; --pr:#9333EA;
   color:var(--tx); background:var(--bg);
 }}
 {ROOT_SEL}[data-theme='light'] header {{ background:#ffffff !important; border-bottom-color:var(--b1); }}
@@ -192,7 +192,7 @@ EXTRA = f"""
   background:#ffffff;
 }}
 {ROOT_SEL}[data-theme='light'] .stg {{
-  background:radial-gradient(120% 80% at 100% 0%,rgba(139,58,168,.08),transparent 55%),radial-gradient(90% 70% at 0% 100%,rgba(63,107,0,.06),transparent 60%),#ffffff;
+  background:radial-gradient(120% 80% at 100% 0%,rgba(147,51,234,.08),transparent 55%),radial-gradient(90% 70% at 0% 100%,rgba(63,107,0,.06),transparent 60%),#ffffff;
 }}
 {ROOT_SEL}[data-theme='light'] .go,
 {ROOT_SEL}[data-theme='light'] .chead .n,
@@ -202,12 +202,12 @@ EXTRA = f"""
 {ROOT_SEL}[data-theme='light'] .win .ck,
 {ROOT_SEL}[data-theme='light'] .sh .big,
 {ROOT_SEL}[data-theme='light'] .opt.yes {{
-  background:#c6f432; color:#1c1c1c; border-color:#c6f432;
+  background:#dbfe87; color:#010101; border-color:#dbfe87;
 }}
 {ROOT_SEL}[data-theme='light'] .stg.won .sh .big {{
   background:rgba(63,107,0,.12); color:#3f6b00; border-color:rgba(63,107,0,.45);
 }}
-{ROOT_SEL}[data-theme='light'] .ghost {{ color:#1c1c1c; }}
+{ROOT_SEL}[data-theme='light'] .ghost {{ color:#010101; }}
 @media (max-width:1100px){{
   {ROOT_SEL} > main{{
     display:flex;
@@ -251,7 +251,7 @@ EXTRA = f"""
 {ROOT_SEL} .rapid-list li{{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--b1);border-radius:12px;background:var(--s0)}}
 {ROOT_SEL} .rapid-list b{{display:block;color:var(--li);font-size:13px}}
 {ROOT_SEL} .rapid-list span{{color:var(--mu);font-size:12.5px}}
-{ROOT_SEL} .rapid-list .ck{{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--li);color:#1c1c1c;font-weight:800;font-size:12px}}
+{ROOT_SEL} .rapid-list .ck{{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--li);color:#010101;font-weight:800;font-size:12px}}
 """
 
 OUT = ROOT / "frontend/components/Exercises/labs/exercise3/exercise3.css"

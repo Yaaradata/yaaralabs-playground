@@ -1,0 +1,1135 @@
+/* Shared Light mode for dark-first exercise labs (Ex5 already has native light). */
+
+/* ---- Shell / landing driven by .ex-root[data-theme] ---- */
+.ex-root {
+  --ex-bg: #010101;
+  --ex-surface: #151515;
+  --ex-panel: #0A0A0F;
+  --ex-panel-2: #1a1a1a;
+  --ex-line: rgba(147, 51, 234, 0.22);
+  --ex-text: #ffffff;
+  --ex-muted: rgba(255, 255, 255, 0.6);
+  --ex-faint: rgba(255, 255, 255, 0.42);
+  --ex-lime: #dbfe87;
+  --ex-purple: #9333EA;
+  --ex-input-bg: #010101;
+  --ex-input-border: rgba(147, 51, 234, 0.2);
+  background: var(--ex-bg);
+  color: var(--ex-text);
+}
+
+.ex-root[data-theme='light'] {
+  --ex-bg: #f3f5f8;
+  --ex-surface: #ffffff;
+  --ex-panel: #ffffff;
+  --ex-panel-2: #f6f8fb;
+  --ex-line: #d5dce6;
+  --ex-text: #152033;
+  --ex-muted: rgba(21, 32, 51, 0.68);
+  --ex-faint: rgba(21, 32, 51, 0.45);
+  --ex-lime: #4b7a00;
+  --ex-purple: #9333EA;
+  --ex-input-bg: #ffffff;
+  --ex-input-border: #d5dce6;
+}
+
+.ex-root[data-theme='light'] .ex-kicker {
+  color: #4b7a00;
+}
+
+.ex-root[data-theme='light'] .ex-card {
+  background: var(--ex-panel);
+  border-color: color-mix(in srgb, var(--ex-purple) 28%, var(--ex-line));
+  box-shadow: 0 1px 2px rgba(21, 32, 51, 0.04);
+}
+
+.ex-root[data-theme='light'] .ex-card:hover {
+  background: var(--ex-panel-2);
+  border-color: color-mix(in srgb, #4b7a00 45%, var(--ex-line));
+}
+
+.ex-root[data-theme='light'] .ex-num,
+.ex-root[data-theme='light'] .ex-status-completed {
+  color: #4b7a00;
+}
+
+.ex-root[data-theme='light'] .ex-status-not_started {
+  color: #5e6b7e;
+  border-color: #d5dce6;
+}
+
+.ex-root[data-theme='light'] .ex-status-in_progress {
+  color: #9333EA;
+  border-color: rgba(139, 58, 168, 0.45);
+}
+
+.ex-root[data-theme='light'] .ex-shell-head {
+  background: var(--ex-surface);
+  border-bottom-color: var(--ex-line);
+}
+
+.ex-root[data-theme='light'] .ex-fs-btn {
+  background: var(--ex-panel-2);
+  border-color: var(--ex-line);
+  color: var(--ex-muted);
+}
+
+.ex-root[data-theme='light'] .ex-fs-btn:hover {
+  border-color: #4b7a00;
+  color: #4b7a00;
+}
+
+.ex-root[data-theme='light'] .ex-shell:fullscreen,
+.ex-root[data-theme='light'] .ex-shell:-webkit-full-screen {
+  background: var(--ex-bg);
+}
+
+.ex-root[data-theme='light'] .ex-panel {
+  background: var(--ex-panel);
+  border-color: var(--ex-line);
+}
+
+.ex-root[data-theme='light'] .ex-panel-h {
+  color: var(--ex-text);
+  border-bottom-color: var(--ex-line);
+}
+
+.ex-root[data-theme='light'] .ex-notes {
+  background: var(--ex-surface);
+  border-top-color: var(--ex-line);
+}
+
+.ex-root[data-theme='light'] .ex-token {
+  border-color: var(--ex-line);
+}
+
+.ex-root[data-theme='light'] textarea,
+.ex-root[data-theme='light'] input[type='text'],
+.ex-root[data-theme='light'] input[type='number'],
+.ex-root[data-theme='light'] select {
+  background: var(--ex-input-bg);
+  color: var(--ex-text);
+  border-color: var(--ex-input-border);
+}
+
+.ex-root[data-theme='light'] .ex-field-muted,
+.ex-root[data-theme='light'] .text-white\/40,
+.ex-root[data-theme='light'] .text-white\/50,
+.ex-root[data-theme='light'] .text-white\/60,
+.ex-root[data-theme='light'] .text-white\/70,
+.ex-root[data-theme='light'] .text-white\/80 {
+  color: var(--ex-muted) !important;
+}
+
+.ex-root[data-theme='light'] .bg-\[\#010101\] {
+  background-color: var(--ex-input-bg) !important;
+  color: var(--ex-text) !important;
+}
+
+.ex-root[data-theme='light'] .border-white\/10,
+.ex-root[data-theme='light'] .border-white\/20 {
+  border-color: var(--ex-line) !important;
+}
+
+.ex-root[data-theme='light'] .border-\[\#9333EA\]\/20,
+.ex-root[data-theme='light'] .border-\[\#9333EA\]\/40 {
+  border-color: color-mix(in srgb, var(--ex-purple) 35%, var(--ex-line)) !important;
+}
+
+.ex-root[data-theme='light'] .bg-\[\#9333EA\]\/20 {
+  background-color: color-mix(in srgb, var(--ex-purple) 14%, transparent) !important;
+  color: var(--ex-text) !important;
+}
+
+.ex-root[data-theme='light'] .text-\[\#e2b7f3\] {
+  color: #9333EA !important;
+}
+
+.ex-root[data-theme='light'] .text-\[\#dbfe87\] {
+  color: #4b7a00 !important;
+}
+
+.ex-root[data-theme='light'] .text-\[\#ffb020\] {
+  color: #b45309 !important;
+}
+
+.ex-root[data-theme='light'] .border-\[\#ffb020\]\/40 {
+  border-color: rgba(180, 83, 9, 0.4) !important;
+}
+
+/* Intro deck */
+.ex-root[data-theme='light'] .ex-intro-back {
+  --ex-intro-bg: #f3f5f8;
+  --ex-intro-surface: #ffffff;
+  --ex-intro-surface-2: #f6f8fb;
+  --ex-intro-chip: #eef2f7;
+  --ex-intro-border: #d5dce6;
+  --ex-intro-border-strong: #c3ccd8;
+  --ex-intro-text: #152033;
+  --ex-intro-dim: #2a3548;
+  --ex-intro-dim-2: #5e6b7e;
+  --ex-intro-lime: #4b7a00;
+  --ex-intro-amber: #b45309;
+  --ex-intro-red: #b91c1c;
+  background: rgba(243, 245, 248, 0.82);
+}
+
+/* ---- Dark-first LLM labs: shared light tokens ---- */
+.ex6-root[data-theme='light'],
+.ex8-root[data-theme='light'],
+.ex9-root[data-theme='light'],
+.ex10-root[data-theme='light'],
+.ex11-root[data-theme='light'],.ex12-root[data-theme='light'],.ex13-root[data-theme='light'],.ex14-root[data-theme='light'],
+.exLimit-root[data-theme='light'] {
+  --bg: #f3f5f8;
+  --s00: #f8f9fb;
+  --s0: #ffffff;
+  --s1: #ffffff;
+  --s2: #eef1f6;
+  --b1: #d5dce6;
+  --b2: #c3ccd8;
+  --tx: #152033;
+  --mu: rgba(21, 32, 51, 0.72);
+  --fa: rgba(21, 32, 51, 0.55);
+  --fa2: rgba(21, 32, 51, 0.38);
+  --pu: #9333EA;
+  --li: #4b7a00;
+  --warn: #b45309;
+  --bad: #b91c1c;
+  --gold: #a16207;
+  --bl: #2563eb;
+  --am: #b45309;
+  --c0: #2563eb;
+  color: var(--tx);
+  background: var(--bg);
+}
+
+.ex6-root[data-theme='light'] header,
+.ex8-root[data-theme='light'] header,
+.ex9-root[data-theme='light'] header,
+.ex10-root[data-theme='light'] header,
+.ex11-root[data-theme='light'] header,.ex12-root[data-theme='light'] header,.ex13-root[data-theme='light'] header,.ex14-root[data-theme='light'] header,
+.exLimit-root[data-theme='light'] header {
+  background: #ffffff !important;
+  border-bottom-color: var(--b1);
+}
+
+.ex6-root[data-theme='light'] .card,
+.ex8-root[data-theme='light'] .card,
+.ex9-root[data-theme='light'] .card,
+.ex10-root[data-theme='light'] .card,
+.ex11-root[data-theme='light'] .card,.ex12-root[data-theme='light'] .card,.ex13-root[data-theme='light'] .card,.ex14-root[data-theme='light'] .card,
+.exLimit-root[data-theme='light'] .card,
+.ex8-root[data-theme='light'] .composer .pane,
+.ex10-root[data-theme='light'] .composer .pane,
+.ex10-root[data-theme='light'] .lh,
+.ex10-root[data-theme='light'] .rc,
+.ex10-root[data-theme='light'] .tq,
+.ex11-root[data-theme='light'] .ans,.ex12-root[data-theme='light'] .ans,.ex13-root[data-theme='light'] .ans,.ex14-root[data-theme='light'] .ans,
+.ex11-root[data-theme='light'] .hit,.ex12-root[data-theme='light'] .hit,.ex13-root[data-theme='light'] .hit,.ex14-root[data-theme='light'] .hit,
+.exLimit-root[data-theme='light'] .msg {
+  background: #ffffff !important;
+  border-color: var(--b1);
+  box-shadow: 0 1px 2px rgba(21, 32, 51, 0.05);
+}
+
+.ex8-root[data-theme='light'] .card {
+  background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+}
+
+.ex6-root[data-theme='light'] textarea,
+.ex8-root[data-theme='light'] textarea,
+.ex9-root[data-theme='light'] textarea,
+.ex10-root[data-theme='light'] textarea,
+.ex11-root[data-theme='light'] textarea,.ex12-root[data-theme='light'] textarea,.ex13-root[data-theme='light'] textarea,.ex14-root[data-theme='light'] textarea,
+.exLimit-root[data-theme='light'] textarea,
+.ex6-root[data-theme='light'] select,
+.ex8-root[data-theme='light'] select,
+.ex9-root[data-theme='light'] select,
+.ex10-root[data-theme='light'] select,
+.ex11-root[data-theme='light'] select,.ex12-root[data-theme='light'] select,.ex13-root[data-theme='light'] select,.ex14-root[data-theme='light'] select,
+.exLimit-root[data-theme='light'] select,
+.ex6-root[data-theme='light'] input,
+.ex8-root[data-theme='light'] input,
+.ex9-root[data-theme='light'] input,
+.ex10-root[data-theme='light'] input,
+.ex11-root[data-theme='light'] input,.ex12-root[data-theme='light'] input,.ex13-root[data-theme='light'] input,.ex14-root[data-theme='light'] input,
+.exLimit-root[data-theme='light'] input {
+  background: #ffffff;
+  color: var(--tx);
+  border-color: var(--b1);
+}
+
+.ex6-root[data-theme='light'] select option,
+.ex8-root[data-theme='light'] select option,
+.ex9-root[data-theme='light'] select option,
+.ex10-root[data-theme='light'] select option,
+.ex11-root[data-theme='light'] select option,.ex12-root[data-theme='light'] select option,.ex13-root[data-theme='light'] select option,.ex14-root[data-theme='light'] select option,
+.exLimit-root[data-theme='light'] select option {
+  background: #ffffff;
+  color: #152033;
+}
+
+.ex6-root[data-theme='light'] .icon,
+.ex8-root[data-theme='light'] .icon,
+.ex9-root[data-theme='light'] .icon,
+.ex10-root[data-theme='light'] .icon,
+.ex11-root[data-theme='light'] .icon,.ex12-root[data-theme='light'] .icon,.ex13-root[data-theme='light'] .icon,.ex14-root[data-theme='light'] .icon,
+.exLimit-root[data-theme='light'] .icon,
+.ex6-root[data-theme='light'] .hbtn,
+.ex8-root[data-theme='light'] .hbtn,
+.ex6-root[data-theme='light'] .mini,
+.ex8-root[data-theme='light'] .mini,
+.ex9-root[data-theme='light'] .mini,
+.ex10-root[data-theme='light'] .mini,
+.ex11-root[data-theme='light'] .mini,.ex12-root[data-theme='light'] .mini,.ex13-root[data-theme='light'] .mini,.ex14-root[data-theme='light'] .mini,
+.exLimit-root[data-theme='light'] .mini,
+.ex6-root[data-theme='light'] .seg,
+.ex8-root[data-theme='light'] .seg,
+.ex11-root[data-theme='light'] .segctl,.ex12-root[data-theme='light'] .segctl,.ex13-root[data-theme='light'] .segctl,.ex14-root[data-theme='light'] .segctl,
+.exLimit-root[data-theme='light'] .segctl,
+.ex8-root[data-theme='light'] .msel,
+.ex9-root[data-theme='light'] .msel,
+.ex11-root[data-theme='light'] .msel,.ex12-root[data-theme='light'] .msel,.ex13-root[data-theme='light'] .msel,.ex14-root[data-theme='light'] .msel,
+.exLimit-root[data-theme='light'] .msel {
+  background: #ffffff;
+  border-color: var(--b1);
+  color: var(--mu);
+}
+
+.ex6-root[data-theme='light'] .icon:hover,
+.ex8-root[data-theme='light'] .icon:hover,
+.ex9-root[data-theme='light'] .icon:hover,
+.ex10-root[data-theme='light'] .icon:hover,
+.ex11-root[data-theme='light'] .icon:hover,.ex12-root[data-theme='light'] .icon:hover,.ex13-root[data-theme='light'] .icon:hover,.ex14-root[data-theme='light'] .icon:hover,
+.exLimit-root[data-theme='light'] .icon:hover {
+  color: var(--tx);
+  border-color: var(--b2);
+}
+
+.ex6-root[data-theme='light'] .toast,
+.ex8-root[data-theme='light'] .toast,
+.ex9-root[data-theme='light'] .toast,
+.ex10-root[data-theme='light'] .toast,
+.ex11-root[data-theme='light'] .toast,.ex12-root[data-theme='light'] .toast,.ex13-root[data-theme='light'] .toast,.ex14-root[data-theme='light'] .toast,
+.exLimit-root[data-theme='light'] .toast,
+.ex8-root[data-theme='light'] .mbox,
+.ex9-root[data-theme='light'] .mbox,
+.ex10-root[data-theme='light'] .mbox,
+.ex11-root[data-theme='light'] .mbox,.ex12-root[data-theme='light'] .mbox,.ex13-root[data-theme='light'] .mbox,.ex14-root[data-theme='light'] .mbox,
+.exLimit-root[data-theme='light'] .mbox {
+  background: #ffffff;
+  color: var(--tx);
+  border-color: var(--b2);
+  box-shadow: 0 12px 40px rgba(21, 32, 51, 0.18);
+}
+
+.ex8-root[data-theme='light'] .modal,
+.ex9-root[data-theme='light'] .modal,
+.ex10-root[data-theme='light'] .modal,
+.ex11-root[data-theme='light'] .modal,.ex12-root[data-theme='light'] .modal,.ex13-root[data-theme='light'] .modal,.ex14-root[data-theme='light'] .modal,
+.exLimit-root[data-theme='light'] .modal {
+  background: rgba(21, 32, 51, 0.35);
+}
+
+.ex6-root[data-theme='light'] .brand .dot,
+.ex8-root[data-theme='light'] .brand .dot,
+.ex9-root[data-theme='light'] .brand .dot,
+.ex10-root[data-theme='light'] .brand .dot,
+.ex11-root[data-theme='light'] .brand .dot,.ex12-root[data-theme='light'] .brand .dot,.ex13-root[data-theme='light'] .brand .dot,.ex14-root[data-theme='light'] .brand .dot,
+.exLimit-root[data-theme='light'] .brand .dot {
+  background: #84cc16;
+  box-shadow: 0 0 8px rgba(132, 204, 22, 0.55);
+}
+
+.ex6-root[data-theme='light'] .go,
+.ex8-root[data-theme='light'] .send,
+.ex10-root[data-theme='light'] .send,
+.ex11-root[data-theme='light'] .send,.ex12-root[data-theme='light'] .send,.ex13-root[data-theme='light'] .send,.ex14-root[data-theme='light'] .send,
+.exLimit-root[data-theme='light'] .send,
+.ex8-root[data-theme='light'] .segctl button.on,
+.ex11-root[data-theme='light'] .segctl button.on,.ex12-root[data-theme='light'] .segctl button.on,.ex13-root[data-theme='light'] .segctl button.on,.ex14-root[data-theme='light'] .segctl button.on,
+.exLimit-root[data-theme='light'] .segctl button.on {
+  background: #dbfe87;
+  color: #10151d;
+}
+
+.ex6-root[data-theme='light'] .boot .spin,
+.ex8-root[data-theme='light'] .boot .spin,
+.ex9-root[data-theme='light'] .boot .spin,
+.ex10-root[data-theme='light'] .boot .spin,
+.ex11-root[data-theme='light'] .boot .spin,.ex12-root[data-theme='light'] .boot .spin,.ex13-root[data-theme='light'] .boot .spin,.ex14-root[data-theme='light'] .boot .spin,
+.exLimit-root[data-theme='light'] .boot .spin {
+  border-color: rgba(75, 122, 0, 0.25);
+  border-top-color: #4b7a00;
+}
+
+/* Shared polish for per-lab boot overlays (under the global loading gate) */
+.ex5-root .boot,
+.ex6-root .boot,
+.ex8-root .boot,
+.ex9-root .boot,
+.ex10-root .boot,
+.ex11-root .boot,.ex12-root .boot,.ex13-root .boot,.ex14-root .boot,
+.ex12-root .boot,
+.exLimit-root .boot {
+  gap: 14px;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 40%, color-mix(in srgb, var(--lime, var(--li, #dbfe87)) 8%, transparent), transparent 60%),
+    var(--bg);
+}
+
+.ex5-root .boot .spin,
+.ex6-root .boot .spin,
+.ex8-root .boot .spin,
+.ex9-root .boot .spin,
+.ex10-root .boot .spin,
+.ex11-root .boot .spin,.ex12-root .boot .spin,.ex13-root .boot .spin,.ex14-root .boot .spin,
+.ex12-root .boot .spin,
+.exLimit-root .boot .spin {
+  width: 28px;
+  height: 28px;
+  border-width: 3px;
+}
+
+.ex5-root .boot-t,
+.ex6-root .boot-t,
+.ex8-root .boot-t,
+.ex9-root .boot-t,
+.ex10-root .boot-t,
+.ex11-root .boot-t,.ex12-root .boot-t,.ex13-root .boot-t,.ex14-root .boot-t,
+.ex12-root .boot-t,
+.exLimit-root .boot-t {
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+
+.ex10-root[data-theme='light'] .msel select,
+.ex11-root[data-theme='light'] .msel select,.ex12-root[data-theme='light'] .msel select,.ex13-root[data-theme='light'] .msel select,.ex14-root[data-theme='light'] .msel select,
+.exLimit-root[data-theme='light'] .msel select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234b7a00' stroke-width='1.6' fill='none'/%3E%3C/svg%3E");
+}
+
+.ex10-root[data-theme='light'] .mpick .msel.vsel {
+  background: #ffffff;
+  border-color: var(--b1);
+}
+
+.ex10-root[data-theme='light'] .lhwrap {
+  background: var(--bg);
+  box-shadow: 0 10px 12px -10px rgba(21, 32, 51, 0.18);
+}
+
+.exLimit-root[data-theme='light'] .msg.user {
+  background: #f1f5f9;
+}
+
+.exLimit-root[data-theme='light'] .beaker {
+  background: repeating-linear-gradient(0deg, transparent 0 32px, rgba(21, 32, 51, 0.04) 32px 33px), #ffffff;
+}
+
+.exLimit-root[data-theme='light'] .seg.draft,
+.exLimit-root[data-theme='light'] .sw.draft {
+  border-color: rgba(21, 32, 51, 0.45);
+}
+
+.ex8-root[data-theme='light'] .err,
+.ex10-root[data-theme='light'] .err,
+.ex11-root[data-theme='light'] .err,
+.ex12-root[data-theme='light'] .err,
+.ex13-root[data-theme='light'] .err ,.ex14-root[data-theme='light'] .err {
+  color: #b91c1c;
+}
+
+/* Ex5 theme toggle slot */
+.ex5-root .np-theme {
+  --np-theme-line: var(--line);
+  --np-theme-track: var(--node2);
+  --np-theme-muted: var(--muted);
+  --np-theme-text: var(--text);
+  --np-theme-on-bg: var(--panel);
+}
+
+/* Rule-based process */
+.rbp-root[data-theme='light'] {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --line: #d5dce6;
+  --line2: #c3ccd8;
+  --ink: #152033;
+  --ink2: rgba(21, 32, 51, 0.68);
+  --ink3: rgba(21, 32, 51, 0.45);
+  --purple: #9333EA;
+  --lime: #84cc16;
+  --dot: #c8d0dc;
+  --runbar-bg: rgba(255, 255, 255, 0.94);
+  --stage-bg: linear-gradient(180deg, #eef7f3 0%, #f5f7fb 100%);
+  --stage-card: #ffffff;
+  --stage-card-line: #d5dce6;
+  --stage-reel-bg: #eef3f7;
+  --stage-reel-line: #d5dce6;
+  --stage-ask-bg: #ffffff;
+  --stage-input-bg: #ffffff;
+}
+
+.rbp-root[data-theme='light'] .btn.go,
+.rbp-root[data-theme='light'] .btn.check {
+  color: #10151d;
+}
+
+.rbp-root[data-theme='light'] .btn.go {
+  background: #dbfe87;
+  border-color: #b7e628;
+}
+
+.rbp-root[data-theme='light'] .veil {
+  background: rgba(21, 32, 51, 0.35);
+}
+
+.rbp-root[data-theme='light'] .dlg {
+  background: #ffffff;
+  color: var(--ink);
+  border-color: var(--line2);
+  box-shadow: 0 18px 40px rgba(21, 32, 51, 0.14);
+}
+
+.rbp-root[data-theme='light'] .dlg .tip code {
+  background: #eef2f7;
+  color: var(--ink2);
+}
+
+.rbp-root[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
+  background: #9aa8bc;
+}
+
+.rbp-root[data-theme='light'] .rsplit:hover::before,
+.rbp-root[data-theme='light'] .rsplit:focus-visible::before,
+.rbp-root[data-theme='light'] .rsplit.is-drag::before {
+  background: rgba(139, 58, 168, 0.16);
+}
+
+.rbp-root[data-theme='light'] .palsec.pin {
+  color: #4b7a00;
+}
+
+.rbp-root[data-theme='light'] .zoombar .zoom-lbl {
+  color: #5e6b7e;
+}
+
+.rbp-root[data-theme='light'] .blkcoach {
+  background: #ffffff;
+  border-color: var(--line2);
+  color: var(--ink2);
+  box-shadow: 0 8px 24px rgba(21, 32, 51, 0.12);
+}
+
+.rbp-root[data-theme='light'] .play-stage {
+  --stage-teal: #0f766e;
+  --stage-amber: #b45309;
+  box-shadow: 0 10px 28px rgba(21, 32, 51, 0.08);
+}
+
+.rbp-root[data-theme='light'] .play-stage.is-live {
+  border-color: rgba(75, 122, 0, 0.35);
+}
+
+.rbp-root[data-theme='light'] .play-stage.is-cue {
+  border-color: rgba(15, 118, 110, 0.4);
+}
+
+.rbp-root[data-theme='light'] .stage-cast {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.rbp-root[data-theme='light'] .speech {
+  box-shadow: 0 6px 16px rgba(21, 32, 51, 0.08);
+}
+
+.rbp-root[data-theme='light'] .speech p b,
+.rbp-root[data-theme='light'] .console .ph b {
+  color: #4b7a00;
+}
+
+.rbp-root[data-theme='light'] .speech-tag,
+.rbp-root[data-theme='light'] .console .ph .ph-bubble-tag {
+  color: #10151d;
+  background: #dbfe87;
+}
+
+.rbp-root[data-theme='light'] .console.stage-reel {
+  background:
+    radial-gradient(circle at 14% 16%, rgba(198, 244, 50, 0.16), transparent 30%),
+    radial-gradient(circle at 86% 78%, rgba(15, 118, 110, 0.1), transparent 32%),
+    linear-gradient(180deg, #f4f7fb 0%, #eef3f7 100%);
+}
+
+.rbp-root[data-theme='light'] .console .ph {
+  color: rgba(21, 32, 51, 0.5);
+}
+
+.rbp-root[data-theme='light'] .console .ph .ph-bubble {
+  background: #ffffff;
+  border-color: #d5dce6;
+  box-shadow: 0 8px 20px rgba(21, 32, 51, 0.08);
+  color: #152033;
+}
+
+.rbp-root[data-theme='light'] .console .ph .ph-hint {
+  color: #2a3548;
+}
+
+.rbp-root[data-theme='light'] .cl-card {
+  background: #ffffff;
+  border-color: #d5dce6;
+  box-shadow: 0 4px 12px rgba(21, 32, 51, 0.06);
+}
+
+.rbp-root[data-theme='light'] .cl.out .cl-card {
+  background: rgba(198, 244, 50, 0.22);
+  border-color: rgba(75, 122, 0, 0.28);
+}
+
+.rbp-root[data-theme='light'] .cl.out .cl-role {
+  color: #4b7a00;
+}
+
+.rbp-root[data-theme='light'] .cl.ask .cl-card {
+  background: rgba(15, 118, 110, 0.1);
+  border-color: rgba(15, 118, 110, 0.28);
+}
+
+.rbp-root[data-theme='light'] .cl.ask .cl-role,
+.rbp-root[data-theme='light'] .ask-label {
+  color: #0f766e;
+}
+
+.rbp-root[data-theme='light'] .cl.think .cl-card {
+  background: rgba(139, 58, 168, 0.08);
+  border-color: rgba(139, 58, 168, 0.28);
+}
+
+.rbp-root[data-theme='light'] .cl.think .cl-role {
+  color: #9333EA;
+}
+
+.rbp-root[data-theme='light'] .cl.in .cl-card {
+  color: #0f3d3a;
+  background: #b8f3ef;
+  border-color: rgba(15, 118, 110, 0.28);
+}
+
+.rbp-root[data-theme='light'] .cl.in .cl-role {
+  color: #0f766e;
+}
+
+.rbp-root[data-theme='light'] .cl.sys .cl-card {
+  background: #eef2f7;
+  border-color: #d5dce6;
+}
+
+.rbp-root[data-theme='light'] .cl.warn .cl-card {
+  color: #92400e;
+  background: rgba(180, 83, 9, 0.08);
+  border-color: rgba(180, 83, 9, 0.28);
+}
+
+.rbp-root[data-theme='light'] .stage-ask {
+  background: rgba(255, 255, 255, 0.96);
+  border-top-color: #d5dce6;
+  box-shadow: 0 -8px 20px rgba(21, 32, 51, 0.06);
+}
+
+.rbp-root[data-theme='light'] .askbar input {
+  border-color: rgba(15, 118, 110, 0.35);
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.rbp-root[data-theme='light'] .askbar button {
+  background: #dbfe87;
+  color: #10151d;
+}
+
+.rbp-root[data-theme='light'] .codeerr.codeok {
+  color: #4b7a00;
+  background: rgba(198, 244, 50, 0.16);
+}
+
+.rbp-root[data-theme='light'] .codewrap:focus-within,
+.rbp-root[data-theme='light'] .codewrap.has-dirty {
+  border-color: #9333EA;
+}
+
+.rbp-root[data-theme='light'] .pal > .runbar {
+  background: #ffffff;
+  border-bottom-color: var(--line);
+  box-shadow: none;
+}
+
+.ex-root[data-theme='light'] .rbp-shell-toolbar .runbar {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.rbp-root[data-theme='light'] .pal > .runbar #undoBtn,
+.ex-root[data-theme='light'] .rbp-shell-toolbar .runbar #undoBtn {
+  background: rgba(139, 58, 168, 0.12);
+  border-color: rgba(139, 58, 168, 0.4);
+  color: #9333EA;
+}
+
+.rbp-root[data-theme='light'] .pal > .runbar #undoBtn:hover:not(:disabled),
+.ex-root[data-theme='light'] .rbp-shell-toolbar .runbar #undoBtn:hover:not(:disabled) {
+  background: rgba(139, 58, 168, 0.2);
+  color: #6d2a86;
+}
+
+.rbp-root[data-theme='light'] .pal > .runbar #fullscreen,
+.ex-root[data-theme='light'] .rbp-shell-toolbar .runbar #fullscreen {
+  background: rgba(75, 122, 0, 0.12);
+  border-color: rgba(75, 122, 0, 0.4);
+  color: #4b7a00;
+}
+
+.rbp-root[data-theme='light'] .pal > .runbar #fullscreen:hover:not(:disabled),
+.ex-root[data-theme='light'] .rbp-shell-toolbar .runbar #fullscreen:hover:not(:disabled) {
+  background: rgba(75, 122, 0, 0.2);
+  color: #3a5f00;
+}
+
+.rbp-root[data-theme='light'] .pal > .runbar .btn.icon-only,
+.ex-root[data-theme='light'] .rbp-shell-toolbar .runbar .btn.icon-only {
+  background: #ffffff;
+  border-color: var(--line2, #d5dce6);
+  color: var(--ink, #152033);
+}
+
+.rbp-root[data-theme='light'] .dd {
+  color: #152033;
+  background-color: rgba(255, 255, 255, 0.55);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='6'><path d='M0 0h8L4 6z' fill='%23152033'/></svg>");
+}
+
+.rbp-root[data-theme='light'] #menu {
+  box-shadow: 0 12px 30px rgba(21, 32, 51, 0.16);
+}
+
+.ex-root[data-theme='light'] .ex-shell-head .ex-lab-brand-title {
+  color: #152033;
+}
+
+/* Live object detection */
+.lod-studio[data-theme='light'] {
+  --lod-bg: #f3f5f8;
+  --lod-ink: #152033;
+  --lod-muted: rgba(21, 32, 51, 0.58);
+  --lod-card: #ffffff;
+  --lod-surface: #ffffff;
+  --lod-line: rgba(139, 58, 168, 0.22);
+  --lod-lime: #4b7a00;
+  --lod-purple: #9333EA;
+  --lod-start: #dbfe87;
+  --lod-camera: #0f172a;
+}
+
+.lod-studio[data-theme='light'] .lod-btn.export,
+.lod-studio[data-theme='light'] .lod-btn.close {
+  color: var(--lod-ink);
+  border-color: var(--lod-line);
+  background: var(--lod-surface);
+}
+
+.lod-studio .lod-stage-tools .np-theme {
+  margin-right: 2px;
+}
+
+.lod-studio .lod-stage-tools .np-theme-opt {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.rbp-root .np-theme {
+  --np-theme-line: var(--line2);
+  --np-theme-track: var(--bg);
+  --np-theme-muted: var(--ink2);
+  --np-theme-text: var(--ink);
+  --np-theme-on-bg: var(--surface);
+}
+
+.ex8-root .np-theme,
+.ex9-root .np-theme,
+.ex10-root .np-theme,
+.ex11-root .np-theme,.ex12-root .np-theme,.ex13-root .np-theme,.ex14-root .np-theme,
+.exLimit-root .np-theme {
+  --np-theme-line: var(--b1);
+  --np-theme-track: var(--s0);
+  --np-theme-muted: var(--mu);
+  --np-theme-text: var(--tx);
+  --np-theme-on-bg: var(--s2);
+}
+
+.ex8-root .hr .np-theme,
+.ex9-root .hr .np-theme {
+  margin-left: 2px;
+}
+
+/* Shared Undo button for mount labs (id=undoBtn) — icon only */
+.ex8-root .undo-btn,
+.ex9-root .undo-btn,
+.ex10-root .undo-btn,
+.ex11-root .undo-btn,.ex12-root .undo-btn,.ex13-root .undo-btn,.ex14-root .undo-btn,
+.exLimit-root .undo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 10px;
+  background: var(--s0);
+  border: 1px solid var(--b1);
+  color: var(--mu);
+  cursor: pointer;
+  flex: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.ex8-root .undo-btn svg,
+.ex9-root .undo-btn svg,
+.ex10-root .undo-btn svg,
+.ex11-root .undo-btn svg,.ex12-root .undo-btn svg,.ex13-root .undo-btn svg,.ex14-root .undo-btn svg,
+.exLimit-root .undo-btn svg {
+  display: block;
+}
+
+.ex8-root .undo-btn:hover:not(:disabled),
+.ex9-root .undo-btn:hover:not(:disabled),
+.ex10-root .undo-btn:hover:not(:disabled),
+.ex11-root .undo-btn:hover:not(:disabled),.ex12-root .undo-btn:hover:not(:disabled),.ex13-root .undo-btn:hover:not(:disabled),.ex14-root .undo-btn:hover:not(:disabled),
+.exLimit-root .undo-btn:hover:not(:disabled) {
+  border-color: var(--b2);
+  color: var(--tx);
+}
+
+.ex8-root .undo-btn:disabled,
+.ex9-root .undo-btn:disabled,
+.ex10-root .undo-btn:disabled,
+.ex11-root .undo-btn:disabled,.ex12-root .undo-btn:disabled,.ex13-root .undo-btn:disabled,.ex14-root .undo-btn:disabled,
+.exLimit-root .undo-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ex8-root[data-theme='light'] .undo-btn,
+.ex9-root[data-theme='light'] .undo-btn,
+.ex10-root[data-theme='light'] .undo-btn,
+.ex11-root[data-theme='light'] .undo-btn,.ex12-root[data-theme='light'] .undo-btn,.ex13-root[data-theme='light'] .undo-btn,.ex14-root[data-theme='light'] .undo-btn,
+.exLimit-root[data-theme='light'] .undo-btn {
+  background: #ffffff;
+  border-color: var(--b1);
+  color: var(--mu);
+}
+
+/* ============================================================
+   Colored chrome buttons + light glow on hover (all exercises)
+   ============================================================ */
+:root {
+  --ex-btn-glow-lime: 0 0 0 1px rgba(219, 254, 135, 0.35), 0 0 14px rgba(219, 254, 135, 0.28);
+  --ex-btn-glow-purple: 0 0 0 1px rgba(147, 51, 234, 0.4), 0 0 14px rgba(147, 51, 234, 0.3);
+  --ex-btn-glow-cyan: 0 0 0 1px rgba(185, 10, 189, 0.4), 0 0 14px rgba(185, 10, 189, 0.28);
+  --ex-btn-glow-amber: 0 0 0 1px rgba(236, 72, 153, 0.45), 0 0 14px rgba(236, 72, 153, 0.3);
+}
+
+/* Shell fullscreen / undo in ExerciseShell */
+.ex-fs-btn {
+  background: rgba(219, 254, 135, 0.14) !important;
+  border-color: rgba(219, 254, 135, 0.45) !important;
+  color: #dbfe87 !important;
+  transition: box-shadow 0.18s ease, filter 0.18s ease, border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+}
+.ex-fs-btn:hover {
+  filter: brightness(1.08);
+  box-shadow: var(--ex-btn-glow-lime);
+  border-color: #dbfe87 !important;
+  color: #f5ffb8 !important;
+}
+
+.ex-root[data-theme='light'] .ex-fs-btn {
+  background: rgba(75, 122, 0, 0.12) !important;
+  border-color: rgba(75, 122, 0, 0.4) !important;
+  color: #4b7a00 !important;
+}
+.ex-root[data-theme='light'] .ex-fs-btn:hover {
+  box-shadow: 0 0 0 1px rgba(75, 122, 0, 0.35), 0 0 14px rgba(75, 122, 0, 0.22);
+  color: #3a6200 !important;
+  border-color: #4b7a00 !important;
+}
+
+/* Mount-lab undo */
+.ex8-root .undo-btn,
+.ex9-root .undo-btn,
+.ex10-root .undo-btn,
+.ex11-root .undo-btn,.ex12-root .undo-btn,.ex13-root .undo-btn,.ex14-root .undo-btn,
+.exLimit-root .undo-btn {
+  background: rgba(147, 51, 234, 0.18) !important;
+  border-color: rgba(147, 51, 234, 0.5) !important;
+  color: #e2b7f3 !important;
+  transition: box-shadow 0.18s ease, filter 0.18s ease, border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+}
+.ex8-root .undo-btn:hover:not(:disabled),
+.ex9-root .undo-btn:hover:not(:disabled),
+.ex10-root .undo-btn:hover:not(:disabled),
+.ex11-root .undo-btn:hover:not(:disabled),.ex12-root .undo-btn:hover:not(:disabled),.ex13-root .undo-btn:hover:not(:disabled),.ex14-root .undo-btn:hover:not(:disabled),
+.exLimit-root .undo-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: var(--ex-btn-glow-purple);
+  border-color: #9333EA !important;
+  color: #f0d4ff !important;
+  background: rgba(147, 51, 234, 0.28) !important;
+}
+
+/* Mount-lab header icons (fullscreen, settings) */
+.ex8-root > header .icon,
+.ex9-root > header .icon,
+.ex10-root > header .icon,
+.ex11-root > header .icon,.ex12-root > header .icon,.ex13-root > header .icon,.ex14-root > header .icon,
+.exLimit-root > header .icon,
+.ex8-root .hr .icon,
+.ex9-root .hr .icon {
+  background: rgba(219, 254, 135, 0.12) !important;
+  border-color: rgba(219, 254, 135, 0.4) !important;
+  color: #dbfe87 !important;
+  transition: box-shadow 0.18s ease, filter 0.18s ease, border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+}
+.ex8-root > header .icon:hover:not(:disabled),
+.ex9-root > header .icon:hover:not(:disabled),
+.ex10-root > header .icon:hover:not(:disabled),
+.ex11-root > header .icon:hover:not(:disabled),.ex12-root > header .icon:hover:not(:disabled),.ex13-root > header .icon:hover:not(:disabled),.ex14-root > header .icon:hover:not(:disabled),
+.exLimit-root > header .icon:hover:not(:disabled),
+.ex8-root .hr .icon:hover:not(:disabled),
+.ex9-root .hr .icon:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: var(--ex-btn-glow-lime);
+  border-color: #dbfe87 !important;
+  color: #f5ffb8 !important;
+  background: rgba(219, 254, 135, 0.2) !important;
+}
+
+/* Dial / baseline header buttons */
+.ex8-root .hbtn {
+  background: rgba(185, 10, 189, 0.12) !important;
+  border-color: rgba(185, 10, 189, 0.4) !important;
+  color: #B90ABD !important;
+  transition: box-shadow 0.18s ease, filter 0.18s ease, border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+}
+.ex8-root .hbtn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: var(--ex-btn-glow-cyan);
+  border-color: #B90ABD !important;
+  color: #c5d9ff !important;
+  background: rgba(185, 10, 189, 0.22) !important;
+}
+
+/* Mini actions in mount labs */
+.ex9-root .mini,
+.ex10-root .mini,
+.ex11-root .mini,.ex12-root .mini,.ex13-root .mini,.ex14-root .mini,
+.exLimit-root .mini {
+  transition: box-shadow 0.18s ease, filter 0.18s ease, border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+}
+.ex9-root .mini:hover:not(:disabled),
+.ex10-root .mini:hover:not(:disabled),
+.ex11-root .mini:hover:not(:disabled),.ex12-root .mini:hover:not(:disabled),.ex13-root .mini:hover:not(:disabled),.ex14-root .mini:hover:not(:disabled),
+.exLimit-root .mini:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: var(--ex-btn-glow-purple);
+}
+
+.ex9-root .mini.li,
+.ex10-root .mini.li,
+.ex11-root .mini.li,.ex12-root .mini.li,.ex13-root .mini.li,.ex14-root .mini.li,
+.exLimit-root .mini.li {
+  background: rgba(219, 254, 135, 0.1);
+  border-color: rgba(219, 254, 135, 0.45);
+  color: #dbfe87;
+}
+.ex9-root .mini.li:hover:not(:disabled),
+.ex10-root .mini.li:hover:not(:disabled),
+.ex11-root .mini.li:hover:not(:disabled),.ex12-root .mini.li:hover:not(:disabled),.ex13-root .mini.li:hover:not(:disabled),.ex14-root .mini.li:hover:not(:disabled),
+.exLimit-root .mini.li:hover:not(:disabled) {
+  box-shadow: var(--ex-btn-glow-lime);
+  background: rgba(219, 254, 135, 0.18);
+  border-color: #dbfe87;
+  color: #f5ffb8;
+}
+
+/* Exercise 5 toolbar */
+.ex5-root .ibtn {
+  background: rgba(219, 254, 135, 0.12) !important;
+  border-color: rgba(219, 254, 135, 0.4) !important;
+  color: var(--lime, #dbfe87) !important;
+  transition: box-shadow 0.18s ease, filter 0.18s ease, border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+}
+.ex5-root .ibtn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: var(--ex-btn-glow-lime);
+  border-color: var(--lime, #dbfe87) !important;
+  color: #f5ffb8 !important;
+  background: rgba(219, 254, 135, 0.22) !important;
+}
+.ex5-root .btn:not(.run):not(.stop) {
+  background: rgba(147, 51, 234, 0.16) !important;
+  border-color: rgba(147, 51, 234, 0.45) !important;
+  color: #e2b7f3 !important;
+  transition: box-shadow 0.18s ease, filter 0.18s ease, border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+}
+.ex5-root .btn:not(.run):not(.stop):hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: var(--ex-btn-glow-purple);
+  border-color: #9333EA !important;
+  color: #f0d4ff !important;
+  background: rgba(147, 51, 234, 0.26) !important;
+}
+.ex5-root .btn.run,
+.ex5-root .btn.stop {
+  transition: box-shadow 0.18s ease, filter 0.18s ease;
+}
+.ex5-root .btn.run:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: var(--ex-btn-glow-lime);
+}
+.ex5-root .btn.stop:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 0 0 1px rgba(147, 51, 234, 0.5), 0 0 14px rgba(147, 51, 234, 0.35);
+}
+
+/* Exercise 2 / 3 / 4 colored buttons — soft glow on hover */
+.e2 .e2-btn:hover:not(:disabled),
+.ex3 .ibtn:hover:not(:disabled),
+.ex4 .ibtn:hover:not(:disabled),
+.ex3 .guide-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: var(--ex-btn-glow-lime);
+}
+.ex3 .ibtn.amber:hover:not(:disabled),
+.ex4 .ibtn.amber:hover:not(:disabled) {
+  box-shadow: var(--ex-btn-glow-amber);
+}
+.ex3 .ibtn.cyan:hover:not(:disabled),
+.ex4 .ibtn.cyan:hover:not(:disabled) {
+  box-shadow: var(--ex-btn-glow-cyan);
+}
+.ex3 .ibtn.olive:hover:not(:disabled),
+.ex4 .ibtn.olive:hover:not(:disabled) {
+  box-shadow: var(--ex-btn-glow-lime);
+}
+.ex3 .ibtn.gold:hover:not(:disabled) {
+  box-shadow: var(--ex-btn-glow-amber);
+}
+
+.e2 .e2-btn-reset:hover:not(:disabled) {
+  box-shadow: var(--ex-btn-glow-amber);
+}
+.e2 .e2-btn-dataset:hover:not(:disabled),
+.e2 .e2-btn-concept:hover:not(:disabled) {
+  box-shadow: var(--ex-btn-glow-purple);
+}
+.e2 .e2-btn-preview:hover:not(:disabled),
+.e2 .e2-btn-fs:hover:not(:disabled),
+.e2 .e2-btn-undo:hover:not(:disabled) {
+  box-shadow: var(--ex-btn-glow-lime);
+}
+
+/* Live Object Detection toolbar */
+.lod-studio .lod-btn {
+  transition: box-shadow 0.18s ease, filter 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+.lod-studio .lod-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: var(--ex-btn-glow-purple);
+}
+.lod-studio .lod-btn.lod-undo-btn {
+  background: rgba(147, 51, 234, 0.2);
+  border-color: rgba(147, 51, 234, 0.5);
+  color: #e2b7f3;
+}
+.lod-studio .lod-btn.lod-undo-btn:hover:not(:disabled) {
+  box-shadow: var(--ex-btn-glow-purple);
+  background: rgba(147, 51, 234, 0.3);
+  color: #f0d4ff;
+}
+
+/* Rule Based Process runbar */
+.rbp-root .pal > .runbar .btn,
+.rbp-shell-toolbar .runbar .btn {
+  transition: box-shadow 0.18s ease, filter 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+.rbp-root .pal > .runbar .btn:hover:not(:disabled),
+.rbp-shell-toolbar .runbar .btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: var(--ex-btn-glow-lime);
+}
+.rbp-root .pal > .runbar #undoBtn,
+.rbp-shell-toolbar .runbar #undoBtn {
+  background: rgba(147, 51, 234, 0.22);
+  border-color: rgba(147, 51, 234, 0.5);
+  color: #e2b7f3;
+}
+.rbp-root .pal > .runbar #undoBtn:hover:not(:disabled),
+.rbp-shell-toolbar .runbar #undoBtn:hover:not(:disabled) {
+  box-shadow: var(--ex-btn-glow-purple);
+  background: rgba(147, 51, 234, 0.32);
+  color: #f0d4ff;
+}
+.rbp-root .pal > .runbar #fullscreen,
+.rbp-shell-toolbar .runbar #fullscreen {
+  background: rgba(219, 254, 135, 0.16);
+  border-color: rgba(219, 254, 135, 0.45);
+  color: #dbfe87;
+}
+.rbp-root .pal > .runbar #fullscreen:hover:not(:disabled),
+.rbp-shell-toolbar .runbar #fullscreen:hover:not(:disabled) {
+  box-shadow: var(--ex-btn-glow-lime);
+  background: rgba(219, 254, 135, 0.26);
+  color: #f5ffb8;
+}
+
+/* Primary send / run CTAs — keep brand color, add glow */
+.ex8-root .cta,
+.ex9-root .cta,
+.ex10-root .send,
+.ex11-root .send,.ex12-root .send,.ex13-root .send,.ex14-root .send,
+.exLimit-root .send {
+  transition: box-shadow 0.18s ease, filter 0.18s ease;
+}
+.ex8-root .cta:hover:not(:disabled),
+.ex9-root .cta:hover:not(:disabled),
+.ex10-root .send:hover:not(:disabled),
+.ex11-root .send:hover:not(:disabled),.ex12-root .send:hover:not(:disabled),.ex13-root .send:hover:not(:disabled),.ex14-root .send:hover:not(:disabled),
+.exLimit-root .send:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: var(--ex-btn-glow-lime);
+}
+.ex8-root .cta.stop:hover:not(:disabled),
+.ex9-root .cta.stop:hover:not(:disabled),
+.ex10-root .send.stop:hover:not(:disabled),
+.ex11-root .send.stop:hover:not(:disabled),.ex12-root .send.stop:hover:not(:disabled),.ex13-root .send.stop:hover:not(:disabled),.ex14-root .send.stop:hover:not(:disabled),
+.exLimit-root .send.stop:hover:not(:disabled) {
+  box-shadow: 0 0 0 1px rgba(236, 72, 153, 0.45), 0 0 14px rgba(236, 72, 153, 0.3);
+}
+
+/* Light-theme glow softening */
+[data-theme='light'] {
+  --ex-btn-glow-lime: 0 0 0 1px rgba(75, 122, 0, 0.3), 0 0 12px rgba(75, 122, 0, 0.18);
+  --ex-btn-glow-purple: 0 0 0 1px rgba(139, 58, 168, 0.3), 0 0 12px rgba(139, 58, 168, 0.18);
+  --ex-btn-glow-cyan: 0 0 0 1px rgba(37, 99, 235, 0.28), 0 0 12px rgba(37, 99, 235, 0.16);
+  --ex-btn-glow-amber: 0 0 0 1px rgba(180, 120, 20, 0.3), 0 0 12px rgba(180, 120, 20, 0.16);
+}
+.e2.e2-light {
+  --ex-btn-glow-lime: 0 0 0 1px rgba(75, 122, 0, 0.3), 0 0 12px rgba(75, 122, 0, 0.18);
+  --ex-btn-glow-purple: 0 0 0 1px rgba(139, 58, 168, 0.3), 0 0 12px rgba(139, 58, 168, 0.18);
+  --ex-btn-glow-cyan: 0 0 0 1px rgba(37, 99, 235, 0.28), 0 0 12px rgba(37, 99, 235, 0.16);
+  --ex-btn-glow-amber: 0 0 0 1px rgba(180, 120, 20, 0.3), 0 0 12px rgba(180, 120, 20, 0.16);
+}
+

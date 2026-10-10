@@ -87,6 +87,7 @@ class ProjectType(str, Enum):
     RULE_BASED_PROCESS = "rule-based-process"
     LIVE_OBJECT_DETECTION = "live-object-detection"
     EXERCISES = "exercises"
+    CONFUSION_MATRIX = "confusion-matrix"
 
 
 class ProjectStatus(str, Enum):
@@ -185,7 +186,7 @@ class Project(BaseModel):
 
     # Rule Based Process projects edited in Scratch (saved as an .sb3 in Cloud Storage).
     # Kept on the model so whole-document rewrites (e.g. update_project) don't drop them.
-    rbpEditor: Optional[str] = Field(None, description="Rule Based Process editor: 'scratch' or 'legacy' (built-in block editor)")
+    rbpEditor: Optional[str] = Field(None, description="Rule Based Process editor: 'rules-bot' (default), 'scratch' or 'legacy' (built-in block editor)")
     scratchProjectPath: Optional[str] = Field(None, description="GCS path of the saved Scratch project (.sb3)")
     scratchSavedAt: Optional[datetime] = Field(None, description="When the Scratch project was last saved")
     scratchSizeBytes: Optional[int] = Field(None, description="Size of the saved .sb3 in bytes")
@@ -236,6 +237,11 @@ class ExampleAdd(BaseModel):
 
 class ExamplesBulkAdd(BaseModel):
     examples: List[ExampleAdd] = Field(..., description="List of examples to add")
+    # The manual box lets learners type several examples separated by commas. Sample data sends
+    # whole sentences (which may contain commas) with split=False, and skip_existing=True so adding
+    # the same sample twice does not duplicate anything.
+    split: bool = Field(True, description="Split each text on commas into several examples")
+    skip_existing: bool = Field(False, description="Skip texts already present under the same label")
 
 class ImageExamplesBulkAdd(BaseModel):
     examples: List[ImageExampleAdd] = Field(..., description="List of image examples to add")
@@ -1190,3 +1196,265 @@ class ExercisesTfidfDatasetResponse(BaseModel):
     rows: List[ExercisesTfidfDatasetRow] = Field(default_factory=list)
     examples: List[ExercisesTfidfDatasetExample] = Field(default_factory=list)
     inspect: Optional[ExercisesTfidfInspectStats] = None
+
+
+# ---------------------------------------------------------------------------
+# Rules Bot (Rule Based Process projects): keyword rules that route a message to a team
+# ---------------------------------------------------------------------------
+
+RULES_BOT_MAX_RULES = 30
+RULES_BOT_MAX_KEYWORDS = 50
+RULES_BOT_DEFAULT_REPLY = "Sorry, I didn't understand. A person will reply."
+
+
+class RulesBotSampleRule(BaseModel):
+    desk: str = Field(..., min_length=1, max_length=60)
+    keywords: List[str] = Field(..., min_length=1, max_length=RULES_BOT_MAX_KEYWORDS)
+
+
+class RulesBotSample(BaseModel):
+    """A ready-made rule set offered in the Samples menu (collection rules_bot_samples)."""
+    id: str
+    name: str
+    summary: str = ""
+    reply: str = RULES_BOT_DEFAULT_REPLY
+    rules: List[RulesBotSampleRule] = Field(default_factory=list)
+    order: int = 0
+
+
+class RulesBotSampleListResponse(BaseModel):
+    success: bool = True
+    data: List[RulesBotSample]
+
+
+class RulesBotSampleResponse(BaseModel):
+    success: bool = True
+    data: RulesBotSample
+
+
+class RulesBotRule(BaseModel):
+    id: str = Field(..., min_length=1, max_length=40)
+    desk: str = Field("", max_length=60)
+    color: str = Field(..., pattern=r"^#[0-9A-Fa-f]{6}$")
+    keywords: List[str] = Field(default_factory=list, max_length=RULES_BOT_MAX_KEYWORDS)
+
+    @field_validator("keywords")
+    @classmethod
+    def _clean_keywords(cls, v: List[str]) -> List[str]:
+        # Trim, drop blanks and case-insensitive duplicates, keep the user's order
+        seen, out = set(), []
+        for k in v:
+            k = k.strip()
+            if not k:
+                continue
+            if len(k) > 60:
+                raise ValueError("Keywords must be 60 characters or fewer")
+            if k.lower() not in seen:
+                seen.add(k.lower())
+                out.append(k)
+        return out
+
+
+class RulesBotBoardState(BaseModel):
+    rules: List[RulesBotRule] = Field(default_factory=list, max_length=RULES_BOT_MAX_RULES)
+    reply: str = Field(RULES_BOT_DEFAULT_REPLY, max_length=300)
+    sampleId: Optional[str] = Field(None, max_length=60)
+
+
+class RulesBotBoard(RulesBotBoardState):
+    """A project's rule board (collection rules_bot_boards, document id = project id)."""
+    project_id: str
+    session_id: str
+    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updatedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class RulesBotBoardResponse(BaseModel):
+    success: bool = True
+    data: RulesBotBoard
+
+
+class RulesBotLoadSampleRequest(BaseModel):
+    sampleId: str = Field(..., min_length=1, max_length=60)
+
+
+# ---------------------------------------------------------------------------
+# Confusion Matrix projects (Exercise 3): open a trained model (the learner's Ex 2 model or a
+# shared pre-trained one), retrain logistic regression with other settings, compare runs.
+# Two classes; class 0 is the class we care about, its score is P(class 0).
+# ---------------------------------------------------------------------------
+
+CM_THRESHOLDS = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+
+
+class CMParams(BaseModel):
+    """Settings for both models; each run uses its model's fields (cm_trainer.FIT_KEYS) plus the threshold."""
+    threshold: float = Field(0.5, ge=0.05, le=0.95)
+    testSplit: float = Field(0.2, ge=0.1, le=0.3)
+    # logistic regression
+    C: float = Field(1.0, ge=0.001, le=1000)
+    ngrams: int = Field(2, ge=1, le=2)
+    maxFeatures: int = Field(5000, ge=50, le=20000)
+    maxIter: int = Field(100, ge=1, le=5000)
+    # DistilBERT
+    maxLen: int = Field(64, ge=8, le=128)  # tokens read per text
+    epochs: int = Field(5, ge=1, le=50)  # training rounds
+    lr: float = Field(0.01, ge=0.0001, le=1.0)  # learning rate
+    batch: int = Field(16, ge=4, le=128)
+
+
+class CMDatasetInfo(BaseModel):
+    id: str
+    name: str
+    classes: List[str]  # [class we care about, other class]
+    short: List[str]
+    noun: str
+    source: str
+    licence: str = ""
+    blurb: str = ""
+    counts: List[int] = Field(default_factory=list)
+    n: int = 0
+
+
+class CMDatasetListResponse(BaseModel):
+    success: bool = True
+    data: List[CMDatasetInfo]
+
+
+class CMMetrics(BaseModel):
+    tp: int
+    fn: int
+    fp: int
+    tn: int
+    n: int
+    accuracy: float
+    precision: float
+    recall: float
+    f1: float
+
+
+class CMRunSummary(BaseModel):
+    """One training run, without its per-example arrays."""
+    id: str
+    no: int
+    source: str  # 'ex2' | 'pre'
+    datasetKey: str
+    kind: str  # 'ex2' | 'pre' | 'retrain'
+    model: str = "lr"
+    params: CMParams
+    trainN: int
+    m: CMMetrics
+    modelSaved: bool = False
+    reusedFit: bool = False  # only the threshold changed: same fitted model, new decision line
+    createdAt: datetime
+
+
+class CMEx2Snapshot(BaseModel):
+    """The Ex 2 model this project opened, copied at the time (Ex 2 itself is never changed)."""
+    kind: str = "exercises"  # 'textrec' = Text Recognition project, 'exercises' = Exercises lab Ex 2
+    projectId: str
+    projectName: str
+    datasetId: str = ""
+    datasetName: str
+    datasetKey: str = ""
+    classes: List[str]  # [target, other]
+    labels: List[str] = Field(default_factory=list)  # every label the Ex 2 model knows
+    params: CMParams
+    seed: int = 42
+    textPrep: Optional[Dict[str, bool]] = None
+    trainedAt: Optional[datetime] = None
+
+
+class CMState(BaseModel):
+    """Where the learner is: restored on every visit."""
+    source: Optional[str] = Field(None, pattern=r"^(ex2|pre)$")
+    datasetId: Optional[str] = Field(None, max_length=40)  # sample dataset id when source == 'pre'
+    model: str = Field("lr", pattern=r"^(lr|bert)$")
+    level: str = Field("basic", pattern=r"^(basic|intermediate|advanced)$")
+    params: CMParams = Field(default_factory=CMParams)
+    selectedRunId: Optional[str] = Field(None, max_length=60)
+
+
+class CMProjectOut(BaseModel):
+    project_id: str
+    state: CMState
+    ex2: Optional[CMEx2Snapshot] = None
+    dataset: Optional[CMDatasetInfo] = None  # dataset of the current scope
+    runs: List[CMRunSummary] = Field(default_factory=list)
+
+
+class CMProjectResponse(BaseModel):
+    success: bool = True
+    data: CMProjectOut
+
+
+class CMEx2RunSummary(BaseModel):
+    kind: str = "exercises"  # 'textrec' | 'exercises'
+    projectId: str
+    projectName: str
+    datasetId: Optional[str] = None
+    datasetName: str = ""
+    classes: List[str]  # [default target, other]
+    labels: List[str] = Field(default_factory=list)
+    labelCounts: Dict[str, int] = Field(default_factory=dict)
+    nExamples: int = 0
+    modelType: str = ""
+    params: Optional[CMParams] = None
+    accuracy: Optional[float] = None
+    nTest: int = 0
+    usable: bool = False
+    reason: str = ""
+    updatedAt: Optional[datetime] = None
+
+
+class CMEx2RunListResponse(BaseModel):
+    success: bool = True
+    data: List[CMEx2RunSummary]
+
+
+class CMOpenRequest(BaseModel):
+    source: str = Field(..., pattern=r"^(ex2|pre)$")
+    datasetId: Optional[str] = Field(None, max_length=40)
+    ex2ProjectId: Optional[str] = Field(None, max_length=80)
+    target: Optional[str] = Field(None, max_length=100)  # class we care about (Text Recognition labels)
+
+    @model_validator(mode="after")
+    def _check(self):
+        if self.source == "pre" and not self.datasetId:
+            raise ValueError("Choose a dataset.")
+        if self.source == "ex2" and not self.ex2ProjectId:
+            raise ValueError("Choose your Exercise 2 run.")
+        return self
+
+
+class CMTrainRequest(BaseModel):
+    model: str = Field("lr", pattern=r"^(lr|bert)$")
+    params: CMParams
+
+
+class CMStateRequest(BaseModel):
+    model: Optional[str] = Field(None, pattern=r"^(lr|bert)$")
+    level: Optional[str] = Field(None, pattern=r"^(basic|intermediate|advanced)$")
+    params: Optional[CMParams] = None
+    selectedRunId: Optional[str] = Field(None, max_length=60)
+
+
+class CMSampleRow(BaseModel):
+    text: str
+    y: int
+
+
+class CMSampleResponse(BaseModel):
+    success: bool = True
+    data: List[CMSampleRow]
+
+
+class CMExample(BaseModel):
+    text: str
+    score: float
+
+
+class CMExamplesResponse(BaseModel):
+    success: bool = True
+    data: List[CMExample]
+    total: int = 0

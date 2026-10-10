@@ -24,7 +24,7 @@ class ProjectService:
     def _deserialize_project_data(self, data: dict) -> dict:
         """Helper method to properly deserialize nested objects from Firestore"""
         # Handle invalid project type enum values
-        if 'type' in data and data['type'] not in ['text-recognition', 'image-recognition', 'image-recognition-teachable-machine', 'pose-recognition-teachable-machine', 'classification', 'regression', 'custom', 'rule-based-process', 'live-object-detection', 'exercises']:
+        if 'type' in data and data['type'] not in ['text-recognition', 'image-recognition', 'image-recognition-teachable-machine', 'pose-recognition-teachable-machine', 'classification', 'regression', 'custom', 'rule-based-process', 'live-object-detection', 'exercises', 'confusion-matrix']:
             logger.warning(f"Invalid project type '{data['type']}' found, defaulting to 'text-recognition'")
             data['type'] = 'text-recognition'
         
@@ -350,8 +350,13 @@ class ProjectService:
         except Exception as e:
             raise Exception(f"Failed to upload dataset: {str(e)}")
     
-    async def add_examples(self, project_id: str, examples: List[ExampleAdd]) -> Dict[str, Any]:
-        """Add text examples to a project"""
+    async def add_examples(self, project_id: str, examples: List[ExampleAdd], split: bool = True,
+                           skip_existing: bool = False) -> Dict[str, Any]:
+        """Add text examples to a project.
+
+        split: split each text on commas (the manual box's "Example 1, Example 2" format).
+        skip_existing: skip a text already under the same label (case and spacing ignored).
+        """
         try:
             # Get project
             project = await self.get_project(project_id)
@@ -361,12 +366,27 @@ class ProjectService:
             # Get current examples count
             previous_total = len(project.dataset.examples)
             
+            def key(label: str, text: str) -> tuple:
+                return label, " ".join(text.lower().split())
+
+            existing = {key(e.label, e.text) for e in project.dataset.examples} if skip_existing else set()
+            skipped = 0
+
             # Add new examples
             for example_data in examples:
-                # Split comma-separated text into multiple examples
-                texts = [text.strip() for text in example_data.text.split(',') if text.strip()]
-                
+                if split:
+                    # Split comma-separated text into multiple examples
+                    texts = [text.strip() for text in example_data.text.split(',') if text.strip()]
+                else:
+                    texts = [example_data.text.strip()] if example_data.text.strip() else []
+
                 for text in texts:
+                    if skip_existing:
+                        k = key(example_data.label, text)
+                        if k in existing:
+                            skipped += 1
+                            continue
+                        existing.add(k)
                     example = TextExample(
                         text=text,
                         label=example_data.label
@@ -403,7 +423,8 @@ class ProjectService:
             return {
                 'totalExamples': len(project.dataset.examples),
                 'previousTotal': previous_total,
-                'labels': project.dataset.labels
+                'labels': project.dataset.labels,
+                'skipped': skipped,
             }
         except Exception as e:
             raise Exception(f"Failed to add examples: {str(e)}")

@@ -28,6 +28,7 @@ MAX_PROJECT_JSON_BYTES = 5 * 1024 * 1024
 
 EDITOR_SCRATCH = "scratch"
 EDITOR_LEGACY = "legacy"
+EDITOR_RULES_BOT = "rules-bot"  # YaaraLabs: keyword rules board (app/api/rules_bot.py)
 LEGACY_WORKSPACE_COLLECTION = "rule_based_workspaces"
 
 
@@ -206,14 +207,14 @@ class ScratchProjectStore:
     def resolve_editor(self, project_id: str, current: Optional[str]) -> str:
         """Pick (once) which editor a Rule Based Process project uses.
 
-        Projects created before Scratch support that already have a built-in editor
-        workspace keep that editor so no work is lost; everything else uses Scratch.
+        Projects that already have a built-in editor workspace keep that editor so no
+        work is lost; everything else uses the Rules Bot.
         """
-        if current in (EDITOR_SCRATCH, EDITOR_LEGACY):
+        if current in (EDITOR_SCRATCH, EDITOR_LEGACY, EDITOR_RULES_BOT):
             return current
         client = gcp_clients.get_firestore_client()
         has_workspace = client.collection(LEGACY_WORKSPACE_COLLECTION).document(project_id).get().exists
-        editor = EDITOR_LEGACY if has_workspace else EDITOR_SCRATCH
+        editor = EDITOR_LEGACY if has_workspace else EDITOR_RULES_BOT
         self._projects().document(project_id).update({"rbpEditor": editor})
         logger.info("Rule Based Process project %s uses the %s editor", project_id, editor)
         return editor

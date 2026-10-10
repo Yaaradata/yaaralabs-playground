@@ -1,0 +1,970 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+Tamil:wght@400;600&family=Noto+Sans+Devanagari:wght@400;600&display=swap');
+
+.ex6-root {
+  --bg: #010101;
+  --s0: #0A0A0F;
+  --s1: #13131A;
+  --s2: #1C1C25;
+  --b1: #2A2A35;
+  --b2: #3A3A47;
+  --pu: #9333EA;
+  --li: #dbfe87;
+  --bl: #B90ABD;
+  --am: #EC4899;
+  --tx: #ffffff;
+  --mu: rgba(255, 255, 255, 0.76);
+  --fa: rgba(255, 255, 255, 0.5);
+  --fa2: rgba(255, 255, 255, 0.3);
+  --bad: #EC4899;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --A: #9333EA;
+  --B: #B90ABD;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  -webkit-font-smoothing: antialiased;
+  box-sizing: border-box;
+  background: var(--bg);
+  color: var(--tx);
+  font: 13.5px / 1.5 Inter, 'Noto Sans Tamil', 'Noto Sans Devanagari', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+.ex6-root *,
+.ex6-root *::before,
+.ex6-root *::after {
+  box-sizing: border-box;
+}
+.ex6-root button,
+.ex6-root input,
+.ex6-root select,
+.ex6-root textarea {
+  font: inherit;
+  color: inherit;
+}
+.ex6-root button {
+  cursor: pointer;
+}
+.ex6-root button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+.ex6-root button:focus-visible,
+.ex6-root select:focus-visible,
+.ex6-root input:focus-visible {
+  outline: 2px solid var(--li);
+  outline-offset: 2px;
+}
+.ex6-root ::selection {
+  background: rgba(147, 51, 234, 0.45);
+}
+.ex6-root ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.ex6-root ::-webkit-scrollbar-thumb {
+  background: #3d3d3d;
+  border-radius: 9px;
+  border: 2px solid var(--bg);
+}
+.ex6-root ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ex6-root svg {
+  display: block;
+}
+
+.ex6-root .boot {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  background: var(--bg);
+  color: var(--mu);
+  font-weight: 600;
+  font-size: 14px;
+}
+.ex6-root.is-booting .boot {
+  display: grid;
+}
+.ex6-root.is-booting > header,
+.ex6-root.is-booting > main {
+  visibility: hidden;
+  pointer-events: none;
+}
+.ex6-root .boot .spin {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(219, 254, 135, 0.35);
+  border-top-color: var(--li);
+  animation: ex6-spin 0.7s linear infinite;
+}
+.ex6-root .boot-t {
+  letter-spacing: -0.01em;
+}
+@keyframes ex6-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ex6-root .boot .spin {
+    animation: none;
+    border-top-color: var(--li);
+    opacity: 0.7;
+  }
+  .ex6-root .bar i {
+    transition: none;
+  }
+}
+
+.ex6-root header {
+  flex: none;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--b1);
+  background: #13131A;
+}
+.ex6-root .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin-right: auto;
+}
+.ex6-root .brand .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--li);
+  box-shadow: 0 0 10px var(--li);
+  flex: none;
+}
+.ex6-root .brand b {
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+.ex6-root .hr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.ex6-root .icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--b1);
+  background: var(--s0);
+  display: grid;
+  place-items: center;
+  color: var(--mu);
+  flex: none;
+}
+.ex6-root .icon:hover {
+  border-color: var(--b2);
+  color: var(--tx);
+}
+.ex6-root:fullscreen,
+.ex6-root:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  background: var(--bg);
+}
+
+.ex6-root main {
+  display: grid;
+  grid-template-columns: 372px minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px 20px 16px;
+  flex: 1;
+  min-height: 0;
+}
+.ex6-root .col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  min-height: 0;
+}
+.ex6-root .lower {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 14px;
+  min-height: 0;
+}
+.ex6-root .card {
+  background: var(--s1);
+  border: 1px solid var(--b1);
+  border-radius: 18px;
+  padding: 16px 18px;
+  min-width: 0;
+}
+.ex6-root .chead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ex6-root .chead .n {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--s2);
+  border: 1px solid var(--b2);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--li);
+}
+.ex6-root .ct {
+  min-width: 0;
+  flex: 1;
+}
+.ex6-root .ct b {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.ex6-root .ct span {
+  display: block;
+  font-size: 11.5px;
+  color: var(--fa);
+  margin-top: 2px;
+}
+.ex6-root .mini {
+  background: transparent;
+  border: 1px solid var(--b1);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 11.5px;
+  color: var(--mu);
+  font-weight: 500;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ex6-root .mini:hover:not(:disabled) {
+  border-color: var(--pu);
+  color: var(--tx);
+}
+.ex6-root .mini.li {
+  border-color: rgba(219, 254, 135, 0.4);
+  color: var(--li);
+}
+.ex6-root .mini.li:hover:not(:disabled) {
+  background: rgba(219, 254, 135, 0.08);
+  border-color: var(--li);
+}
+.ex6-root .x {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--fa);
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  line-height: 1;
+  flex: none;
+}
+.ex6-root .x:hover:not(:disabled) {
+  border-color: var(--b2);
+  color: var(--tx);
+}
+.ex6-root .seg {
+  display: inline-grid;
+  grid-auto-flow: column;
+  background: var(--s0);
+  border: 1px solid var(--b1);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+}
+.ex6-root .seg button {
+  border: 0;
+  background: transparent;
+  border-radius: 7px;
+  padding: 5px 11px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--fa);
+  white-space: nowrap;
+}
+.ex6-root .seg button:hover:not(.on) {
+  color: var(--tx);
+}
+.ex6-root .seg button.on {
+  background: var(--s2);
+  color: var(--tx);
+  box-shadow: inset 0 0 0 1px var(--b2);
+}
+.ex6-root .empty {
+  margin: auto;
+  text-align: center;
+  color: var(--fa);
+  font-size: 12.5px;
+  max-width: 440px;
+  line-height: 1.6;
+  padding: 18px;
+}
+.ex6-root .tagA,
+.ex6-root .tagB {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #010101;
+  flex: none;
+}
+.ex6-root .tagA {
+  background: var(--A);
+}
+.ex6-root .tagB {
+  background: var(--B);
+}
+
+.ex6-root .batch {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+.ex6-root .rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 4px;
+  margin-right: -4px;
+}
+.ex6-root .row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 26px;
+  align-items: center;
+  gap: 6px;
+}
+.ex6-root .sid {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--li);
+  text-align: center;
+  border: 1px solid var(--b1);
+  border-radius: 6px;
+  padding: 3px 0;
+  background: var(--s0);
+}
+.ex6-root .row input {
+  width: 100%;
+  height: 36px;
+  background: var(--s0);
+  border: 1px solid var(--b1);
+  border-radius: 10px;
+  padding: 0 11px;
+  outline: none;
+  font-size: 13px;
+}
+.ex6-root .row input:focus {
+  border-color: var(--pu);
+}
+.ex6-root .row input::placeholder {
+  color: var(--fa2);
+}
+.ex6-root .row.hot .sid {
+  background: var(--li);
+  color: #010101;
+  border-color: var(--li);
+}
+.ex6-root .row.hot input {
+  border-color: rgba(219, 254, 135, 0.55);
+}
+.ex6-root .batchfoot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--fa);
+}
+.ex6-root .batchfoot .grow {
+  flex: 1;
+}
+
+.ex6-root .models {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ex6-root .slot {
+  border: 1px solid var(--b1);
+  border-radius: 13px;
+  background: var(--s0);
+  padding: 9px 11px;
+  border-left: 3px solid var(--c);
+}
+.ex6-root .slotrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.ex6-root .slot select {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  background: var(--s1);
+  border: 1px solid var(--b1);
+  border-radius: 999px;
+  padding: 0 32px 0 12px;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+  cursor: pointer;
+  color: var(--tx);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23dcfc84' stroke-width='1.6' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+.ex6-root .slot select:focus {
+  border-color: var(--c);
+}
+.ex6-root .slot select option {
+  background: #13131A;
+  color: #fff;
+  font-weight: 600;
+}
+.ex6-root .slotinfo:empty {
+  display: none;
+}
+.ex6-root .slotinfo:not(:empty) {
+  margin-top: 8px;
+}
+.ex6-root .slotinfo .st {
+  color: var(--fa);
+  margin-top: 0;
+  line-height: 1.45;
+  font-size: 11px;
+}
+.ex6-root .st {
+  font-size: 11px;
+  margin-top: 4px;
+  color: var(--mu);
+  font-family: var(--mono);
+}
+.ex6-root .st.bad {
+  color: #EC4899;
+  font-family: Inter, sans-serif;
+}
+.ex6-root .bar {
+  height: 4px;
+  border-radius: 9px;
+  background: var(--b1);
+  overflow: hidden;
+  margin-top: 6px;
+}
+.ex6-root .bar i {
+  display: block;
+  height: 100%;
+  background: var(--c);
+  width: 0;
+  transition: width 0.2s;
+}
+.ex6-root .same {
+  font-size: 11.5px;
+  color: var(--am);
+}
+.ex6-root .go {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  background: var(--li);
+  color: #010101;
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-weight: 700;
+  font-size: 14.5px;
+  transition: filter 0.15s;
+}
+.ex6-root .go:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.ex6-root .maps {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ex6-root .stale {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--am);
+  border: 1px solid rgba(236, 72, 153, 0.45);
+  background: rgba(236, 72, 153, 0.07);
+  border-radius: 10px;
+  padding: 7px 11px;
+}
+.ex6-root .stale[hidden] {
+  display: none;
+}
+.ex6-root .pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  min-width: 0;
+}
+.ex6-root .hm {
+  min-width: 0;
+}
+.ex6-root .hmh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  min-width: 0;
+}
+.ex6-root .hmh span.nm {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ex6-root .hmh small {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--fa);
+  white-space: nowrap;
+}
+.ex6-root .grid {
+  display: grid;
+  gap: 2px;
+}
+.ex6-root .gl {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fa);
+  display: grid;
+  place-items: center;
+}
+.ex6-root .gl.hot {
+  color: var(--li);
+  font-weight: 700;
+}
+.ex6-root .cell {
+  height: 30px;
+  border-radius: 5px;
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--mu);
+  cursor: pointer;
+  border: 1px solid transparent;
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+}
+.ex6-root .cell.diag {
+  cursor: default;
+  color: var(--fa2);
+  background: repeating-linear-gradient(45deg, transparent 0 4px, rgba(255, 255, 255, 0.04) 4px 8px);
+}
+.ex6-root .cell.hov {
+  border-color: rgba(255, 255, 255, 0.7);
+}
+.ex6-root .cell.sel {
+  border-color: var(--li);
+  box-shadow: 0 0 0 1px var(--li);
+}
+.ex6-root .legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fa);
+}
+.ex6-root .legend i {
+  flex: 1;
+  height: 6px;
+  border-radius: 9px;
+}
+.ex6-root .hover {
+  min-height: 20px;
+  font-size: 12px;
+  color: var(--fa);
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.ex6-root .hover b {
+  color: var(--tx);
+  font-weight: 600;
+}
+.ex6-root .hover .vA {
+  color: var(--A);
+  font-family: var(--mono);
+}
+.ex6-root .hover .vB {
+  color: var(--B);
+  font-family: var(--mono);
+}
+
+.ex6-root .calc,
+.ex6-root .dis {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+.ex6-root .calcbody,
+.ex6-root .disbody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-right: -4px;
+}
+.ex6-root .sents {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+.ex6-root .sent {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 12.5px;
+  color: var(--mu);
+}
+.ex6-root .sent .sid {
+  flex: none;
+  width: 30px;
+}
+.ex6-root .mcalc {
+  border: 1px solid var(--b1);
+  border-left: 3px solid var(--c);
+  border-radius: 11px;
+  background: var(--s0);
+  padding: 9px 12px;
+  margin-bottom: 8px;
+}
+.ex6-root .mch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.ex6-root .mch .rk {
+  margin-left: auto;
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--fa);
+}
+.ex6-root .mch .rk b {
+  color: var(--tx);
+}
+.ex6-root .eq {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--mu);
+  word-break: break-word;
+}
+.ex6-root .eq > div {
+  display: grid;
+  grid-template-columns: 66px minmax(0, 1fr);
+  gap: 4px;
+}
+.ex6-root .eq .lhs {
+  color: var(--tx);
+  font-weight: 600;
+}
+.ex6-root .eq .more {
+  color: var(--fa);
+}
+.ex6-root .eq .res {
+  color: var(--c);
+  font-weight: 600;
+}
+.ex6-root .eq .w {
+  color: var(--li);
+}
+
+.ex6-root .dsum {
+  font-size: 12px;
+  color: var(--mu);
+  margin-bottom: 8px;
+}
+.ex6-root .dsum b {
+  color: var(--tx);
+}
+.ex6-root table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  table-layout: fixed;
+}
+.ex6-root table.nn col.c1 {
+  width: 40px;
+}
+.ex6-root table.nn col.c3,
+.ex6-root table.nn col.c4 {
+  width: 82px;
+}
+.ex6-root table.nn col.c5 {
+  width: 78px;
+}
+.ex6-root table.ap col.c1 {
+  width: 92px;
+}
+.ex6-root table.ap col.c3 {
+  width: 86px;
+}
+.ex6-root th {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--fa);
+  font-weight: 700;
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--b1);
+  position: sticky;
+  top: 0;
+  background: var(--s1);
+  z-index: 1;
+}
+.ex6-root td {
+  padding: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  vertical-align: middle;
+}
+.ex6-root tr.pick {
+  cursor: pointer;
+}
+.ex6-root tr.pick:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+.ex6-root tr.on td {
+  background: rgba(219, 254, 135, 0.06);
+}
+.ex6-root .nb {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.ex6-root .nb .sid {
+  padding: 1px 5px;
+  width: auto;
+}
+.ex6-root .nb small {
+  color: var(--fa);
+}
+.ex6-root .chip {
+  font-size: 10.5px;
+  font-weight: 700;
+  border-radius: 99px;
+  padding: 1px 8px;
+  border: 1px solid var(--b2);
+  color: var(--fa);
+  white-space: nowrap;
+}
+.ex6-root .chip.diff {
+  border-color: rgba(236, 72, 153, 0.55);
+  color: var(--am);
+  background: rgba(236, 72, 153, 0.07);
+}
+.ex6-root .txt {
+  color: var(--mu);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ex6-root .bars {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 110px;
+}
+.ex6-root .b1 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--fa);
+}
+.ex6-root .b1 i {
+  height: 6px;
+  border-radius: 9px;
+  background: var(--c);
+  flex: none;
+}
+.ex6-root .rks {
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.ex6-root .rks .a {
+  color: var(--A);
+}
+.ex6-root .rks .b {
+  color: var(--B);
+}
+
+.ex6-root .toasts {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 60;
+  align-items: center;
+  pointer-events: none;
+}
+.ex6-root .toast {
+  background: #333;
+  border: 1px solid var(--b2);
+  padding: 9px 14px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  width: max-content;
+  max-width: min(560px, calc(100% - 32px));
+  pointer-events: auto;
+}
+.ex6-root .sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+@media (min-width: 1101px) and (min-height: 620px) {
+  .ex6-root .col {
+    overflow: hidden;
+  }
+  .ex6-root .batch {
+    flex: 1;
+  }
+  .ex6-root .col.right {
+    overflow-y: auto;
+    padding-right: 4px;
+    margin-right: -4px;
+  }
+  .ex6-root .lower {
+    flex: 1;
+    min-height: 300px;
+  }
+}
+@media (max-width: 1100px) {
+  .ex6-root main {
+    grid-template-columns: minmax(0, 1fr);
+    overflow: auto;
+  }
+  .ex6-root .lower {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ex6-root .calcbody,
+  .ex6-root .disbody {
+    max-height: none;
+    overflow: visible;
+  }
+}
+@media (max-width: 560px) {
+  .ex6-root header {
+    height: auto;
+    padding: 10px 14px;
+  }
+  .ex6-root .brand b {
+    font-size: 13.5px;
+  }
+  .ex6-root main {
+    padding: 12px 14px 28px;
+  }
+  .ex6-root .card {
+    padding: 14px;
+  }
+  .ex6-root .pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ex6-root .chead {
+    flex-wrap: wrap;
+  }
+  .ex6-root .chead .ct {
+    flex: 1 1 calc(100% - 40px);
+  }
+  .ex6-root .cell {
+    font-size: 9px;
+    height: 26px;
+  }
+  .ex6-root .seg {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    width: 100%;
+  }
+  .ex6-root .seg button {
+    padding: 5px 4px;
+    white-space: normal;
+    line-height: 1.25;
+  }
+  .ex6-root table.nn col.c3,
+  .ex6-root table.nn col.c4 {
+    width: 66px;
+  }
+  .ex6-root table.nn col.c5 {
+    width: 70px;
+  }
+}
+@media (min-width: 1101px) and (max-height: 840px) {
+  .ex6-root .cell {
+    height: 23px;
+    font-size: 10px;
+  }
+  .ex6-root .grid {
+    gap: 1.5px;
+  }
+  .ex6-root .legend {
+    margin-top: 5px;
+  }
+}

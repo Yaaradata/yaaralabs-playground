@@ -44,3 +44,6 @@ backend/app/data/exercises/runtime/
 # Local scratch copies
 rule-based-process (1).html
 *.html.bak
+
+# Document image dataset: original downloads stay local
+nuvama_document_images/raw/

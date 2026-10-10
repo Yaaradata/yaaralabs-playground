@@ -120,10 +120,10 @@ def scope_rules(css: str) -> str:
 
 header = """@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap");
 .ex10-root {
-  --bg:#1c1c1c; --s0:#222222; --s1:#2a2a2a; --s2:#313131; --b1:#3a3a3a; --b2:#4a4a4a;
-  --pu:#bc6cd3; --li:#dcfc84; --bl:#8fb8ff; --tx:#ffffff; --mu:rgba(255,255,255,.76); --fa:rgba(255,255,255,.5); --fa2:rgba(255,255,255,.3);
-  --bad:#ff6b6b; --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
-  --seg-persona:#bc6cd3; --seg-summary:#8fb8ff; --seg-user:#cfcfcf; --seg-asst:#dcfc84;
+  --bg:#010101; --s0:#0A0A0F; --s1:#13131A; --s2:#1C1C25; --b1:#2A2A35; --b2:#3A3A47;
+  --pu:#9333EA; --li:#dbfe87; --bl:#B90ABD; --tx:#ffffff; --mu:rgba(255,255,255,.76); --fa:rgba(255,255,255,.5); --fa2:rgba(255,255,255,.3);
+  --bad:#EC4899; --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --seg-persona:#9333EA; --seg-summary:#B90ABD; --seg-user:#e3dbeb; --seg-asst:#dbfe87;
   height:100%; min-height:0; display:flex; flex-direction:column; overflow:hidden; position:relative;
   box-sizing:border-box; background:var(--bg); color:var(--tx);
   font:13.5px/1.5 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
@@ -135,7 +135,7 @@ header = """@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400
 .ex10-root button:disabled { cursor:not-allowed; opacity:.4; }
 .ex10-root button:focus-visible, .ex10-root select:focus-visible, .ex10-root textarea:focus-visible { outline:2px solid var(--li); outline-offset:2px; }
 .ex10-root svg { display:block; }
-.ex10-root ::selection { background:rgba(188,108,211,.45); }
+.ex10-root ::selection { background:rgba(147,51,234,.45); }
 .ex10-root .boot{
   display:none; position:absolute; inset:0; z-index:40; place-items:center; align-content:center;
   gap:12px; background:var(--bg); color:var(--mu); font-weight:600; font-size:14px;
@@ -145,7 +145,7 @@ header = """@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400
 .ex10-root.is-booting > main{visibility:hidden; pointer-events:none}
 .ex10-root .boot .spin{
   width:22px; height:22px; border-radius:50%;
-  border:2.5px solid rgba(220,252,132,.35);
+  border:2.5px solid rgba(219,254,135,.35);
   border-top-color:var(--li);
   animation:ex10-spin .7s linear infinite;
 }

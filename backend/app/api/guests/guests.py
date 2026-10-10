@@ -16,7 +16,9 @@ from ...models import (
     PaginationInfo, ProjectType,
 )
 from ...services.rule_based_process_service import RuleBasedProcessService
-from ...services.scratch_project_service import ScratchProjectService, EDITOR_SCRATCH
+from ...services.scratch_project_service import ScratchProjectService, EDITOR_RULES_BOT
+from ...services.rules_bot_service import RulesBotService
+from ...services.confusion_matrix_service import ConfusionMatrixService
 from ...services.exercises_service import ExercisesService
 from ...services.guest_service import GuestService
 from ...services.project_service import ProjectService
@@ -129,7 +131,7 @@ async def fix_project_types(session_id: str):
         for doc in docs:
             try:
                 data = doc.to_dict()
-                if 'type' in data and data['type'] not in ['text-recognition', 'image-recognition', 'image-recognition-teachable-machine', 'pose-recognition-teachable-machine', 'classification', 'regression', 'custom', 'rule-based-process', 'live-object-detection', 'exercises']:
+                if 'type' in data and data['type'] not in ['text-recognition', 'image-recognition', 'image-recognition-teachable-machine', 'pose-recognition-teachable-machine', 'classification', 'regression', 'custom', 'rule-based-process', 'live-object-detection', 'exercises', 'confusion-matrix']:
                     # Fix invalid type
                     old_type = data['type']
                     data['type'] = 'text-recognition'  # Default to text-recognition
@@ -369,10 +371,10 @@ async def create_guest_project(
         
         project = await project_service.create_project(project_data)
 
-        # New Rule Based Process projects are built in the Scratch editor
+        # New Rule Based Process projects open the Rules Bot board
         if project.type == ProjectType.RULE_BASED_PROCESS:
-            project_service.collection.document(project.id).update({'rbpEditor': EDITOR_SCRATCH})
-            project.rbpEditor = EDITOR_SCRATCH
+            project_service.collection.document(project.id).update({'rbpEditor': EDITOR_RULES_BOT})
+            project.rbpEditor = EDITOR_RULES_BOT
 
         return ProjectResponse(data=project)
     except HTTPException:
@@ -487,6 +489,16 @@ async def delete_guest_project(
                 ScratchProjectService().delete(project_id)
             except Exception as e:
                 logger.warning("RBP Scratch project cleanup failed for %s: %s", project_id, e)
+            try:
+                RulesBotService().delete_board(project_id)
+            except Exception as e:
+                logger.warning("Rules Bot board cleanup failed for %s: %s", project_id, e)
+
+        if project.type == ProjectType.CONFUSION_MATRIX or str(project.type) == "confusion-matrix":
+            try:
+                ConfusionMatrixService().delete(project_id, session_id)
+            except Exception as e:
+                logger.warning("Confusion matrix cleanup failed for %s: %s", project_id, e)
 
         if project.type == ProjectType.EXERCISES or str(project.type) == "exercises":
             try:
@@ -600,7 +612,9 @@ async def add_guest_examples(
             )
         
         # Add examples to project
-        result = await project_service.add_examples(project_id, examples_data.examples)
+        result = await project_service.add_examples(
+            project_id, examples_data.examples, split=examples_data.split, skip_existing=examples_data.skip_existing
+        )
         
         # Calculate how many examples were actually created
         input_examples_count = len(examples_data.examples)
@@ -612,7 +626,8 @@ async def add_guest_examples(
             "totalExamples": result['totalExamples'],
             "labels": result['labels'],
             "inputExamples": input_examples_count,
-            "actualExamplesAdded": actual_examples_added
+            "actualExamplesAdded": actual_examples_added,
+            "skipped": result.get('skipped', 0),
         }
     except HTTPException:
         raise

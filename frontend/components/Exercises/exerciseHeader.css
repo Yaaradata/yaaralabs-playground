@@ -1,0 +1,146 @@
+/* Shared exercise header brand — icon + Space Grotesk title */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap');
+
+.ex-lab-brand {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ex-lab-brand-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  color: #dbfe87;
+  background: rgba(219, 254, 135, 0.16);
+  border: 1px solid rgba(219, 254, 135, 0.42);
+  box-shadow: 0 0 12px rgba(219, 254, 135, 0.18);
+}
+
+.ex-lab-brand-icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.ex-lab-brand-title,
+.ex-shell-head .ex-lab-brand-title,
+.ex3 .ex-title,
+.ex4 .ex-title,
+.ex5-root .ex-title,
+.ex8-root .title,
+.ex6-root .ex-lab-brand-title,
+.ex9-root .ex-lab-brand-title,
+.ex10-root .ex-lab-brand-title,
+.ex11-root .ex-lab-brand-title,
+.ex12-root .ex-lab-brand-title,
+.ex13-root .ex-lab-brand-title,
+.ex3-root .ex-lab-brand-title,
+.exLimit-root .ex-lab-brand-title,
+.e2 .e2-brand-title,
+.lod-studio .ex-lab-brand-title {
+  margin: 0;
+  font-family: 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  font-size: 20px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.ex8-root .title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ex8-root .title .ex-lab-brand-icon {
+  margin-right: 0;
+}
+
+.ex-root[data-theme='light'] .ex-lab-brand-icon,
+.ex3[data-theme='light'] .ex-lab-brand-icon,
+.ex4[data-theme='light'] .ex-lab-brand-icon,
+.ex5-root[data-theme='light'] .ex-lab-brand-icon,
+.e2.e2-light .ex-lab-brand-icon,
+.e2.e2-light .e2-brand-icon,
+.lod-studio[data-theme='light'] .ex-lab-brand-icon {
+  color: #4b7a00;
+  background: rgba(198, 244, 50, 0.18);
+  border-color: rgba(75, 122, 0, 0.35);
+  box-shadow: 0 0 10px rgba(198, 244, 50, 0.15);
+}
+
+/* Light mount labs use --lime-t / darker accents */
+.ex6-root[data-theme='light'] .ex-lab-brand-icon,
+.ex8-root[data-theme='light'] .ex-lab-brand-icon,
+.ex9-root[data-theme='light'] .ex-lab-brand-icon,
+.ex10-root[data-theme='light'] .ex-lab-brand-icon,
+.ex11-root[data-theme='light'] .ex-lab-brand-icon,
+.ex12-root[data-theme='light'] .ex-lab-brand-icon,
+.ex13-root[data-theme='light'] .ex-lab-brand-icon,
+.ex3-root[data-theme='light'] .ex-lab-brand-icon,
+.exLimit-root[data-theme='light'] .ex-lab-brand-icon {
+  color: #4b7a00;
+  background: rgba(198, 244, 50, 0.18);
+  border-color: rgba(75, 122, 0, 0.35);
+  box-shadow: none;
+}
+
+@media (max-width: 720px) {
+  .ex-lab-brand-title,
+  .ex3 .ex-title,
+  .ex4 .ex-title,
+  .ex5-root .ex-title,
+  .ex8-root .title,
+  .e2 .e2-brand-title,
+  .lod-studio .ex-lab-brand-title {
+    font-size: 17px;
+  }
+}
+
+/* Mount-lab brand titles use shared Space Grotesk header treatment */
+.ex6-root .brand.ex-lab-brand,
+.ex9-root .brand.ex-lab-brand,
+.ex10-root .brand.ex-lab-brand,
+.ex11-root .brand.ex-lab-brand,
+.ex12-root .brand.ex-lab-brand,
+.ex13-root .brand.ex-lab-brand,
+.ex3-root .brand.ex-lab-brand,
+.exLimit-root .brand.ex-lab-brand {
+  gap: 12px;
+}
+
+.ex6-root .brand .dot,
+.ex9-root .brand .dot,
+.ex10-root .brand .dot,
+.ex11-root .brand .dot,
+.ex12-root .brand .dot,
+.ex13-root .brand .dot,
+.ex3-root .brand .dot,
+.exLimit-root .brand .dot {
+  display: none;
+}
+
+.ex6-root .ex-lab-brand-title,
+.ex9-root .ex-lab-brand-title,
+.ex10-root .ex-lab-brand-title,
+.ex11-root .ex-lab-brand-title,
+.ex12-root .ex-lab-brand-title,
+.ex13-root .ex-lab-brand-title,
+.ex3-root .ex-lab-brand-title,
+.exLimit-root .ex-lab-brand-title {
+  color: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ex8-root .title .sep {
+  margin: 0 2px;
+}
