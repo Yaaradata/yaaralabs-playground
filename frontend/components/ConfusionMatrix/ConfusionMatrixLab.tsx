@@ -181,6 +181,11 @@ export default function ConfusionMatrixLab({ sessionId, projectId }: Props) {
   const prev = sel ? scopeRuns[scopeRuns.indexOf(sel) - 1] ?? null : null;
   const sameRun = (r: Run, m: ModelId, p: Params) => (r.model ?? 'lr') === m && same(m, { ...DEFAULTS, ...r.params }, p);
   const stale = !!sel && !sameRun(sel, model, params);
+  // "Same model, new threshold": this run differs from the previous one in the threshold alone
+  const thresholdOnly =
+    !!sel && !!prev && (sel.model ?? 'lr') === (prev.model ?? 'lr') &&
+    Number(sel.params.threshold) !== Number(prev.params.threshold) &&
+    PARAMS[sel.model ?? 'lr'].every((d) => d.key === 'threshold' || Number(sel.params[d.key] ?? DEFAULTS[d.key]) === Number(prev.params[d.key] ?? DEFAULTS[d.key]));
   const twin = stale ? [...scopeRuns].reverse().find((r) => sameRun(r, model, params)) ?? null : null;
   const usableEx2 = (ex2Runs ?? []).filter((r) => r.usable);
 
@@ -704,7 +709,7 @@ export default function ConfusionMatrixLab({ sessionId, projectId }: Props) {
                   {sel.kind === 'pre' && <span className="badge ac">Pre-trained</span>}
                   {sel.kind === 'retrain' && <span className="badge">Retrained {time(sel.createdAt)}</span>}
                   <span className="badge">Threshold {sel.params.threshold.toFixed(1)}</span>
-                  {sel.reusedFit && <span className="badge" title="Only the threshold changed, so the fitted model is the same">Same model, new threshold</span>}
+                  {thresholdOnly && <span className="badge" title="Only the threshold changed, so the fitted model is the same">Same model, new threshold</span>}
                   {sel.modelSaved && <span className="badge ok" title="The trained model is saved with this project">Model saved</span>}
                   <p>
                     {summary(sel.model ?? 'lr', sel.params)} · learned from {fmt(sel.trainN)} {ds.noun}, scored on {fmt(m.n)} it never saw
