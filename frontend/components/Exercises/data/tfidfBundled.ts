@@ -12,7 +12,7 @@ export const BUNDLED_TFIDF_CATALOG: TfidfDatasetInfo[] = DEPARTMENT_SOURCES.map(
   source: source.source,
   use_case: source.use_case,
   classes: source.classes,
-  n_rows: 40000,
+  n_rows: 0, // offline fallback: the real count comes from the server (exercises_tfidf_datasets.row_count)
 }));
 
 export function loadBundledTfidfDataset(datasetId: string): TfidfDatasetPayload | null {

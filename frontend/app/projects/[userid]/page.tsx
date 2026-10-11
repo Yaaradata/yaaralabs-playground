@@ -297,7 +297,10 @@ function CreateProjectPage() {
           if (
             project.type === 'text-recognition' ||
             project.type === 'image-recognition' ||
-            project.type === 'confusion-matrix'
+            project.type === 'confusion-matrix' ||
+            project.type === 'text-classification' ||
+            project.type === 'rag-chatbot' ||
+            project.type === 'ai-agent'
           ) {
             const modelStatus = await getProjectModelStatus(project.maskedId || project.id, project.type);
             return {
@@ -540,14 +543,23 @@ function CreateProjectPage() {
         }
       }
 
-      // Confusion Matrix: trained when at least one run exists (or guest status is trained)
-      if (projectType === 'confusion-matrix') {
-        const cmResponse = await fetch(
-          `${config.apiBaseUrl}${config.api.confusionMatrix.project(sessionId, realProjectId)}`
-        );
+      // Confusion Matrix / Text Classification: trained when at least one run exists (or guest status is trained)
+      if (projectType === 'confusion-matrix' || projectType === 'text-classification' || projectType === 'rag-chatbot' || projectType === 'ai-agent') {
+        const runsPath = projectType === 'text-classification'
+          ? config.api.textClassification.project(sessionId, realProjectId)
+          : projectType === 'rag-chatbot'
+            ? config.api.ragChatbot.project(sessionId, realProjectId)
+            : projectType === 'ai-agent'
+              ? config.api.aiAgent.project(sessionId, realProjectId)
+              : config.api.confusionMatrix.project(sessionId, realProjectId);
+        const cmResponse = await fetch(`${config.apiBaseUrl}${runsPath}`);
         if (cmResponse.ok) {
           const cmPayload = await cmResponse.json();
-          const runs = cmPayload?.data?.runs;
+          // RAG chatbot: ready once an index is built
+          // AI agent: ready once it has answered with tools in a conversation
+          const runs = projectType === 'rag-chatbot' ? cmPayload?.data?.indexes
+            : projectType === 'ai-agent' ? cmPayload?.data?.chats
+              : cmPayload?.data?.runs;
           if (Array.isArray(runs) && runs.length > 0) {
             return 'available';
           }
@@ -889,7 +901,7 @@ function CreateProjectPage() {
 
   const handleProjectClick = (project: Project) => {
     // For teachable machine, text recognition, image recognition, and custom AI agent projects, don't redirect - let the Launch button handle it
-    if (project.type === 'image-recognition-teachable-machine' || project.type === 'pose-recognition-teachable-machine' || project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'exercises' || project.type === 'confusion-matrix') {
+    if (project.type === 'image-recognition-teachable-machine' || project.type === 'pose-recognition-teachable-machine' || project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'exercises' || project.type === 'confusion-matrix' || project.type === 'text-classification' || project.type === 'rag-chatbot' || project.type === 'ai-agent') {
       return;
     } else {
       // For other project types, navigate to the project-specific page using masked project ID
@@ -912,7 +924,7 @@ function CreateProjectPage() {
       }
     } else if (opensInScratch(project) && actualSessionId) {
       window.open(getRbpScratchUrl(actualSessionId, project.id), '_blank');
-    } else if (project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'exercises' || project.type === 'confusion-matrix') {
+    } else if (project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'exercises' || project.type === 'confusion-matrix' || project.type === 'text-classification' || project.type === 'rag-chatbot' || project.type === 'ai-agent') {
       // Navigate to the project-specific page for text recognition, image recognition, custom AI agent, rule based process (built-in editor), and live object detection
       const projectId = project.maskedId || project.id;
       window.location.href = `/projects/${urlParam}/${projectId}`;
@@ -1227,7 +1239,7 @@ function CreateProjectPage() {
                   <div
                     key={project.id}
                     className={`bg-canvas border border-magenta-brand/20 rounded-xl p-6 hover:bg-purple-brand/5 transition-all duration-300 ${
-                      project.type === 'image-recognition-teachable-machine' || project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'exercises' || project.type === 'confusion-matrix' ? '' : 'cursor-pointer'
+                      project.type === 'image-recognition-teachable-machine' || project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'exercises' || project.type === 'confusion-matrix' || project.type === 'text-classification' || project.type === 'rag-chatbot' || project.type === 'ai-agent' ? '' : 'cursor-pointer'
                     }`}
                     onClick={() => handleProjectClick(project)}
                   >
@@ -1299,6 +1311,9 @@ function CreateProjectPage() {
                           project.type === 'live-object-detection' ? 'Live Object Detection' :
                           project.type === 'exercises' ? 'Exercises' :
                           project.type === 'confusion-matrix' ? 'Confusion Matrix' :
+                          project.type === 'text-classification' ? 'Text Classification' :
+                          project.type === 'rag-chatbot' ? 'RAG Chatbot' :
+                          project.type === 'ai-agent' ? 'AI Agent' :
                           project.type === 'classification' ? 'Classification' :
                           project.type === 'regression' ? 'Regression' :
                           project.type === 'custom' ? 'Custom' :
@@ -1307,7 +1322,7 @@ function CreateProjectPage() {
                      </div>
                      
                      {/* Model Status - text / image recognition and confusion matrix */}
-                     {(project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'confusion-matrix') && (
+                     {(project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'confusion-matrix' || project.type === 'text-classification' || project.type === 'rag-chatbot' || project.type === 'ai-agent') && (
                        <div className="text-fg mb-4">
                          <span className="text-sm">Model Trained: </span>
                          <span className={`font-medium ${
@@ -1345,9 +1360,9 @@ function CreateProjectPage() {
                     )}
                     
                                                               {/* Launch Button and Date Info in Parallel */}
-                     <div className={`mt-4 flex items-start justify-between gap-4 ${project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'exercises' || project.type === 'confusion-matrix' ? 'mt-16' : ''}`}>
+                     <div className={`mt-4 flex items-start justify-between gap-4 ${project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'exercises' || project.type === 'confusion-matrix' || project.type === 'text-classification' || project.type === 'rag-chatbot' || project.type === 'ai-agent' ? 'mt-16' : ''}`}>
                        {/* Launch Button - For teachable machine, text recognition, image recognition, custom AI agent, rule based process, live object detection, and exercises projects */}
-                       {project.type === 'image-recognition-teachable-machine' || project.type === 'pose-recognition-teachable-machine' || project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'exercises' || project.type === 'confusion-matrix' ? (
+                       {project.type === 'image-recognition-teachable-machine' || project.type === 'pose-recognition-teachable-machine' || project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'exercises' || project.type === 'confusion-matrix' || project.type === 'text-classification' || project.type === 'rag-chatbot' || project.type === 'ai-agent' ? (
                          <button
                            onClick={(e) => {
                              e.stopPropagation();
@@ -1430,8 +1445,17 @@ function CreateProjectPage() {
                     <option value="text-recognition" className="bg-canvas text-fg">
                       Text Recognition
                     </option>
+                    <option value="text-classification" className="bg-canvas text-fg">
+                      Text Classification
+                    </option>
                     <option value="confusion-matrix" className="bg-canvas text-fg">
                       Confusion Matrix
+                    </option>
+                    <option value="rag-chatbot" className="bg-canvas text-fg">
+                      RAG Chatbot
+                    </option>
+                    <option value="ai-agent" className="bg-canvas text-fg">
+                      AI Agent
                     </option>
                     <option value="image-recognition" className="bg-canvas text-fg">
                       Image Recognition
@@ -1590,8 +1614,17 @@ function CreateProjectPage() {
                     <option value="text-recognition" className="bg-canvas text-fg">
                       Text Recognition
                     </option>
+                    <option value="text-classification" className="bg-canvas text-fg">
+                      Text Classification
+                    </option>
                     <option value="confusion-matrix" className="bg-canvas text-fg">
                       Confusion Matrix
+                    </option>
+                    <option value="rag-chatbot" className="bg-canvas text-fg">
+                      RAG Chatbot
+                    </option>
+                    <option value="ai-agent" className="bg-canvas text-fg">
+                      AI Agent
                     </option>
                     <option value="image-recognition-teachable-machine" className="bg-canvas text-fg">
                       Image Recognition - Teachable Machine

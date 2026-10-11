@@ -546,7 +546,8 @@ export function getDepartmentConcept(id: string): DepartmentConceptPack | null {
   return DEPARTMENT_CONCEPT[id as DepartmentId];
 }
 
-export function departmentSourceToMeta(source: DepartmentSource, nRows = 40000) {
+/** nRows 0 = not known yet: the server sends the real count with the first page (screens fall back to the rows loaded). */
+export function departmentSourceToMeta(source: DepartmentSource, nRows = 0) {
   return {
     id: source.id,
     name: source.name,

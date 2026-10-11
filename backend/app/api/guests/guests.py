@@ -19,6 +19,9 @@ from ...services.rule_based_process_service import RuleBasedProcessService
 from ...services.scratch_project_service import ScratchProjectService, EDITOR_RULES_BOT
 from ...services.rules_bot_service import RulesBotService
 from ...services.confusion_matrix_service import ConfusionMatrixService
+from ...services.text_classification_service import TextClassificationService
+from ...services.rag_chatbot_service import RagChatbotService
+from ...services.ai_agent_service import AiAgentService
 from ...services.exercises_service import ExercisesService
 from ...services.guest_service import GuestService
 from ...services.project_service import ProjectService
@@ -131,7 +134,7 @@ async def fix_project_types(session_id: str):
         for doc in docs:
             try:
                 data = doc.to_dict()
-                if 'type' in data and data['type'] not in ['text-recognition', 'image-recognition', 'image-recognition-teachable-machine', 'pose-recognition-teachable-machine', 'classification', 'regression', 'custom', 'rule-based-process', 'live-object-detection', 'exercises', 'confusion-matrix']:
+                if 'type' in data and data['type'] not in ['text-recognition', 'image-recognition', 'image-recognition-teachable-machine', 'pose-recognition-teachable-machine', 'classification', 'regression', 'custom', 'rule-based-process', 'live-object-detection', 'exercises', 'confusion-matrix', 'text-classification', 'rag-chatbot', 'ai-agent']:
                     # Fix invalid type
                     old_type = data['type']
                     data['type'] = 'text-recognition'  # Default to text-recognition
@@ -499,6 +502,24 @@ async def delete_guest_project(
                 ConfusionMatrixService().delete(project_id, session_id)
             except Exception as e:
                 logger.warning("Confusion matrix cleanup failed for %s: %s", project_id, e)
+
+        if project.type == ProjectType.TEXT_CLASSIFICATION or str(project.type) == "text-classification":
+            try:
+                TextClassificationService().delete(project_id, session_id)
+            except Exception as e:
+                logger.warning("Text classification cleanup failed for %s: %s", project_id, e)
+
+        if project.type == ProjectType.RAG_CHATBOT or str(project.type) == "rag-chatbot":
+            try:
+                RagChatbotService().delete(project_id, session_id)
+            except Exception as e:
+                logger.warning("RAG chatbot cleanup failed for %s: %s", project_id, e)
+
+        if project.type == ProjectType.AI_AGENT or str(project.type) == "ai-agent":
+            try:
+                AiAgentService().delete(project_id, session_id)
+            except Exception as e:
+                logger.warning("AI agent cleanup failed for %s: %s", project_id, e)
 
         if project.type == ProjectType.EXERCISES or str(project.type) == "exercises":
             try:
@@ -2829,6 +2850,20 @@ async def delete_guest_session(
         deleted_projects_count = 0
         if projects:
             project_ids = [p.id for p in projects]
+            # Project types that keep their own collections (runs, models): clean those too
+            for p in projects:
+                kind = str(getattr(p.type, "value", p.type))
+                try:
+                    if kind == "text-classification":
+                        TextClassificationService().delete(p.id, session_id)
+                    elif kind == "confusion-matrix":
+                        ConfusionMatrixService().delete(p.id, session_id)
+                    elif kind == "rag-chatbot":
+                        RagChatbotService().delete(p.id, session_id)
+                    elif kind == "ai-agent":
+                        AiAgentService().delete(p.id, session_id)
+                except Exception as e:
+                    logger.warning("Cleanup of %s project %s failed: %s", kind, p.id, e)
             try:
                 deleted_projects_count = await project_service.delete_multiple_projects(project_ids)
                 logger.info(f"Successfully deleted {deleted_projects_count} out of {len(projects)} projects")

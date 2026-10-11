@@ -338,15 +338,15 @@ export default function ConfusionMatrixLab({ sessionId, projectId }: Props) {
               <section className="panel choice">
                 <span className="ic"><IcUser /></span>
                 <h2>My Ex 2 model</h2>
-                <p>Open the Text Recognition model you trained in Exercise 2. It is retrained here on your own examples, with the same recipe.</p>
+                <p>Open the model you trained in Exercise 2 (a Text Classification or Text Recognition project). It is retrained here on the same data, with the same recipe, so you see the same scorecard.</p>
                 {ex2Error && <div className="notice"><IcInfo /> Couldn&apos;t look up your Exercise 2 models. Refresh to try again.</div>}
                 {!ex2Error && ex2Runs === null && <div className="facts"><div>Looking for your Exercise 2 models…</div></div>}
                 {!ex2Error && ex2Runs !== null && allEx2.length === 0 && (
                   <div className="notice">
                     <IcInfo />
                     <span>
-                      No trained Text Recognition model in this workspace yet. Create a Text Recognition project, add examples and
-                      train it, then come back. Or open a pre-trained model.
+                      No trained Exercise 2 model in this workspace yet. Create a Text Classification project, train it on a finance pack,
+                      then come back. Or open a pre-trained model.
                     </span>
                   </div>
                 )}
@@ -363,7 +363,7 @@ export default function ConfusionMatrixLab({ sessionId, projectId }: Props) {
                         {allEx2.map((r) => (
                           <option key={r.projectId} value={r.projectId} disabled={!r.usable}>
                             {r.projectName} · {r.kind === 'textrec' ? r.labels.join(', ') : r.datasetName}
-                            {r.usable ? '' : ' (needs more examples)'}
+                            {r.usable ? '' : r.kind === 'textrec' ? ' (needs more examples)' : ' (can’t open yet)'}
                           </option>
                         ))}
                       </select>

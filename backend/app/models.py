@@ -88,6 +88,9 @@ class ProjectType(str, Enum):
     LIVE_OBJECT_DETECTION = "live-object-detection"
     EXERCISES = "exercises"
     CONFUSION_MATRIX = "confusion-matrix"
+    TEXT_CLASSIFICATION = "text-classification"
+    RAG_CHATBOT = "rag-chatbot"
+    AI_AGENT = "ai-agent"
 
 
 class ProjectStatus(str, Enum):
@@ -1458,3 +1461,337 @@ class CMExamplesResponse(BaseModel):
     success: bool = True
     data: List[CMExample]
     total: int = 0
+
+
+# ---------------------------------------------------------------------------
+# Text Classification projects (Day 1, Ex 2): pick a finance pack, inspect and clean it,
+# choose a representation, train logistic regression, then type messages to test it.
+# Two classes; class 0 is the class we care about (Ex 3 opens the same model with it as target).
+# ---------------------------------------------------------------------------
+
+TC_REPRESENTATIONS = ("tfidf", "hashed")
+
+
+class TCParams(BaseModel):
+    """Same names and limits as CMParams, so Ex 3 retrains the identical model."""
+    threshold: float = Field(0.5, ge=0.05, le=0.95)
+    testSplit: float = Field(0.2, ge=0.1, le=0.3)
+    C: float = Field(1.0, ge=0.001, le=1000)
+    ngrams: int = Field(2, ge=1, le=2)
+    maxFeatures: int = Field(5000, ge=50, le=20000)
+    maxIter: int = Field(100, ge=1, le=1000)
+
+
+class TCClean(BaseModel):
+    dropDuplicates: bool = False
+    dropConflicts: bool = False
+    removeMasks: bool = False
+
+
+class TCDatasetInfo(BaseModel):
+    id: str
+    name: str
+    classes: List[str]  # [class we care about, other class]
+    short: List[str]
+    noun: str
+    kind: str  # 'real' | 'synthetic'
+    source: str
+    sourceUrl: str = ""
+    licence: str = ""
+    blurb: str = ""
+    nuvama: str = ""
+    recommended: bool = False
+    counts: List[int] = Field(default_factory=list)
+    n: int = 0
+
+
+class TCDatasetListResponse(BaseModel):
+    success: bool = True
+    data: List[TCDatasetInfo]
+
+
+class TCSampleRow(BaseModel):
+    id: int
+    label: str
+    text: str  # cut at 280 characters
+    chars: int
+    masked: bool = False
+
+
+class TCSampleResponse(BaseModel):
+    success: bool = True
+    data: List[TCSampleRow]
+    total: int = 0
+
+
+class TCInspectExample(BaseModel):
+    id: int
+    text: str
+    labels: List[str]
+    copies: int = 1
+
+
+class TCInspectOut(BaseModel):
+    """Step 2 checks on the file as it is, and the dataset after the chosen cleaning."""
+    n: int
+    counts: List[int]
+    missing: int
+    duplicates: int
+    duplicateGroups: int
+    conflicts: int
+    conflictGroups: int
+    leakage: int
+    masked: int
+    chars: Dict[str, int]
+    words: Dict[str, int]
+    examples: Dict[str, List[TCInspectExample]]
+    clean: TCClean
+    after: Dict[str, Any]  # {n, counts} after cleaning
+
+
+class TCInspectResponse(BaseModel):
+    success: bool = True
+    data: TCInspectOut
+
+
+class TCState(BaseModel):
+    """Where the learner is: restored on every visit."""
+    datasetId: Optional[str] = Field(None, max_length=60)
+    step: int = Field(1, ge=1, le=5)
+    inspected: bool = False
+    clean: TCClean = Field(default_factory=TCClean)
+    representation: str = Field("tfidf", pattern=r"^(tfidf|hashed)$")
+    level: str = Field("basic", pattern=r"^(basic|advanced)$")
+    preset: str = Field("balanced", pattern=r"^(quick|balanced|thorough|custom)$")
+    params: TCParams = Field(default_factory=TCParams)
+    selectedRunId: Optional[str] = Field(None, max_length=60)
+
+
+class TCCurvePoint(BaseModel):
+    iter: int
+    trainLoss: float
+    testLoss: float
+    trainAcc: float
+    testAcc: float
+
+
+class TCRunSummary(BaseModel):
+    id: str
+    no: int
+    datasetId: str
+    datasetKey: str
+    classes: List[str]
+    clean: TCClean
+    representation: str
+    params: TCParams
+    trainN: int
+    m: CMMetrics
+    curves: List[TCCurvePoint] = Field(default_factory=list)
+    seconds: float = 0.0
+    modelSaved: bool = False
+    reusedFit: bool = False
+    createdAt: datetime
+
+
+class TCTry(BaseModel):
+    id: str
+    text: str
+    label: str
+    confidence: float  # for the label it gave
+    p: float  # P(class we care about)
+    runId: str
+    runNo: int = 0
+    verdict: Optional[str] = None  # 'right' | 'wrong' | None (not marked yet)
+    evidence: List[Dict[str, Any]] = Field(default_factory=list)  # [{term, weight}] pushing to class 0 (+) or 1 (-)
+    createdAt: datetime
+
+
+class TCProjectOut(BaseModel):
+    project_id: str
+    state: TCState
+    dataset: Optional[TCDatasetInfo] = None
+    runs: List[TCRunSummary] = Field(default_factory=list)
+    tries: List[TCTry] = Field(default_factory=list)
+
+
+class TCProjectResponse(BaseModel):
+    success: bool = True
+    data: TCProjectOut
+
+
+class TCDatasetRequest(BaseModel):
+    datasetId: str = Field(..., max_length=60)
+
+
+class TCInspectRequest(BaseModel):
+    clean: Optional[TCClean] = None  # None: keep the saved choice
+
+
+class TCStateRequest(BaseModel):
+    step: Optional[int] = Field(None, ge=1, le=5)
+    representation: Optional[str] = Field(None, pattern=r"^(tfidf|hashed)$")
+    level: Optional[str] = Field(None, pattern=r"^(basic|advanced)$")
+    preset: Optional[str] = Field(None, pattern=r"^(quick|balanced|thorough|custom)$")
+    params: Optional[TCParams] = None
+    selectedRunId: Optional[str] = Field(None, max_length=60)
+
+
+class TCTrainRequest(BaseModel):
+    representation: str = Field("tfidf", pattern=r"^(tfidf|hashed)$")
+    preset: str = Field("balanced", pattern=r"^(quick|balanced|thorough|custom)$")
+    level: str = Field("basic", pattern=r"^(basic|advanced)$")
+    params: TCParams
+
+
+class TCPredictRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=4000)
+    runId: Optional[str] = Field(None, max_length=60)  # default: the open run
+
+
+class TCTryPatch(BaseModel):
+    verdict: Optional[str] = Field(None, pattern=r"^(right|wrong)$")
+
+
+class TCTryResponse(BaseModel):
+    success: bool = True
+    data: TCTry
+
+
+class TCExample(BaseModel):
+    id: int
+    text: str
+    score: float  # P(class we care about)
+
+
+class TCExamplesResponse(BaseModel):
+    success: bool = True
+    data: List[TCExample]
+    total: int = 0
+
+
+# ---------------------------------------------------------------------------
+# RAG Chatbot projects: documents → chunks → search → grounded answers → test set.
+# Responses are documented in services/rag_chatbot_service.py (Firestore layout) and
+# frontend/components/RagChatbot/types.ts.
+# ---------------------------------------------------------------------------
+
+
+class RagChunking(BaseModel):
+    mode: str = Field("sections", pattern=r"^(sections|words)$")
+    size: int = Field(60, ge=20, le=400)  # words per chunk (words mode)
+    overlap: int = Field(10, ge=0, le=200)
+
+
+class RagRetrieval(BaseModel):
+    method: str = Field("meaning", pattern=r"^(meaning|keyword)$")
+    k: int = Field(3, ge=1, le=8)
+    minScore: float = Field(0.0, ge=0.0, le=1.0)
+
+
+class RagAnswer(BaseModel):
+    model: str = Field("gemini-flash-lite", max_length=60)
+    temperature: float = Field(0.2, ge=0.0, le=2.0)
+    strict: bool = True
+    useDocuments: bool = True
+
+
+class RagStateRequest(BaseModel):
+    step: Optional[int] = Field(None, ge=1, le=5)
+    chunking: Optional[RagChunking] = None
+    embeddingModel: Optional[str] = Field(None, max_length=60)
+    retrieval: Optional[RagRetrieval] = None
+    answer: Optional[RagAnswer] = None
+
+
+class RagLibraryRequest(BaseModel):
+    libraryId: str = Field(..., max_length=80)
+
+
+class RagPreviewRequest(BaseModel):
+    chunking: RagChunking
+
+
+class RagSearchRequest(BaseModel):
+    question: str = Field(..., min_length=1, max_length=1000)
+    k: int = Field(3, ge=1, le=8)
+    minScore: float = Field(0.0, ge=0.0, le=1.0)
+
+
+class RagAskRequest(BaseModel):
+    question: str = Field(..., min_length=1, max_length=1000)
+    testQuestionId: Optional[str] = Field(None, max_length=20)
+    retrieval: Optional[RagRetrieval] = None  # default: the project's settings
+    answer: Optional[RagAnswer] = None
+
+
+class RagVerdictRequest(BaseModel):
+    verdict: Optional[str] = Field(None, pattern=r"^(grounded|made-up|refused)$")
+
+
+class RagEvalRequest(BaseModel):
+    questionIds: Optional[List[str]] = Field(None, max_length=20)
+    retrieval: Optional[RagRetrieval] = None
+    answer: Optional[RagAnswer] = None
+
+
+# ---------------------------------------------------------------------------
+# AI Agent projects: instructions + tools + the agent loop with a trace, guardrails, test prompts.
+# Responses are documented in services/ai_agent_service.py and frontend/components/AiAgent/types.ts.
+# ---------------------------------------------------------------------------
+
+
+class AgentSettingsIn(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=60)
+    instructions: Optional[str] = Field(None, min_length=1, max_length=4000)
+    model: Optional[str] = Field(None, max_length=60)
+    temperature: Optional[float] = Field(None, ge=0.0, le=2.0)
+
+
+class AgentGuardIn(BaseModel):
+    blockRiskyActions: bool = True
+
+
+class AgentStateRequest(BaseModel):
+    step: Optional[int] = Field(None, ge=1, le=5)
+    agent: Optional[AgentSettingsIn] = None
+    enabled: Optional[List[str]] = Field(None, max_length=20)  # tool names
+    guard: Optional[AgentGuardIn] = None
+
+
+class AgentOwnFunction(BaseModel):
+    name: str = Field(..., max_length=64)
+    desc: str = Field("", max_length=2000)
+    schema_: Dict[str, Any] = Field(default_factory=dict, alias="schema")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class AgentOwnToolRequest(BaseModel):
+    source: str = Field(..., min_length=1, max_length=20000)
+    functions: List[AgentOwnFunction] = Field(..., max_length=8)
+    notes: List[str] = Field(default_factory=list, max_length=40)
+
+
+class AgentTurnRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=2000)
+    chat: str = Field("current", pattern=r"^(current|baseline)$")  # baseline = step 2, no tools
+    useTools: bool = True
+    evalId: Optional[str] = Field(None, max_length=40)
+    testPromptId: Optional[str] = Field(None, max_length=10)
+
+
+class AgentToolResult(BaseModel):
+    callId: str = Field(..., max_length=60)
+    ok: bool
+    output: Optional[str] = Field(None, max_length=20000)
+    error: Optional[str] = Field(None, max_length=4000)
+    ms: int = Field(0, ge=0)
+
+
+class AgentResumeRequest(BaseModel):
+    results: List[AgentToolResult] = Field(..., min_length=1, max_length=20)
+
+
+class AgentEvalRequest(BaseModel):
+    promptIds: Optional[List[str]] = Field(None, max_length=20)
+    useTools: bool = True

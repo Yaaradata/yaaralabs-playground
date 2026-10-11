@@ -2671,7 +2671,7 @@ function TfidfLogisticRegression({ meta, swapLab = false }: { meta: ExerciseMeta
       const pack = getDepartmentConcept(datasetId);
       const seed = toStudioPreview(pack?.samples || []);
       const meta = item
-        ? { ...item, n_rows: item.n_rows || 40000 }
+        ? item
         : source
           ? departmentSourceToMeta(source)
           : null;
@@ -2701,7 +2701,7 @@ function TfidfLogisticRegression({ meta, swapLab = false }: { meta: ExerciseMeta
           source: payload.source,
           use_case: payload.use_case,
           classes: payload.classes,
-          n_rows: payload.n_rows || 40000,
+          n_rows: payload.n_rows || payload.rows.length,
         };
         if (source && meta && seed.length) {
           setData(rows);
@@ -3036,7 +3036,7 @@ function TfidfLogisticRegression({ meta, swapLab = false }: { meta: ExerciseMeta
           source: payload.source,
           use_case: payload.use_case,
           classes: payload.classes,
-          n_rows: payload.n_rows || 40000,
+          n_rows: payload.n_rows || payload.rows.length,
         };
         setData(rows);
         setDatasetMeta(nextMeta);
@@ -3506,7 +3506,7 @@ function TfidfLogisticRegression({ meta, swapLab = false }: { meta: ExerciseMeta
     const pack = getDepartmentConcept(snap.datasetId);
     const seed = toStudioPreview(pack?.samples || []);
     const nextMeta = item
-      ? { ...item, n_rows: item.n_rows || 40000 }
+      ? item
       : source
         ? departmentSourceToMeta(source)
         : null;
@@ -3548,7 +3548,7 @@ function TfidfLogisticRegression({ meta, swapLab = false }: { meta: ExerciseMeta
           source: payload.source,
           use_case: payload.use_case,
           classes: payload.classes,
-          n_rows: payload.n_rows || 40000,
+          n_rows: payload.n_rows || payload.rows.length,
         });
       })
       .catch(() => undefined)

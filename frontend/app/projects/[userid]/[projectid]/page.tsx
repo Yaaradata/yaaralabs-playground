@@ -21,6 +21,9 @@ import remarkGfm from 'remark-gfm'
 import { TeachYourAgent } from '../../../../components/TeachYourAgent'
 import RulesBot from '../../../../components/RulesBot'
 import ConfusionMatrixLab from '../../../../components/ConfusionMatrix'
+import TextClassifierLab from '../../../../components/TextClassifier'
+import RagChatbotLab from '../../../../components/RagChatbot'
+import AiAgentLab from '../../../../components/AiAgent'
 import Exercises from '../../../../components/Exercises'
 
 interface GuestSession {
@@ -1718,7 +1721,10 @@ export default function ProjectDetailsPage() {
   const isRbp = selectedProject.type === 'rule-based-process';
   const isExercises = selectedProject.type === 'exercises';
   const isConfusionMatrix = selectedProject.type === 'confusion-matrix';
-  const studioHeader = isRbp || isExercises || isConfusionMatrix;
+  const isTextClassification = selectedProject.type === 'text-classification';
+  const isRagChatbot = selectedProject.type === 'rag-chatbot';
+  const isAiAgent = selectedProject.type === 'ai-agent';
+  const studioHeader = isRbp || isExercises || isConfusionMatrix || isTextClassification || isRagChatbot || isAiAgent;
 
   return (
     <div className="h-screen overflow-hidden flex flex-col bg-canvas text-fg">
@@ -3879,6 +3885,24 @@ export default function ProjectDetailsPage() {
                 Back to Projects
               </Link>
             </div>
+          ) : selectedProject.type === 'ai-agent' ? (
+            <AiAgentLab
+              projectName={selectedProject.name}
+              sessionId={actualSessionId}
+              projectId={selectedProject.id}
+            />
+          ) : selectedProject.type === 'rag-chatbot' ? (
+            <RagChatbotLab
+              projectName={selectedProject.name}
+              sessionId={actualSessionId}
+              projectId={selectedProject.id}
+            />
+          ) : selectedProject.type === 'text-classification' ? (
+            <TextClassifierLab
+              projectName={selectedProject.name}
+              sessionId={actualSessionId}
+              projectId={selectedProject.id}
+            />
           ) : selectedProject.type === 'confusion-matrix' ? (
             <ConfusionMatrixLab
               projectName={selectedProject.name}

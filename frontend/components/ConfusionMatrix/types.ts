@@ -56,7 +56,7 @@ export interface Run {
   createdAt: string;
 }
 
-export type Ex2Kind = 'textrec' | 'exercises';
+export type Ex2Kind = 'textclass' | 'textrec' | 'exercises'; // textclass = a Text Classification project (Day 1 Ex 2)
 
 export interface Ex2Snapshot {
   kind: Ex2Kind; // 'textrec' = a Text Recognition project

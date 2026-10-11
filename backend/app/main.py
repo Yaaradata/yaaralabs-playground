@@ -24,6 +24,9 @@ from .api import (
     rule_based_process,
     rules_bot,
     confusion_matrix,
+    text_classification,
+    rag_chatbot,
+    ai_agent,
     live_object_detection,
     exercises,
 )
@@ -155,6 +158,9 @@ app.include_router(scratch_services.router)
 app.include_router(rule_based_process.router)
 app.include_router(rules_bot.router)
 app.include_router(confusion_matrix.router)
+app.include_router(text_classification.router)
+app.include_router(rag_chatbot.router)
+app.include_router(ai_agent.router)
 app.include_router(live_object_detection.router)
 app.include_router(exercises.router)
 

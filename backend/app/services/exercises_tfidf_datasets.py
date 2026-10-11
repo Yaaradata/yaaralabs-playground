@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import csv
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
 import pandas as pd
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "exercises" / "Ex_2_Dataset"
-FULL_ROWS = 40000
+_ROW_COUNTS: Dict[str, Any] = {}  # path -> (mtime, rows): the real size of each file, counted once
 PREVIEW_LIMIT = 4
 PAGE_LIMIT_MAX = 200
 _CSV_COLS = ["text", "label"]
@@ -111,6 +112,18 @@ def dataset_path(dataset_id: str) -> Path:
     return DATA_DIR / f"{dataset_id}_dataset.csv"
 
 
+def row_count(path: Path) -> int:
+    """Data rows in the CSV (quoted line breaks handled). Cached until the file changes."""
+    key, mtime = str(path), path.stat().st_mtime
+    hit = _ROW_COUNTS.get(key)
+    if hit and hit[0] == mtime:
+        return hit[1]
+    with path.open(encoding="utf-8", newline="") as fh:
+        n = max(0, sum(1 for _ in csv.reader(fh)) - 1)
+    _ROW_COUNTS[key] = (mtime, n)
+    return n
+
+
 def list_department_datasets() -> List[Dict[str, Any]]:
     items: List[Dict[str, Any]] = []
     for dataset_id in DEPARTMENT_ORDER:
@@ -127,7 +140,7 @@ def list_department_datasets() -> List[Dict[str, Any]]:
                 "use_case": USE_CASES[dataset_id],
                 "filename": path.name,
                 "classes": CLASSES[dataset_id],
-                "n_rows": FULL_ROWS,
+                "n_rows": row_count(path),
             }
         )
     return items
@@ -351,7 +364,7 @@ def load_department_slice(dataset_id: str, offset: int = 0, limit: int = PREVIEW
             cleaned["label"] = cleaned["label"].astype(str).str.strip()
             cleaned = cleaned[(cleaned["text"] != "") & (cleaned["label"] != "") & (cleaned["label"].str.lower() != "nan")]
             rows = _rows_from_frame(cleaned.reset_index(drop=True), min_rows=0)
-    payload = _payload_from_rows(meta, rows, FULL_ROWS)
+    payload = _payload_from_rows(meta, rows, int(meta["n_rows"]))
     payload["offset"] = offset
     payload["limit"] = limit
     return payload

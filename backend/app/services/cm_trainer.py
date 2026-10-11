@@ -105,6 +105,20 @@ def _textrec_features(ngrams: int, max_features: int) -> FeatureUnion:
     ])
 
 
+def slim(vectorizer) -> None:
+    """Drop the terms cut by max_features (stop_words_): only kept for inspection, and on long
+    texts it is hundreds of thousands of n-grams, pushing the saved model past Firestore's limit."""
+    parts = [t for _, t in vectorizer.transformer_list] if isinstance(vectorizer, FeatureUnion) else [vectorizer]
+    for part in parts:
+        if hasattr(part, "stop_words_"):
+            part.stop_words_ = None
+
+
+def cleaned(ds: CMDataset, prep: Optional[Dict[str, Any]] = None) -> List[str]:
+    """The texts as the model reads them (public: Text Classification reuses it for curves)."""
+    return _cleaned(ds, normalize_text_prep(prep or DEFAULT_PREP))
+
+
 def _cleaned(ds: CMDataset, prep: Dict[str, Any]) -> List[str]:
     key = (ds.key, ds.version, tuple(sorted(prep.items())))
     hit = _lru_get(_CLEAN_CACHE, key)
@@ -166,6 +180,7 @@ def train(ds: CMDataset, params: Dict[str, Any], prep: Optional[Dict[str, Any]] 
         scores = np.array([1.0 if seen.get(texts[i]) == 0 else (0.0 if seen.get(texts[i]) == 1 else s)
                            for i, s in zip(test_idx, scores)])
 
+    slim(vectorizer)
     blob = zlib.compress(pickle.dumps({
         "vectorizer": vectorizer, "classifier": classifier, "classes": ds.classes,
         "params": {k: params[k] for k in ("testSplit", "C", "ngrams", "maxFeatures", "maxIter")},

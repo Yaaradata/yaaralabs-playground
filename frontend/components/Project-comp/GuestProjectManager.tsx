@@ -358,7 +358,10 @@ const GuestProjectManager: React.FC<GuestProjectManagerProps> = ({ sessionId }) 
                         >
                             <option value="rule-based-process">Rule Based Process</option>
                             <option value="text-recognition">Text Recognition</option>
+                            <option value="text-classification">Text Classification</option>
                             <option value="confusion-matrix">Confusion Matrix</option>
+                            <option value="rag-chatbot">RAG Chatbot</option>
+                            <option value="ai-agent">AI Agent</option>
                             <option value="image-recognition">Image Recognition</option>
                             <option value="image-recognition-teachable-machine">Image Recognition - Teachable Machine</option>
                             <option value="pose-recognition-teachable-machine">Pose Recognition - Teachable Machine</option>
@@ -491,6 +494,9 @@ const GuestProjectManager: React.FC<GuestProjectManagerProps> = ({ sessionId }) 
                                          project.type === 'live-object-detection' ? 'Live Object Detection' :
                                          project.type === 'exercises' ? 'Exercises' :
                                          project.type === 'confusion-matrix' ? 'Confusion Matrix' :
+                                         project.type === 'text-classification' ? 'Text Classification' :
+                                         project.type === 'rag-chatbot' ? 'RAG Chatbot' :
+                                         project.type === 'ai-agent' ? 'AI Agent' :
                                          project.type || 'Unknown'}
                                     </span>
                                     <span className={`text-xs px-2 py-1 rounded ${
