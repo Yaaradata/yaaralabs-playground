@@ -888,8 +888,8 @@ export default function LearnPage() {
   };
 
   const modelSelector = isTextProject ? (
-    <div className="flex flex-col items-end gap-1 w-full sm:w-56 shrink-0">
-      <label htmlFor="text-model-select" className="text-fg/70 text-xs text-right leading-tight">
+    <div className="flex flex-col items-end gap-1 w-full sm:w-auto shrink-0">
+      <label htmlFor="text-model-select" className="text-fg/70 text-xs text-right whitespace-nowrap">
         Choose the machine learning model to train
       </label>
       <select
@@ -897,7 +897,7 @@ export default function LearnPage() {
         value={selectedTextModel}
         onChange={(e) => setSelectedTextModel(e.target.value as 'logistic_regression' | 'distilbert')}
         disabled={isTraining}
-        className="w-full bg-canvas border border-magenta-brand/40 focus:border-pink-brand focus:outline-none text-fg text-sm rounded-lg px-3 py-2 disabled:opacity-50"
+        className="w-full sm:w-56 bg-canvas border border-magenta-brand/40 focus:border-pink-brand focus:outline-none text-fg text-sm rounded-lg px-3 py-2 disabled:opacity-50"
       >
         <option value="logistic_regression">Logistic Regression</option>
         <option value="distilbert">DistilBERT</option>
@@ -1352,9 +1352,9 @@ export default function LearnPage() {
           <div className="mb-6">
             <Link
               href={`/projects/${urlUserId}/${urlProjectId}`}
-              className="px-4 py-4 text-fg/70 hover:text-white hover:bg-purple-brand/10 rounded-lg transition-all duration-300 flex items-center gap-2 text-sm"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-fg/70 hover:text-white hover:bg-purple-brand/10 rounded-lg transition-all duration-300 text-xs"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
               Back to project
@@ -1382,11 +1382,11 @@ export default function LearnPage() {
                 </p>
                 <p className="text-base font-medium">You&apos;ve collected:</p>
                 {trainingStats.labelBreakdown.length > 0 ? (
-                  <ul className="space-y-2">
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
                     {trainingStats.labelBreakdown.map((label, index) => (
-                      <li key={index} className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-purple-brand rounded-full"></span>
-                        <span>{label.count} examples of {label.name}</span>
+                      <li key={index} className="flex items-center gap-2 min-w-0">
+                        <span className="w-1.5 h-1.5 bg-purple-brand rounded-full flex-shrink-0"></span>
+                        <span className="truncate">{label.count} examples of {label.name}</span>
                       </li>
                     ))}
                   </ul>
@@ -2051,17 +2051,6 @@ export default function LearnPage() {
               </div>
             )}
 
-            {/* Next Step Button */}
-            {trainingStats.totalExamples >= 6 && trainingStats.totalLabels >= 2 && trainedModel && trainedModel.status === 'available' && (
-              <div className="flex justify-end mt-12">
-                <a
-                  href={`/projects/${urlUserId}/${urlProjectId}/make`}
-                  className="bg-purple-brand hover:bg-purple-brand/90 text-white px-8 py-4 rounded-lg text-lg font-medium hover:scale-105 transition-all duration-300 inline-block shadow-lg hover:shadow-xl"
-                >
-                  Move to next - Use AI
-                </a>
-              </div>
-            )}
           </div>
         </div>
       </main>

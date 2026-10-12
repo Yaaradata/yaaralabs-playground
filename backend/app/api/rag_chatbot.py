@@ -1,6 +1,7 @@
 """RAG Chatbot projects: documents → chunks → search → grounded answers → test set.
 
   GET    /library                                  public documents (SEBI circulars), seeded into Firestore
+  GET    /library/{docId}/pdf                      the official PDF, served by us (sebi.gov.in refuses to be framed)
   GET    /models                                   chat and embedding models
   GET    /test-questions                           the built-in test set
   GET    /session/{sid}/projects/{pid}             state, documents, index, questions, test runs
@@ -27,6 +28,7 @@ import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 
 from ..models import (
     ProjectType,
@@ -94,6 +96,17 @@ async def _run(fn, *args):
 @router.get("/library")
 async def library(service: rag.RagChatbotService = Depends(get_rag_service)):
     return await _run(service.library)
+
+
+@router.get("/library/{doc_id}/pdf")
+async def library_pdf(doc_id: str):
+    """The official PDF of a library document, for the viewer. Only known library ids are served."""
+    known = {d["id"] for d in rag._library_files()}
+    path = rag.DATA_DIR / "library" / f"{doc_id}.pdf"
+    if doc_id not in known or not path.is_file():
+        raise HTTPException(status_code=404, detail="No PDF for that document.")
+    return FileResponse(path, media_type="application/pdf", filename=f"{doc_id}.pdf",
+                        content_disposition_type="inline", headers={"Cache-Control": "public, max-age=86400"})
 
 
 @router.get("/models")

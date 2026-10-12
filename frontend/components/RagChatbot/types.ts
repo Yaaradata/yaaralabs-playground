@@ -157,6 +157,7 @@ export interface Ask {
   model: { id: string; vertex: string; name: string };
   tokens: { in: number; out: number };
   costUsd: number;
+  costInr?: number;
   ms: number;
   createdAt: string;
   prompt?: { system: string; user: string };

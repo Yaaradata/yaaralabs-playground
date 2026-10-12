@@ -50,6 +50,7 @@ export const config = {
     // RAG Chatbot projects: documents → chunks → search → grounded answers
     ragChatbot: {
       library: '/api/rag-chatbot/library',
+      libraryPdf: (docId: string) => `/api/rag-chatbot/library/${docId}/pdf`,
       models: '/api/rag-chatbot/models',
       testQuestions: '/api/rag-chatbot/test-questions',
       project: (sessionId: string, projectId: string) =>

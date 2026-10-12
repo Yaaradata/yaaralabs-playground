@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -73,6 +74,7 @@ def main(raw: Path) -> None:
         doc["words"] = sum(len(p["text"].split()) for p in doc["pages"])
         doc["version"] = hashlib.sha1(json.dumps(doc["pages"], ensure_ascii=False).encode()).hexdigest()[:12]
         (OUT / f"{meta['id']}.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1), encoding="utf-8")
+        shutil.copyfile(raw / meta["file"], OUT / f"{meta['id']}.pdf")  # served to the viewer: sebi.gov.in can't be framed
         print(f"{meta['id']}: {len(pages)} pages, {doc['words']} words, version {doc['version']}")
 
 

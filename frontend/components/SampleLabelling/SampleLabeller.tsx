@@ -10,9 +10,9 @@ import {
   MIN_PER_LABEL,
   SAMPLE_SOURCES,
   canGroup,
-  checkLabels,
   countByLabel,
   examplesToAdd,
+  fillAllLabels,
   labelledCount,
   validateDataset,
   type Choices,
@@ -111,7 +111,6 @@ export default function SampleLabeller({ source, draftKey, existing, onClose, on
   const [loadError, setLoadError] = useState<string | null>(null);
   const [choices, setChoices] = useState<Choices>({});
   const [filter, setFilter] = useState<Filter>('all');
-  const [checked, setChecked] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -151,11 +150,17 @@ export default function SampleLabeller({ source, draftKey, existing, onClose, on
     setNotice(null);
   };
 
+  const fillLabels = () => {
+    if (!data) return;
+    const next = fillAllLabels(data.queries);
+    setChoices(next);
+    writeDraft(draftKey, next);
+    setNotice(null);
+  };
+
   const counts = useMemo(() => (data ? countByLabel(data.labels, choices) : {}), [data, choices]);
   const done = data ? labelledCount(choices) : 0;
   const ready = !!data && canGroup(data.labels, choices);
-  const result = useMemo(() => (data && checked ? checkLabels(data.queries, choices) : null), [data, checked, choices]);
-  const mismatchById = useMemo(() => new Map((result?.mismatches ?? []).map((m) => [m.id, m])), [result]);
   const rows = useMemo(() => {
     if (!data) return [];
     if (filter === 'all') return data.queries;
@@ -219,6 +224,14 @@ export default function SampleLabeller({ source, draftKey, existing, onClose, on
                   {showGuide ? 'Hide what each label means' : 'What each label means'}
                 </button>
                 <span className="flex-1" />
+                <button
+                  type="button"
+                  onClick={fillLabels}
+                  disabled={busy}
+                  className="px-3 py-1.5 rounded-lg border border-magenta-brand/50 text-fg hover:bg-purple-brand/10 text-sm font-medium disabled:opacity-40"
+                >
+                  Fill labels
+                </button>
                 <label className="text-sm text-fg/70 inline-flex items-center gap-2">
                   Show
                   <select
@@ -288,67 +301,36 @@ export default function SampleLabeller({ source, draftKey, existing, onClose, on
                       </td>
                     </tr>
                   )}
-                  {rows.map((q) => {
-                    const mm = mismatchById.get(q.id);
-                    const matched = checked && choices[q.id] && !mm;
-                    return (
-                      <tr key={q.id} className={`align-top border-b border-fg/5 ${mm ? 'bg-pink-brand/5' : ''}`}>
-                        <td className="px-5 sm:px-6 py-3 text-fg/50 tabular-nums">{q.id}</td>
-                        <td className="px-3 py-3">
-                          <p className="text-fg leading-relaxed">{q.text}</p>
-                          {mm && (
-                            <div className="mt-2 text-xs rounded-md border border-pink-brand/30 bg-pink-brand/5 px-3 py-2">
-                              <p>
-                                <span className="text-fg/60">Trainer&apos;s label: </span>
-                                <b className="text-pink-brand">{mm.trainer}</b>
-                                <span className="text-fg/60"> · {mm.note}</span>
-                              </p>
-                              <button type="button" onClick={() => choose(q.id, mm.trainer)} className="mt-1.5 text-pink-brand font-medium hover:underline">
-                                Use the trainer&apos;s label
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-5 sm:px-6 py-3">
-                          <select
-                            aria-label={`Label for query ${q.id}`}
-                            value={choices[q.id] ?? ''}
-                            onChange={(e) => choose(q.id, e.target.value)}
-                            disabled={busy}
-                            className={`w-full bg-canvas border rounded px-2 py-2 text-sm focus:outline-none focus:border-pink-brand ${
-                              choices[q.id] ? 'border-magenta-brand/50 text-fg' : 'border-fg/20 text-fg/60'
-                            } ${matched ? 'border-[var(--success)]' : ''}`}
-                          >
-                            <option value="">Choose…</option>
-                            {data.labels.map((l) => (
-                              <option key={l.label} value={l.label}>{l.label}</option>
-                            ))}
-                          </select>
-                          {matched && <p className="text-xs text-[var(--success)] mt-1">Matches the trainer</p>}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {rows.map((q) => (
+                    <tr key={q.id} className="align-top border-b border-fg/5">
+                      <td className="px-5 sm:px-6 py-3 text-fg/50 tabular-nums">{q.id}</td>
+                      <td className="px-3 py-3">
+                        <p className="text-fg leading-relaxed">{q.text}</p>
+                      </td>
+                      <td className="px-5 sm:px-6 py-3">
+                        <select
+                          aria-label={`Label for query ${q.id}`}
+                          value={choices[q.id] ?? ''}
+                          onChange={(e) => choose(q.id, e.target.value)}
+                          disabled={busy}
+                          className={`w-full bg-canvas border rounded px-2 py-2 text-sm focus:outline-none focus:border-pink-brand ${
+                            choices[q.id] ? 'border-magenta-brand/50 text-fg' : 'border-fg/20 text-fg/60'
+                          }`}
+                        >
+                          <option value="">Choose…</option>
+                          {data.labels.map((l) => (
+                            <option key={l.label} value={l.label}>{l.label}</option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
 
             {/* footer */}
             <div className="px-5 sm:px-6 py-4 border-t border-fg/10 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setChecked(true)}
-                disabled={done === 0 || busy}
-                className="px-4 py-2 rounded-lg border border-magenta-brand/50 text-fg hover:bg-purple-brand/10 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Check my labels
-              </button>
-              {result && (
-                <span className="text-sm" aria-live="polite">
-                  <b>{result.matching} of {result.labelled}</b> match the trainer&apos;s labels
-                  {result.mismatches.length > 0 && <span className="text-fg/60"> · differences are marked below</span>}
-                </span>
-              )}
               <span className="flex-1" />
               <div className="flex flex-col items-end gap-1">
                 <button

@@ -10,9 +10,9 @@ import {
   MIN_PER_LABEL,
   batches,
   canGroup,
-  checkLabels,
   countByLabel,
   examplesToAdd,
+  fillAllLabels,
   isValidLabelName,
   labelledCount,
   projectLabelName,
@@ -77,15 +77,11 @@ test('Group it: enabled only when every label has at least 5', () => {
   assert.equal(canGroup(L, answerKey(6)), true);
 });
 
-test('Check my labels: counts matches and lists differences with the trainer label and note', () => {
-  const choices = answerKey(6);
-  const q = data.queries.find((x) => x.id === 3)!; // a trap row: buyback, but it is a complaint
-  choices[q.id] = 'Corporate action';
-  const r = checkLabels(data.queries, choices);
-  assert.equal(r.labelled, 36);
-  assert.equal(r.matching, 35);
-  assert.deepEqual(r.mismatches, [{ id: 3, chosen: 'Corporate action', trainer: q.label, note: q.note }]);
-  assert.equal(checkLabels(data.queries, {}).labelled, 0);
+test('Fill labels: every query gets its sample answer key', () => {
+  const filled = fillAllLabels(data.queries);
+  assert.equal(Object.keys(filled).length, 36);
+  for (const q of data.queries) assert.equal(filled[q.id], q.label);
+  assert.equal(canGroup(L, filled), true);
 });
 
 test('add: one example per labelled row, under the project label name; unlabelled rows skipped', () => {

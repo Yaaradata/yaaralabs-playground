@@ -13,7 +13,7 @@ export interface SampleLabelInfo {
 export interface SampleQuery {
   id: number;
   text: string;
-  label: string; // the trainer's answer key: never shown before "Check my labels"
+  label: string; // the sample answer key used by "Fill labels"
   difficulty: string;
   note: string;
 }
@@ -75,25 +75,9 @@ export function canGroup(labels: SampleLabelInfo[], choices: Choices, min = MIN_
   return labels.length > 0 && labels.every((l) => counts[l.label] >= min);
 }
 
-export interface Mismatch {
-  id: number;
-  chosen: string;
-  trainer: string;
-  note: string;
-}
-/** Compare labelled rows with the trainer's labels. Unlabelled rows are not counted. */
-export function checkLabels(queries: SampleQuery[], choices: Choices): { labelled: number; matching: number; mismatches: Mismatch[] } {
-  let labelled = 0;
-  let matching = 0;
-  const mismatches: Mismatch[] = [];
-  for (const q of queries) {
-    const chosen = choices[q.id];
-    if (!chosen) continue;
-    labelled += 1;
-    if (chosen === q.label) matching += 1;
-    else mismatches.push({ id: q.id, chosen, trainer: q.label, note: q.note });
-  }
-  return { labelled, matching, mismatches };
+/** Fill every query with its sample answer key. */
+export function fillAllLabels(queries: SampleQuery[]): Choices {
+  return Object.fromEntries(queries.map((q) => [q.id, q.label]));
 }
 
 export interface NewExample {
