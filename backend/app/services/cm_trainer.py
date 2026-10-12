@@ -114,11 +114,6 @@ def slim(vectorizer) -> None:
             part.stop_words_ = None
 
 
-def cleaned(ds: CMDataset, prep: Optional[Dict[str, Any]] = None) -> List[str]:
-    """The texts as the model reads them (public: Text Classification reuses it for curves)."""
-    return _cleaned(ds, normalize_text_prep(prep or DEFAULT_PREP))
-
-
 def _cleaned(ds: CMDataset, prep: Dict[str, Any]) -> List[str]:
     key = (ds.key, ds.version, tuple(sorted(prep.items())))
     hit = _lru_get(_CLEAN_CACHE, key)

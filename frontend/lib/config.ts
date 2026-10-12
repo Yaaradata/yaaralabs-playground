@@ -40,13 +40,6 @@ export const config = {
       project: (sessionId: string, projectId: string) =>
         `/api/confusion-matrix/session/${sessionId}/projects/${projectId}`,
     },
-    // Text Classification projects (Day 1, Ex 2: finance packs)
-    textClassification: {
-      datasets: '/api/text-classification/datasets',
-      sample: (datasetId: string, page: number) => `/api/text-classification/datasets/${datasetId}/sample?page=${page}`,
-      project: (sessionId: string, projectId: string) =>
-        `/api/text-classification/session/${sessionId}/projects/${projectId}`,
-    },
     // RAG Chatbot projects: documents → chunks → search → grounded answers
     ragChatbot: {
       library: '/api/rag-chatbot/library',

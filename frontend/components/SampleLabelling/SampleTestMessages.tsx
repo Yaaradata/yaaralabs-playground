@@ -149,8 +149,7 @@ export default function SampleTestMessages({ projectLabels, predict }: Props) {
                       }`}
                     >
                       <td className="px-4 py-3 text-fg align-top">
-                        <span className="block">&ldquo;{t.text}&rdquo;</span>
-                        {t.note && <span className="block text-xs text-fg/50 mt-1">{t.note}</span>}
+                        &ldquo;{t.text}&rdquo;
                       </td>
                       <td className="px-4 py-3 text-fg/80 align-top whitespace-nowrap">{expectedLabel}</td>
                       <td className="px-4 py-3 align-top whitespace-nowrap">

@@ -138,7 +138,7 @@ def _predict(model: Dict[str, Any], text: str) -> Dict[str, Any]:
         "confidence": round(top_score * 100, 2),
         "alternatives": [
             {"label": label, "confidence": round(score * 100, 2)}
-            for label, score in ranked[1:3]
+            for label, score in ranked[1:]
         ],
         "all_scores": [
             {"label": label, "confidence": round(score * 100, 2)} for label, score in ranked

@@ -151,13 +151,19 @@
 .rbot .res.latest { border-color: var(--acl); }
 .rbot .res-msg { padding: 12px 14px; font-size: 14px; line-height: 1.55; }
 .rbot .hl { border-radius: 3px; padding: 0 2px; background: color-mix(in srgb, var(--c) 20%, transparent); box-shadow: inset 0 -2px 0 var(--c); color: inherit; }
-.rbot .res-out { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; background: var(--sub); border-top: 1px solid var(--line); }
+.rbot .res-out { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px 14px 12px; background: var(--sub); border-top: 1px solid var(--line); }
+.rbot .res-lbl { display: block; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--tx3); margin-bottom: 2px; }
+.rbot .res-route { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rbot .nomatch { display: inline-flex; align-items: center; gap: 6px; width: 100%; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--tx3); }
+.rbot .run-mark { flex: none; display: flex; align-items: center; gap: 10px; font-size: 11.5px; color: var(--tx3); }
+.rbot .run-mark::before, .rbot .run-mark::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.rbot .run-mark span { flex: none; max-width: 80%; text-align: center; }
 .rbot .route { display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px; border-radius: 7px; font-weight: 600; font-size: 13px; background: color-mix(in srgb, var(--c) 14%, transparent); border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); }
 .rbot .route.none { --c: #9ca3af; font-weight: 500; color: var(--tx2); }
 .rbot .why { font-size: 12px; color: var(--tx3); }
 .rbot .why code { font-family: var(--mono); font-size: 11.5px; color: var(--tx2); }
 .rbot .also { width: 100%; font-size: 12px; color: var(--warn); }
-.rbot .reply { width: 100%; font-size: 12.5px; color: var(--tx2); font-style: italic; }
+.rbot .reply { width: 100%; font-size: 14px; color: var(--tx); }
 .rbot .compose { border-top: 1px solid var(--line); padding: 14px 18px 16px; background: var(--panel); }
 .rbot .send { display: flex; gap: 8px; }
 .rbot .send input { flex: 1; min-width: 0; height: 42px; border: 1px solid var(--line); border-radius: 10px; background: var(--sub); padding: 0 14px; outline: none; font-size: 14px; }
@@ -186,3 +192,8 @@
   .rbot .run-actions { width: 100%; flex-wrap: wrap; }
   .rbot .run-actions .btn.lg { flex: 1; }
 }
+.rbot .todo-tag { font-size: 11px; font-weight: 600; color: var(--warn); background: var(--warns); border-radius: 99px; padding: 2px 8px; white-space: nowrap; }
+.rbot .paused { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 10px 12px; border-radius: 10px; background: var(--warns); color: var(--warn); font-size: 12.5px; font-weight: 500; }
+.rbot .paused span { flex: 1; }
+.rbot .paused .btn { flex: none; }
+.rbot .send input:disabled { opacity: .6; cursor: not-allowed; }

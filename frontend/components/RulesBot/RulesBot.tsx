@@ -48,12 +48,25 @@ interface Bot {
   fp: string;
 }
 
-interface LogEntry {
+/** A tested message, kept exactly as the bot answered it: later rule changes never rewrite it. */
+interface MessageEntry {
+  kind: 'message';
   key: string;
   text: string;
   result: RouteResult | null;
   reply: string;
+  rules: NumberedRule[]; // the rules it was routed with (for highlighting)
 }
+
+/** Marks where the bot was run again with changed rules. */
+interface RunMark {
+  kind: 'run';
+  key: string;
+  run: number;
+  rules: number;
+}
+
+type LogEntry = MessageEntry | RunMark;
 
 type SaveState = 'saved' | 'saving' | 'error';
 
@@ -82,15 +95,12 @@ const Svg = ({ children, s = 16 }: { children: ReactNode; s?: number }) => (
     {children}
   </svg>
 );
-const IcSun = () => <Svg><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></Svg>;
-const IcMoon = () => <Svg><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></Svg>;
 const IcX = () => <Svg s={12}><path d="M18 6L6 18M6 6l12 12" /></Svg>;
 const IcTrash = () => <Svg s={14}><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></Svg>;
 const IcPlus = () => <Svg s={16}><path d="M12 5v14M5 12h14" /></Svg>;
 const IcPlay = () => <Svg s={14}><path d="M7 4l13 8-13 8z" /></Svg>;
 const IcSend = () => <Svg s={14}><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4z" /></Svg>;
-const IcUp = () => <Svg s={14}><path d="M18 15l-6-6-6 6" /></Svg>;
-const IcDown = () => <Svg s={14}><path d="M6 9l6 6 6-6" /></Svg>;
+const IcInfo = () => <Svg s={14}><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></Svg>;
 const IcArrowR = () => <Svg s={14}><path d="M5 12h14M13 6l6 6-6 6" /></Svg>;
 const IcClose = () => <Svg s={16}><path d="M18 6L6 18M6 6l12 12" /></Svg>;
 const IcChevron = () => <Svg s={14}><path d="M6 9l6 6 6-6" /></Svg>;
@@ -102,16 +112,14 @@ const IcRules = () => <Svg s={22}><path d="M4 6h10" /><path d="M4 12h6" /><path 
 interface RuleCardProps {
   rule: Rule;
   no: number;
-  total: number;
   fired: boolean;
   hitKeywords: string[];
   autoFocus: boolean;
   onChange: (patch: Partial<Rule>) => void;
-  onMove: (dir: -1 | 1) => void;
   onDelete: () => void;
 }
 
-function RuleCard({ rule, no, total, fired, hitKeywords, autoFocus, onChange, onMove, onDelete }: RuleCardProps) {
+function RuleCard({ rule, no, fired, hitKeywords, autoFocus, onChange, onDelete }: RuleCardProps) {
   const [draft, setDraft] = useState('');
   const deskRef = useRef<HTMLInputElement>(null);
   const kwRef = useRef<HTMLInputElement>(null);
@@ -135,21 +143,23 @@ function RuleCard({ rule, no, total, fired, hitKeywords, autoFocus, onChange, on
     setDraft('');
   };
   const full = rule.keywords.length >= MAX_KEYWORDS;
+  const noTeam = !rule.desk.trim(); // keywords come after the team: a rule needs to know where it routes
 
   return (
     <div className={`rule${fired ? ' fired' : ''}${rule.keywords.length ? '' : ' idle'}`} style={cssVar(rule.color)}>
       <div className="rule-h">
         <span className="rule-no">RULE {no}</span>
         {fired && <span className="fired-tag">Fired</span>}
+        {(noTeam || rule.keywords.length === 0) && (
+          <span className="todo-tag">{noTeam && rule.keywords.length === 0 ? 'Needs a team and keywords' : noTeam ? 'Needs a team' : 'Needs a keyword'}</span>
+        )}
         <span className="spacer" />
-        <button className="mini" onClick={() => onMove(-1)} disabled={no === 1} aria-label={`Move rule ${no} up`} title="Check earlier"><IcUp /></button>
-        <button className="mini" onClick={() => onMove(1)} disabled={no === total} aria-label={`Move rule ${no} down`} title="Check later"><IcDown /></button>
         <button className="mini" onClick={onDelete} aria-label={`Delete rule ${no}`} title="Delete rule"><IcTrash /></button>
       </div>
 
       <div className="kw-label"><span className="kw">IF</span>message contains</div>
       <div className="chips">
-        {rule.keywords.length === 0 && <span className="hint">Add keywords below</span>}
+        {rule.keywords.length === 0 && <span className="hint">{noTeam ? 'Name the team first (THEN route to), then add keywords' : 'Add keywords below'}</span>}
         {rule.keywords.map((k) => (
           <span key={k} className={`chip${hitKeywords.includes(k) ? ' hit' : ''}`}>
             {k}
@@ -162,13 +172,13 @@ function RuleCard({ rule, no, total, fired, hitKeywords, autoFocus, onChange, on
           ref={kwRef}
           value={draft}
           maxLength={60}
-          disabled={full}
+          disabled={full || noTeam}
           onChange={(e) => (e.target.value.endsWith(',') ? addKeywords(e.target.value) : setDraft(e.target.value))}
           onKeyDown={(e) => { if (e.key === 'Backspace' && !draft && rule.keywords.length) onChange({ keywords: rule.keywords.slice(0, -1) }); }}
-          placeholder={full ? `Up to ${MAX_KEYWORDS} keywords` : 'Add keyword, press Enter'}
+          placeholder={noTeam ? 'Enter the team name below first' : full ? `Up to ${MAX_KEYWORDS} keywords` : 'Add keyword, press Enter'}
           aria-label={`Add keyword to rule ${no}`}
         />
-        <button type="submit" disabled={!draft.trim() || full} aria-label="Add keyword"><IcPlus /></button>
+        <button type="submit" disabled={!draft.trim() || full || noTeam} aria-label="Add keyword"><IcPlus /></button>
       </form>
 
       <div className="then-row">
@@ -217,7 +227,7 @@ function SamplesMenu({ samples, samplesError, currentId, onPick, size = '', alig
   return (
     <div className="dd" ref={ref}>
       <button className={`btn ${size}`} onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open}>
-        Samples <IcChevron />
+        Sample <IcChevron />
       </button>
       {open && (
         <div className={`dd-menu${align === 'center' ? ' center' : ''}`} role="menu">
@@ -232,7 +242,6 @@ function SamplesMenu({ samples, samplesError, currentId, onPick, size = '', alig
               {currentId === s.id && <span className="tick"><IcCheck /></span>}
             </button>
           ))}
-          <div className="dd-foot">Loading a sample replaces the rules on the board.</div>
         </div>
       )}
     </div>
@@ -242,8 +251,8 @@ function SamplesMenu({ samples, samplesError, currentId, onPick, size = '', alig
 /* ───────────── Main ───────────── */
 
 export default function RulesBot({ projectName, sessionId, projectId }: RulesBotProps) {
-  // Follows the app-wide theme; the toggle here switches it everywhere
-  const [theme, setTheme] = useAppTheme();
+  // Follows the app-wide theme (the toggle is in the site header)
+  const [theme] = useAppTheme();
 
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [samples, setSamples] = useState<Sample[] | null>(null);
@@ -257,6 +266,7 @@ export default function RulesBot({ projectName, sessionId, projectId }: RulesBot
   const [busy, setBusy] = useState(false);
 
   const [bot, setBot] = useState<Bot | null>(null);
+  const [runNo, setRunNo] = useState(0);
   const [message, setMessage] = useState('');
   const [log, setLog] = useState<LogEntry[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -338,19 +348,16 @@ export default function RulesBot({ projectName, sessionId, projectId }: RulesBot
   const live = !!bot;
   const active = activeRules(rules);
   const keywordCount = rules.reduce((n, r) => n + r.keywords.length, 0);
-  const stale = live && fingerprint(active, reply) !== bot.fp;
-  const latest = log[0]?.result;
+  // Every rule box on the board must be finished (a team and at least one keyword) before the bot can run
+  const unfinished = rules.map((r, i) => ({ r, no: i + 1 })).filter(({ r }) => !r.desk.trim() || !r.keywords.length);
+  const canRun = rules.length > 0 && unfinished.length === 0;
+  const stale = live && (fingerprint(active, reply) !== bot.fp || unfinished.length > 0);
+  const latestMsg = log.find((x): x is MessageEntry => x.kind === 'message');
+  const latest = latestMsg?.result;
+  const messages = log.filter((x) => x.kind === 'message').length;
   const sample = samples?.find((s) => s.id === sampleId) || null;
 
   const patch = (id: string, p: Partial<Rule>) => setRules((rs) => rs.map((r) => (r.id === id ? { ...r, ...p } : r)));
-  const move = (i: number, d: -1 | 1) =>
-    setRules((rs) => {
-      const j = i + d;
-      if (j < 0 || j >= rs.length) return rs;
-      const c = [...rs];
-      [c[i], c[j]] = [c[j], c[i]];
-      return c;
-    });
   const addRule = () => {
     if (rules.length >= MAX_RULES) return;
     const used = new Set(rules.map((r) => r.color));
@@ -360,13 +367,17 @@ export default function RulesBot({ projectName, sessionId, projectId }: RulesBot
     setFocusId(id);
   };
 
+  // Run freezes the rules into the bot. Earlier messages keep the answer they got: running again with changed
+  // rules adds a marker to the history instead of re-routing old messages.
   const run = () => {
     const frozen = active.map((r) => ({ ...r, keywords: [...r.keywords] }));
+    const next = runNo + 1;
     setBot({ rules: frozen, reply, fp: fingerprint(frozen, reply) });
-    setLog((l) => l.map((x) => ({ ...x, result: runRules(x.text, frozen), reply })));
+    setRunNo(next);
+    if (messages > 0) setLog((l) => [{ kind: 'run', key: `run-${next}`, run: next, rules: frozen.length }, ...l]);
     setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 300);
   };
-  const stop = () => { setBot(null); setLog([]); };
+  const stop = () => { setBot(null); setLog([]); setRunNo(0); };
 
   const loadSample = async (s: Sample) => {
     setBusy(true);
@@ -399,8 +410,8 @@ export default function RulesBot({ projectName, sessionId, projectId }: RulesBot
 
   const send = () => {
     const text = message.trim();
-    if (!text || !bot) return;
-    setLog((l) => [{ key: `${Date.now()}-${l.length}`, text, result: runRules(text, bot.rules), reply: bot.reply }, ...l]);
+    if (!text || !bot || stale) return; // the bot only answers with the rules it was last run with, once they match the board
+    setLog((l) => [{ kind: 'message', key: `${Date.now()}-${l.length}`, text, result: runRules(text, bot.rules), reply: bot.reply, rules: bot.rules }, ...l]);
     setMessage('');
     feedRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -408,18 +419,7 @@ export default function RulesBot({ projectName, sessionId, projectId }: RulesBot
   // Highlight the rule that fired for the latest message (only while the bot matches the board)
   const firedId = live && !stale ? latest?.id : null;
   const firedHits = firedId && latest ? latest.hits : [];
-  const otherwiseFired = live && !stale && log.length > 0 && !latest;
-
-  const themeToggle = (
-    <button
-      className="icon-btn"
-      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-      title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-    >
-      {theme === 'dark' ? <IcSun /> : <IcMoon />}
-    </button>
-  );
+  const otherwiseFired = live && !stale && !!latestMsg && !latest;
 
   if (loadState !== 'ready') {
     return (
@@ -445,12 +445,10 @@ export default function RulesBot({ projectName, sessionId, projectId }: RulesBot
         <main className="board">
           <div className="bhead">
             <div className="bhead-t">
-              <div className="eyebrow">Rule-based routing</div>
               <div className="title-row">
                 <h1 className="h1">{projectName || 'Message router'}</h1>
                 {sample && <span className="sample-tag">Sample · {sample.name}</span>}
               </div>
-              <p className="lead">Write rules that route each incoming message to the right team. Rules are checked top to bottom; the first match fires.</p>
             </div>
             <div className="bhead-a">
               {hasRules && (
@@ -460,7 +458,6 @@ export default function RulesBot({ projectName, sessionId, projectId }: RulesBot
                   <button className="btn quiet" onClick={resetBoard} disabled={busy}>Reset</button>
                 </>
               )}
-              {themeToggle}
             </div>
           </div>
 
@@ -488,12 +485,10 @@ export default function RulesBot({ projectName, sessionId, projectId }: RulesBot
                   key={r.id}
                   rule={r}
                   no={i + 1}
-                  total={rules.length}
                   fired={r.id === firedId}
                   hitKeywords={r.id === firedId ? firedHits : []}
                   autoFocus={r.id === focusId}
                   onChange={(p) => patch(r.id, p)}
-                  onMove={(d) => move(i, d)}
                   onDelete={() => setRules((rs) => rs.filter((x) => x.id !== r.id))}
                 />
               ))}
@@ -509,14 +504,18 @@ export default function RulesBot({ projectName, sessionId, projectId }: RulesBot
               <div className="run-actions">
                 <span className="vline" />
                 <span className="meta"><b>{active.length}</b> of {rules.length} rules ready · <b>{keywordCount}</b> keywords</span>
-                <span className={`save-state${saveState === 'error' ? ' err' : ''}`} aria-live="polite">
-                  {saveState === 'saving' ? 'Saving…' : saveState === 'error' ? 'Couldn’t save' : 'Saved'}
-                </span>
+                {saveState === 'error' && <span className="save-state err" aria-live="polite">Couldn’t save your changes</span>}
+                {unfinished.length > 0 && (
+                  <span className="state stale" role="status">
+                    Finish {unfinished.length === 1 ? `rule ${unfinished[0].no}` : `rules ${unfinished.map((u) => u.no).join(', ')}`} or delete {unfinished.length === 1 ? 'it' : 'them'} to run
+                  </span>
+                )}
                 {live && !stale && <span className="state on"><i />Bot is running</span>}
-                {stale && <span className="state stale">Rules changed</span>}
+                {stale && unfinished.length === 0 && <span className="state stale">Rules changed</span>}
                 {live && <button className="btn" onClick={stop}>Stop</button>}
                 {(!live || stale) && (
-                  <button className="btn primary lg" onClick={run} disabled={!active.length}>
+                  <button className="btn primary lg" onClick={run} disabled={!canRun}
+                    title={canRun ? undefined : 'Every rule needs a team name and at least one keyword'}>
                     <IcPlay /> {live ? 'Run again' : 'Run'}
                   </button>
                 )}
@@ -534,7 +533,7 @@ export default function RulesBot({ projectName, sessionId, projectId }: RulesBot
                 <p>{bot.rules.length} rules · first match fires</p>
               </div>
               <span className="spacer" />
-              {stale ? <span className="state stale">Rules changed · Run again</span> : <span className="state on"><i />Live</span>}
+              {stale && <span className="state stale">Rules changed · Run again</span>}
               <button className="mini" onClick={stop} aria-label="Close test panel" title="Stop"><IcClose /></button>
             </div>
 
@@ -545,39 +544,56 @@ export default function RulesBot({ projectName, sessionId, projectId }: RulesBot
                   Type a message below to see which rule routes it.
                 </div>
               )}
-              {log.map((x, i) => (
-                <div key={x.key} className={`res${i === 0 ? ' latest' : ''}`}>
+              {log.map((x) => x.kind === 'run' ? (
+                <div key={x.key} className="run-mark"><span>Rules updated · run {x.run} · {x.rules} rules. Messages below used the earlier rules.</span></div>
+              ) : (
+                <div key={x.key} className={`res${x === latestMsg ? ' latest' : ''}`}>
                   <div className="res-msg">
-                    {markKeywords(x.text, bot.rules).map((s, j) =>
+                    <span className="res-lbl">Customer message</span>
+                    {/* highlighted with the rules this message was routed by, not the current board */}
+                    {markKeywords(x.text, x.rules).map((s, j) =>
                       s.color ? <mark key={j} className="hl" style={cssVar(s.color)}>{s.t}</mark> : <span key={j}>{s.t}</span>
                     )}
                   </div>
-                  <div className="res-out">
-                    {x.result ? (
-                      <>
+                  {x.result ? (
+                    <div className="res-out">
+                      <span className="res-lbl">Routed to</span>
+                      <div className="res-route">
                         <span className="route" style={cssVar(x.result.color)}><span className="dot" />{x.result.desk}</span>
                         <span className="why">Rule {x.result.no} · <code>{x.result.hits.join(', ')}</code></span>
-                        {x.result.others.length > 0 && (
-                          <span className="also">
-                            Also matched {x.result.others.map((o) => `Rule ${o.no} (${o.desk})`).join(', ')}. Rule {x.result.no} came first.
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <span className="route none"><span className="dot" />No rule matched</span>
-                        <span className="reply">Bot replies: “{x.reply}”</span>
-                      </>
-                    )}
-                  </div>
+                      </div>
+                      {x.result.others.length > 0 && (
+                        <span className="also">
+                          Also matched {x.result.others.map((o) => `Rule ${o.no} (${o.desk})`).join(', ')}. Rule {x.result.no} came first.
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="res-out">
+                      <span className="res-lbl">Bot reply</span>
+                      <span className="reply">“{x.reply}”</span>
+                      <span className="nomatch"><IcInfo /> No rule matched</span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
 
             <div className="compose">
+              {stale && (
+                <div className="paused" role="status">
+                  <span>
+                    {unfinished.length > 0
+                      ? `The bot is paused. Finish ${unfinished.length === 1 ? `rule ${unfinished[0].no}` : `rules ${unfinished.map((u) => u.no).join(', ')}`} or delete it, then click Run again.`
+                      : 'The bot is paused: the rules changed. Click Run again to test with the new rules.'}
+                  </span>
+                  <button className="btn primary" onClick={run} disabled={!canRun}><IcPlay /> Run again</button>
+                </div>
+              )}
               <form className="send" onSubmit={(e) => { e.preventDefault(); send(); }}>
-                <input ref={inputRef} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Type a message…" aria-label="Message" />
-                <button className="btn primary lg" type="submit" disabled={!message.trim()}><IcSend /> Route</button>
+                <input ref={inputRef} value={message} onChange={(e) => setMessage(e.target.value)} disabled={stale}
+                  placeholder={stale ? 'Run again to keep testing' : 'Type a message…'} aria-label="Message" />
+                <button className="btn primary lg" type="submit" disabled={!message.trim() || stale}><IcSend /> Route</button>
               </form>
             </div>
           </aside>

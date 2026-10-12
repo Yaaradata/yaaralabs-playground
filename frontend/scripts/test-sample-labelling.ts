@@ -13,6 +13,7 @@ import {
   countByLabel,
   examplesToAdd,
   fillAllLabels,
+  inOtherLabel,
   isValidLabelName,
   labelledCount,
   projectLabelName,
@@ -107,9 +108,19 @@ test('add: idempotent - texts already under the label are skipped, others are ke
   // spacing and case do not make a duplicate new
   const spaced = [{ label: 'Statement request', texts: [`  ${data.queries[1].text.toUpperCase()}  `] }];
   assert.ok(!examplesToAdd(data.queries, { [data.queries[1].id]: 'Statement request' }, spaced).length);
-  // the same text under a different label is a different example
+  // a text already under another label is not copied into a second label, and is reported
   const elsewhere = [{ label: 'Corporate action', texts: [data.queries[1].text] }];
-  assert.equal(examplesToAdd(data.queries, { [data.queries[1].id]: 'Statement request' }, elsewhere).length, 1);
+  const pick = { [data.queries[1].id]: 'Statement request' };
+  assert.equal(examplesToAdd(data.queries, pick, elsewhere).length, 0);
+  assert.deepEqual(inOtherLabel(data.queries, pick, elsewhere), [
+    { text: data.queries[1].text, current: 'Corporate action', chosen: 'Statement request' },
+  ]);
+  assert.deepEqual(inOtherLabel(data.queries, pick, [{ label: 'Statement request', texts: [data.queries[1].text] }]), []);
+});
+
+test('sample data is English only (no Hinglish)', () => {
+  const all = [...data.queries.map((q) => q.text), ...data.test.map((t) => t.text)].join(' ').toLowerCase();
+  for (const w of ['bhej', 'wala', 'paisa', 'aayega', 'nahi', 'dikha', ' hai']) assert.ok(!all.includes(w), w);
 });
 
 test('add: texts with commas stay whole (no splitting on the client)', () => {

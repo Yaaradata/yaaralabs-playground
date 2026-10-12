@@ -148,17 +148,17 @@
     },
     {
       "id": 17,
-      "text": "Statement bhej do please, quarter end wala.",
+      "text": "Statement for quarter end, please.",
       "label": "Statement request",
       "difficulty": "Medium",
-      "note": "Hinglish; 'statement' still gives it away."
+      "note": "Short and informal; 'statement' still gives it away."
     },
     {
       "id": 18,
-      "text": "Paisa kab aayega? Dividend ka credit abhi tak nahi dikha.",
+      "text": "When will the money come in? The dividend credit is still not showing.",
       "label": "Corporate action",
       "difficulty": "Hard",
-      "note": "Hinglish; only 'dividend' helps."
+      "note": "Informal; only 'dividend' helps."
     },
     {
       "id": 19,
@@ -344,7 +344,7 @@
     },
     {
       "id": 10,
-      "text": "Statement wrong hai, dividend missing.",
+      "text": "The statement is wrong and the dividend is missing.",
       "expected": "Complaint / escalation",
       "note": "Mixes two topics; a person should decide"
     },

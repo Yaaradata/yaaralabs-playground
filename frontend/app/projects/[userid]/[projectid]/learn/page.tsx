@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Header from '../../../../../components/Header';
@@ -786,6 +786,16 @@ export default function LearnPage() {
     }
   };
 
+  // "3. Test" on the project page opens this page at #test: scroll there once the model is shown
+  const scrolledToTest = useRef(false);
+  useEffect(() => {
+    if (scrolledToTest.current || window.location.hash !== '#test' || !trainedModel || isTraining) return;
+    const el = document.getElementById('test');
+    if (!el) return;
+    scrolledToTest.current = true;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [trainedModel, isTraining]);
+
   const handleGoToTrain = () => {
     window.location.href = `/projects/${urlUserId}/${urlProjectId}/train`;
   };
@@ -926,6 +936,7 @@ export default function LearnPage() {
     if (!response.ok) throw new Error(`Prediction failed (${response.status})`);
     const data: PredictionResponse = await response.json();
     if (!data.success || !data.label || typeof data.confidence !== 'number') throw new Error('Invalid prediction');
+    console.log('🔮 Sample test prediction:', { text, label: data.label, confidence: data.confidence, alternatives: data.alternatives });
     return { label: data.label, confidence: Math.round(data.confidence * 100) / 100 };
   };
 
@@ -1419,7 +1430,7 @@ export default function LearnPage() {
                     onClick={handleGoToTrain}
                     className="text-pink-brand hover:text-pink-brand/80 underline font-medium"
                   >
-                    Train
+                    {selectedProject?.type === 'text-recognition' ? 'Data' : 'Train'}
                   </button>
                   {' '}page if you want to collect some more examples first.)
                 </p>
@@ -1499,7 +1510,7 @@ export default function LearnPage() {
                    </div>
                  )}
                                  {/* Model Testing Section */}
-                 <div className="bg-canvas border border-magenta-brand/20 rounded-lg p-6">
+                 <div id="test" className="bg-canvas border border-magenta-brand/20 rounded-lg p-6 scroll-mt-24">
                    {selectedProject?.type === 'image-recognition' ? (
                      // Image Recognition Interface
                      <>
@@ -2011,7 +2022,7 @@ export default function LearnPage() {
                           onClick={handleGoToTrain}
                           className="mt-3 bg-purple-brand hover:bg-purple-brand/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300"
                         >
-                          Go to Train Page
+                          {selectedProject?.type === 'text-recognition' ? 'Go to Data Page' : 'Go to Train Page'}
                         </button>
                       </div>
                     </div>

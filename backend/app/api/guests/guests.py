@@ -19,7 +19,6 @@ from ...services.rule_based_process_service import RuleBasedProcessService
 from ...services.scratch_project_service import ScratchProjectService, EDITOR_RULES_BOT
 from ...services.rules_bot_service import RulesBotService
 from ...services.confusion_matrix_service import ConfusionMatrixService
-from ...services.text_classification_service import TextClassificationService
 from ...services.rag_chatbot_service import RagChatbotService
 from ...services.ai_agent_service import AiAgentService
 from ...services.exercises_service import ExercisesService
@@ -134,7 +133,7 @@ async def fix_project_types(session_id: str):
         for doc in docs:
             try:
                 data = doc.to_dict()
-                if 'type' in data and data['type'] not in ['text-recognition', 'image-recognition', 'image-recognition-teachable-machine', 'pose-recognition-teachable-machine', 'classification', 'regression', 'custom', 'rule-based-process', 'live-object-detection', 'exercises', 'confusion-matrix', 'text-classification', 'rag-chatbot', 'ai-agent']:
+                if 'type' in data and data['type'] not in ['text-recognition', 'image-recognition', 'image-recognition-teachable-machine', 'pose-recognition-teachable-machine', 'classification', 'regression', 'custom', 'rule-based-process', 'live-object-detection', 'exercises', 'confusion-matrix', 'rag-chatbot', 'ai-agent']:
                     # Fix invalid type
                     old_type = data['type']
                     data['type'] = 'text-recognition'  # Default to text-recognition
@@ -502,12 +501,6 @@ async def delete_guest_project(
                 ConfusionMatrixService().delete(project_id, session_id)
             except Exception as e:
                 logger.warning("Confusion matrix cleanup failed for %s: %s", project_id, e)
-
-        if project.type == ProjectType.TEXT_CLASSIFICATION or str(project.type) == "text-classification":
-            try:
-                TextClassificationService().delete(project_id, session_id)
-            except Exception as e:
-                logger.warning("Text classification cleanup failed for %s: %s", project_id, e)
 
         if project.type == ProjectType.RAG_CHATBOT or str(project.type) == "rag-chatbot":
             try:
@@ -2854,9 +2847,7 @@ async def delete_guest_session(
             for p in projects:
                 kind = str(getattr(p.type, "value", p.type))
                 try:
-                    if kind == "text-classification":
-                        TextClassificationService().delete(p.id, session_id)
-                    elif kind == "confusion-matrix":
+                    if kind == "confusion-matrix":
                         ConfusionMatrixService().delete(p.id, session_id)
                     elif kind == "rag-chatbot":
                         RagChatbotService().delete(p.id, session_id)

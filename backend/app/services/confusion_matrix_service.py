@@ -28,12 +28,10 @@ from google.cloud import firestore
 
 from ..config import gcp_clients
 from ..models import CM_THRESHOLDS, CMParams
-from . import cm_datasets, cm_trainer, tc_datasets
+from . import cm_datasets, cm_trainer
 from .cm_datasets import DEFAULT_TARGETS, MIN_PER_LABEL, CMDataset
 from .exercises_service import COLLECTION as EXERCISES_COLLECTION
 from .exercises_service import decode_from_firestore
-from .text_classification_service import PROJECTS as TC_PROJECTS
-from .text_classification_service import TC_SEED
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +39,6 @@ PROJECTS = "confusion_matrix_projects"
 RUNS = "runs"
 SOURCES = "sources"
 TEXTREC = "text-recognition"
-TEXTCLASS = "text-classification"
 PRETRAINED = "cm_pretrained"
 MODELS = "cm_models"
 SCHEMA_VERSION = 2
@@ -180,26 +177,6 @@ def _textrec_summary(project_id: str, project: Dict[str, Any]) -> Dict[str, Any]
     return item
 
 
-def _textclass_summary(project_id: str, name: str, picked) -> Optional[Dict[str, Any]]:
-    """A Text Classification project's model as an Ex 2 run. Ex 3 retrains it with the same data,
-    split seed and settings (cm_trainer, TC_SEED), so its first matrix matches the Ex 2 scorecard."""
-    run, current = picked
-    shown = run or current
-    if not shown:
-        return None
-    pack = tc_datasets.find_pack(shown["datasetId"]) or {}
-    item = {"kind": "textclass", "projectId": project_id, "projectName": name, "datasetId": shown["datasetId"],
-            "datasetName": pack.get("name") or shown["datasetId"], "datasetKey": shown["datasetKey"],
-            "classes": list(shown["classes"]), "labels": list(shown["classes"]),
-            "labelCounts": {}, "nExamples": 0, "modelType": "TF-IDF + logistic regression",
-            "params": CMParams(**shown["params"]).model_dump(), "accuracy": shown["m"]["accuracy"],
-            "nTest": shown["m"]["n"], "usable": bool(run), "reason": "", "updatedAt": shown["createdAt"]}
-    if not run:
-        item["reason"] = ("Exercise 3 opens TF-IDF models. Train this project once with TF-IDF words "
-                          "(step 3) and open it again.")
-    return item
-
-
 class ConfusionMatrixService:
     def _db(self):
         return gcp_clients.get_firestore_client()
@@ -231,8 +208,6 @@ class ConfusionMatrixService:
             ex2 = doc["ex2"]
             if ex2.get("kind") == "textrec":
                 return self._textrec_dataset(doc["project_id"], ex2["datasetKey"])
-            if ex2.get("kind") == "textclass":
-                return tc_datasets.load_by_key(ex2["datasetKey"])
             return cm_datasets.load_ex2(ex2["datasetId"], ex2["classes"][0])
         return None
 
@@ -285,35 +260,8 @@ class ConfusionMatrixService:
     # ── Ex 2 runs in this session ──
 
     def list_ex2_runs(self, session_id: str) -> List[Dict[str, Any]]:
-        """Every Ex 2 model in this workspace: Text Classification projects (the Day 1 Ex 2) first,
-        then trained Text Recognition projects, then Exercises-lab runs."""
-        return self._textclass_runs(session_id) + self._textrec_runs(session_id) + self._exercises_runs(session_id)
-
-    def _textclass_runs(self, session_id: str) -> List[Dict[str, Any]]:
-        query = self._db().collection("projects").where(filter=firestore.FieldFilter("student_id", "==", session_id))
-        out = []
-        for snap in query.stream():
-            project = snap.to_dict() or {}
-            if project.get("type") != TEXTCLASS:
-                continue
-            item = _textclass_summary(snap.id, project.get("name") or "Text Classification", self._textclass_pick(snap.id))
-            if item:
-                out.append(item)
-        out.sort(key=lambda r: r["updatedAt"] or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
-        return out
-
-    def _textclass_pick(self, tc_project_id: str) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
-        """(run Ex 3 opens, open run): the open run when it is TF-IDF, else the latest TF-IDF run."""
-        tc = self._db().collection(TC_PROJECTS).document(tc_project_id)
-        doc = tc.get()
-        if not doc.exists:
-            return None, None
-        selected = (doc.to_dict().get("state") or {}).get("selectedRunId")
-        runs = sorted((r.to_dict() for r in tc.collection(RUNS).stream()), key=lambda r: r["createdAt"])
-        current = next((r for r in runs if r["id"] == selected), runs[-1] if runs else None)
-        if current and current.get("representation") == "tfidf":
-            return current, current
-        return next((r for r in reversed(runs) if r.get("representation") == "tfidf"), None), current
+        """Every Ex 2 model in this workspace: trained Text Recognition projects first, then Exercises-lab runs."""
+        return self._textrec_runs(session_id) + self._exercises_runs(session_id)
 
     def _textrec_runs(self, session_id: str) -> List[Dict[str, Any]]:
         # One equality filter, so no composite index is needed; type and status are checked here
@@ -533,17 +481,6 @@ class ConfusionMatrixService:
             raise CMNotFound("That Exercise 2 model was not found in your workspace.")
         if project.get("type") == TEXTREC:
             return self._textrec_snapshot(project_id, session_id, project, ex2_project_id, target)
-        if project.get("type") == TEXTCLASS:
-            item = _textclass_summary(ex2_project_id, project.get("name") or "Text Classification",
-                                      self._textclass_pick(ex2_project_id))
-            if not item:
-                raise CMError("Train this Text Classification project first.")
-            if not item["usable"]:
-                raise CMError(item["reason"])
-            return {"kind": "textclass", "projectId": ex2_project_id, "projectName": item["projectName"],
-                    "datasetId": item["datasetId"], "datasetName": item["datasetName"], "datasetKey": item["datasetKey"],
-                    "classes": item["classes"], "labels": item["classes"], "params": item["params"],
-                    "seed": TC_SEED, "textPrep": None, "trainedAt": item["updatedAt"]}
         run = next((r for r in self._exercises_runs(session_id) if r["projectId"] == ex2_project_id), None)
         if not run:
             raise CMNotFound("That Exercise 2 run was not found in your workspace.")
@@ -629,8 +566,6 @@ class ConfusionMatrixService:
             return cm_datasets.load_sample(rest)
         if kind == "tr":
             return self._textrec_dataset(doc["project_id"], key)
-        if kind == "tc":
-            return tc_datasets.load_by_key(key)
         dataset_id, _, target = rest.partition(":")
         return cm_datasets.load_ex2(dataset_id, target)
 

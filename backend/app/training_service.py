@@ -449,7 +449,7 @@ class EnhancedLogisticRegressionTrainer:
             return {
                 'label': prediction,
                 'confidence': round(confidence, 2),
-                'alternatives': alternatives[:2]  # Top 2 alternatives
+                'alternatives': alternatives  # every other label, highest first
             }
             
         except Exception as e:
@@ -523,7 +523,7 @@ class EnhancedLogisticRegressionTrainer:
             return {
                 'label': prediction,
                 'confidence': round(confidence, 2),
-                'alternatives': alternatives[:2]  # Top 2 alternatives
+                'alternatives': alternatives  # every other label, highest first
             }
             
         except Exception as e:
@@ -1077,7 +1077,7 @@ class DistilBERTTrainer:
                 return {
                     'label': predicted_label,
                     'confidence': round(confidence, 2),
-                    'alternatives': alternatives[:2]  # Top 2 alternatives
+                    'alternatives': alternatives  # every other label, highest first
                 }
                 
         except Exception as e:

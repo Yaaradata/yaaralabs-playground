@@ -24,7 +24,7 @@ class ProjectService:
     def _deserialize_project_data(self, data: dict) -> dict:
         """Helper method to properly deserialize nested objects from Firestore"""
         # Handle invalid project type enum values
-        if 'type' in data and data['type'] not in ['text-recognition', 'image-recognition', 'image-recognition-teachable-machine', 'pose-recognition-teachable-machine', 'classification', 'regression', 'custom', 'rule-based-process', 'live-object-detection', 'exercises', 'confusion-matrix', 'text-classification', 'rag-chatbot', 'ai-agent']:
+        if 'type' in data and data['type'] not in ['text-recognition', 'image-recognition', 'image-recognition-teachable-machine', 'pose-recognition-teachable-machine', 'classification', 'regression', 'custom', 'rule-based-process', 'live-object-detection', 'exercises', 'confusion-matrix', 'rag-chatbot', 'ai-agent']:
             logger.warning(f"Invalid project type '{data['type']}' found, defaulting to 'text-recognition'")
             data['type'] = 'text-recognition'
         

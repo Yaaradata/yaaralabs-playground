@@ -87,27 +87,47 @@ export interface NewExample {
 
 const norm = (text: string) => text.toLowerCase().split(/\s+/).filter(Boolean).join(' ');
 
+/** Where each text already is in the project: normalised text -> label name. */
+function placed(existing: { label: string; texts: string[] }[]): Map<string, string> {
+  const at = new Map<string, string>();
+  for (const l of existing) for (const t of l.texts) if (!at.has(norm(t))) at.set(norm(t), l.label);
+  return at;
+}
+
 /**
- * Examples to add for the labelled rows, skipping any text already under that label in the project
- * (so grouping twice adds nothing). Unlabelled rows are skipped. Never removes anything.
+ * Examples to add for the labelled rows. A text belongs to one label only, so any text already in
+ * the project (under any label) is skipped: grouping twice adds nothing, and relabelling a query
+ * never copies it into a second label. Unlabelled rows are skipped. Never removes anything.
  */
 export function examplesToAdd(
   queries: SampleQuery[],
   choices: Choices,
   existing: { label: string; texts: string[] }[],
 ): NewExample[] {
-  const have = new Set(existing.flatMap((l) => l.texts.map((t) => `${l.label}\u0000${norm(t)}`)));
+  const at = placed(existing);
   const out: NewExample[] = [];
   for (const q of queries) {
     const chosen = choices[q.id];
-    if (!chosen) continue;
+    if (!chosen || at.has(norm(q.text))) continue;
     const label = projectLabelName(chosen);
-    const key = `${label}\u0000${norm(q.text)}`;
-    if (have.has(key)) continue;
-    have.add(key);
+    at.set(norm(q.text), label);
     out.push({ label, text: q.text.trim() });
   }
   return out;
+}
+
+/** Labelled rows whose text is already in the project under a different label than the one chosen. */
+export function inOtherLabel(
+  queries: SampleQuery[],
+  choices: Choices,
+  existing: { label: string; texts: string[] }[],
+): { text: string; current: string; chosen: string }[] {
+  const at = placed(existing);
+  return queries.flatMap((q) => {
+    const chosen = choices[q.id] ? projectLabelName(choices[q.id]) : '';
+    const current = at.get(norm(q.text));
+    return chosen && current && current !== chosen ? [{ text: q.text, current, chosen }] : [];
+  });
 }
 
 /** Split into request-sized batches (the examples endpoint takes at most 50 at a time). */

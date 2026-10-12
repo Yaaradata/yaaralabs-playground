@@ -13,6 +13,7 @@ import {
   countByLabel,
   examplesToAdd,
   fillAllLabels,
+  inOtherLabel,
   labelledCount,
   validateDataset,
   type Choices,
@@ -158,6 +159,12 @@ export default function SampleLabeller({ source, draftKey, existing, onClose, on
     setNotice(null);
   };
 
+  const clearLabels = () => {
+    setChoices({});
+    writeDraft(draftKey, {});
+    setNotice(null);
+  };
+
   const counts = useMemo(() => (data ? countByLabel(data.labels, choices) : {}), [data, choices]);
   const done = data ? labelledCount(choices) : 0;
   const ready = !!data && canGroup(data.labels, choices);
@@ -174,8 +181,13 @@ export default function SampleLabeller({ source, draftKey, existing, onClose, on
   const group = async () => {
     if (!data || !ready) return;
     const items = examplesToAdd(data.queries, choices, existing);
+    const moved = inOtherLabel(data.queries, choices, existing);
     if (items.length === 0) {
-      setNotice('All of these are already in your project. Nothing new to add.');
+      setNotice(
+        moved.length
+          ? `Nothing new to add. ${moved.length} ${moved.length === 1 ? 'query is' : 'queries are'} already under another label in your project: ${moved.map((m) => `"${m.text}" (in ${m.current})`).join(', ')}. To move ${moved.length === 1 ? 'it' : 'them'}, delete ${moved.length === 1 ? 'it' : 'them'} from that label first.`
+          : 'All of these are already in your project. Nothing new to add.',
+      );
       return;
     }
     setBusy(true);
@@ -232,6 +244,16 @@ export default function SampleLabeller({ source, draftKey, existing, onClose, on
                 >
                   Fill labels
                 </button>
+                {done > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearLabels}
+                    disabled={busy}
+                    className="px-3 py-1.5 rounded-lg border border-magenta-brand/50 text-fg hover:bg-purple-brand/10 text-sm font-medium disabled:opacity-40"
+                  >
+                    Clear all
+                  </button>
+                )}
                 <label className="text-sm text-fg/70 inline-flex items-center gap-2">
                   Show
                   <select

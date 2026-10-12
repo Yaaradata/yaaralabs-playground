@@ -21,7 +21,6 @@ import remarkGfm from 'remark-gfm'
 import { TeachYourAgent } from '../../../../components/TeachYourAgent'
 import RulesBot from '../../../../components/RulesBot'
 import ConfusionMatrixLab from '../../../../components/ConfusionMatrix'
-import TextClassifierLab from '../../../../components/TextClassifier'
 import RagChatbotLab from '../../../../components/RagChatbot'
 import AiAgentLab from '../../../../components/AiAgent'
 import Exercises from '../../../../components/Exercises'
@@ -1721,10 +1720,9 @@ export default function ProjectDetailsPage() {
   const isRbp = selectedProject.type === 'rule-based-process';
   const isExercises = selectedProject.type === 'exercises';
   const isConfusionMatrix = selectedProject.type === 'confusion-matrix';
-  const isTextClassification = selectedProject.type === 'text-classification';
   const isRagChatbot = selectedProject.type === 'rag-chatbot';
   const isAiAgent = selectedProject.type === 'ai-agent';
-  const studioHeader = isRbp || isExercises || isConfusionMatrix || isTextClassification || isRagChatbot || isAiAgent;
+  const studioHeader = isRbp || isExercises || isConfusionMatrix || isRagChatbot || isAiAgent;
 
   return (
     <div className="h-screen overflow-hidden flex flex-col bg-canvas text-fg">
@@ -3897,12 +3895,6 @@ export default function ProjectDetailsPage() {
               sessionId={actualSessionId}
               projectId={selectedProject.id}
             />
-          ) : selectedProject.type === 'text-classification' ? (
-            <TextClassifierLab
-              projectName={selectedProject.name}
-              sessionId={actualSessionId}
-              projectId={selectedProject.id}
-            />
           ) : selectedProject.type === 'confusion-matrix' ? (
             <ConfusionMatrixLab
               projectName={selectedProject.name}
@@ -3961,7 +3953,7 @@ export default function ProjectDetailsPage() {
                     <span>{selectedProject.name}</span>
             </h1>
           </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                <div className={`grid grid-cols-1 gap-8 mx-auto ${selectedProject.type === 'text-recognition' ? 'md:grid-cols-3 max-w-6xl' : 'md:grid-cols-2 max-w-4xl'}`}>
             {/* Train Card */}
             <div className="bg-canvas border border-magenta-brand/20 rounded-xl p-8 text-center hover:bg-purple-brand/5 transition-all duration-300 flex flex-col">
               <h2 className="text-2xl md:text-3xl font-bold text-blue-400 mb-6">
@@ -3997,6 +3989,26 @@ export default function ProjectDetailsPage() {
                 Train the AI
               </button>
             </div>
+
+            {/* Test Card (Text Recognition) */}
+            {selectedProject.type === 'text-recognition' && (
+              <div className="bg-canvas border border-magenta-brand/20 rounded-xl p-8 text-center hover:bg-purple-brand/5 transition-all duration-300 flex flex-col">
+                <h2 className="text-2xl md:text-3xl font-bold text-pink-brand mb-6">
+                  3. Test
+                </h2>
+                <p className="text-fg mb-8 text-sm md:text-base leading-relaxed flex-grow">
+                  Try new text on your trained model and see what it predicts
+                </p>
+                <button
+                  onClick={() => {
+                    window.location.href = `/projects/${urlUserId}/${urlProjectId}/learn#test`;
+                  }}
+                  className="w-full bg-purple-brand hover:bg-purple-brand/90 text-white py-3 px-6 rounded-lg font-medium transition-all duration-300"
+                >
+                  Test
+                </button>
+              </div>
+            )}
           </div>
         </div>
             </div>
