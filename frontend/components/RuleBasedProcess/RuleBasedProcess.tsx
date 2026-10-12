@@ -25,6 +25,17 @@ type RuleBasedProcessProps = {
   extraPanel?: ReactNode;
   /** Optional host (e.g. exercise shell header) to show Run / toolbar controls. */
   toolbarHostRef?: RefObject<HTMLElement | null>;
+  /** Text Recognition "Use the AI": the trained model behind the Machine Learning blocks. */
+  ml?: MlOptions;
+};
+
+export type MlOptions = {
+  kind?: 'text' | 'image';
+  trained: boolean;
+  labels: string[];
+  recognise?: (text: string) => Promise<{ label: string; confidence: number }>;
+  /** Image models: the host lets the learner pick an image; null when they cancel. */
+  recogniseImage?: () => Promise<{ label: string; confidence: number; name?: string } | null>;
 };
 
 type RbpApi = {
@@ -42,11 +53,15 @@ export default function RuleBasedProcess({
   extraTabs,
   extraPanel,
   toolbarHostRef,
+  ml,
 }: RuleBasedProcessProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<RbpApi | null>(null);
   const askModelRef = useRef(askModelOverride);
   askModelRef.current = askModelOverride;
+  // read once at mount; the host remounts (key) when the model becomes available
+  const mlRef = useRef(ml);
+  mlRef.current = ml;
   const toolbarHostRefStable = useRef(toolbarHostRef);
   toolbarHostRefStable.current = toolbarHostRef;
   const extraSlotsRef = useRef(Boolean(extraTabs || extraPanel));
@@ -261,12 +276,14 @@ export default function RuleBasedProcess({
               }
             : undefined,
         onReset: persistLocal || persistCloud ? () => resetWorkspace() : undefined,
+        ml: mlRef.current,
       } as {
         initialState?: Record<string, unknown>;
         toolbarHost?: HTMLElement | null;
         onSave?: (state: Record<string, unknown>) => void;
         askModel?: (prompt: string) => Promise<string>;
         onReset?: () => Promise<Record<string, unknown> | null | undefined>;
+        ml?: MlOptions;
       }) as RbpApi;
       apiRef.current = api;
 

@@ -15,7 +15,7 @@ import {
   isProjectId
 } from '../../../../../lib/session-utils';
 import { cleanupSessionWithReason, SessionCleanupReason } from '../../../../../lib/session-cleanup';
-import SampleTestMessages, { type Prediction } from '../../../../../components/SampleLabelling/SampleTestMessages';
+import SampleTestMessages, { useSampleTestSet, type Prediction } from '../../../../../components/SampleLabelling/SampleTestMessages';
 import SampleImageTest, { type ImagePrediction } from '../../../../../components/SampleImages/SampleImageTest';
 import { labelNamesKey } from '../../../../../components/SampleImages/sampleImages';
 
@@ -925,10 +925,14 @@ export default function LearnPage() {
     }
   };
 
+  // sample test messages ("Test data"), for projects built from the sample labels
+  const sampleTestSet = useSampleTestSet(isTextProject ? trainingStats.labelBreakdown.map((l) => l.name) : []);
+  const [showTestData, setShowTestData] = useState(false);
+
   const modelSelector = isTextProject ? (
-    <div className="flex flex-col items-end gap-1 w-full sm:w-auto shrink-0">
-      <label htmlFor="text-model-select" className="text-fg/70 text-xs text-right whitespace-nowrap">
-        Choose the machine learning model to train
+    <div className="flex items-center gap-2">
+      <label htmlFor="text-model-select" className="text-fg/70 text-sm whitespace-nowrap">
+        Model to train
       </label>
       <select
         id="text-model-select"
@@ -1409,43 +1413,36 @@ export default function LearnPage() {
     <div className="min-h-screen bg-canvas text-fg">
       <Header />
 
-      <main className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
+      <main className="pt-[88px] pb-6 px-4 sm:px-6 lg:px-8">
         <div>
-          {/* Back to Project Link */}
-          <div className="mb-6">
+          {/* Back to Project + title, one row */}
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 mb-4">
             <Link
               href={`/projects/${urlUserId}/${urlProjectId}`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-fg/70 hover:text-white hover:bg-purple-brand/10 rounded-lg transition-all duration-300 text-xs"
+              className="justify-self-start inline-flex items-center gap-1.5 px-3 py-1.5 text-fg/70 hover:text-white hover:bg-purple-brand/10 rounded-lg transition-all duration-300 text-xs"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
               Back to project
             </Link>
-          </div>
-
-          {/* Main Title */}
-          <div className="text-center mb-12">
-            <h1 className="text-3xl md:text-4xl font-bold mb-3">
+            <h1 className="text-2xl md:text-3xl font-bold text-center whitespace-nowrap">
               <span className="text-fg">Machine learning </span>
               <span className="text-pink-brand">models</span>
             </h1>
+            <span />
           </div>
 
           {/* Two Column Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             {/* Left Box: What have you done? */}
-            <div className="bg-canvas border border-magenta-brand/20 rounded-xl p-8 shadow-lg">
-              <h2 className="text-2xl md:text-3xl font-bold text-fg mb-6 text-left">
+            <div className="bg-canvas border border-magenta-brand/20 rounded-xl px-5 py-4 shadow-lg">
+              <h2 className="text-lg md:text-xl font-bold text-fg mb-2 text-left">
                 What have you done?
               </h2>
-              <div className="text-fg space-y-4">
-                <p className="text-base leading-relaxed">
-                  You have collected examples of text for a computer to use to recognise different types of text.
-                </p>
-                <p className="text-base font-medium">You&apos;ve collected:</p>
+              <div className="text-fg space-y-2 text-sm">
                 {trainingStats.labelBreakdown.length > 0 ? (
-                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
                     {trainingStats.labelBreakdown.map((label, index) => (
                       <li key={index} className="flex items-center gap-2 min-w-0">
                         <span className="w-1.5 h-1.5 bg-purple-brand rounded-full flex-shrink-0"></span>
@@ -1456,7 +1453,7 @@ export default function LearnPage() {
                 ) : (
                   <p className="text-fg/50 italic">No examples collected yet</p>
                 )}
-                <div className="pt-4 border-t border-magenta-brand/20">
+                <div className="pt-1">
                   <p className="text-sm text-fg/70">
                     <strong>Total:</strong> {trainingStats.totalExamples} examples across {trainingStats.totalLabels} labels
                   </p>
@@ -1465,39 +1462,19 @@ export default function LearnPage() {
             </div>
 
             {/* Right Box: What's next? */}
-            <div className="bg-canvas border border-magenta-brand/20 rounded-xl p-8 shadow-lg">
-              <h2 className="text-2xl md:text-3xl font-bold text-fg mb-6 text-left">
+            <div className="bg-canvas border border-magenta-brand/20 rounded-xl px-5 py-4 shadow-lg">
+              <h2 className="text-lg md:text-xl font-bold text-fg mb-2 text-left">
                 What&apos;s next?
               </h2>
-              <div className="text-fg space-y-4">
-                <p className="text-base font-medium">
-                  Ready to start the computer&apos;s training?
-                </p>
-                <p className="text-base leading-relaxed">
-                  Click the button below to start training a machine learning model using the examples you have collected so far
-                </p>
-                <p className="text-sm text-fg/70">
-                  (Or go back to the{' '}
-                  <button
-                    onClick={handleGoToTrain}
-                    className="text-pink-brand hover:text-pink-brand/80 underline font-medium"
-                  >
-                    Data
-                  </button>
-                  {' '}page if you want to collect some more examples first.)
-                </p>
+              <div className="text-fg space-y-3 text-sm">
+                <p>Train a model on your examples, then test it below.</p>
+                {!isTraining && !isInitializing && modelSelector}
               </div>
             </div>
           </div>
 
-                                {/* Bottom Section: Info from training computer */}
-            <div className="bg-canvas border border-magenta-brand/20 rounded-xl px-6 py-5 shadow-lg">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                <h3 className="text-xl font-semibold text-fg">
-                  Info from training computer:
-                </h3>
-                {!isTraining && !isInitializing && modelSelector}
-              </div>
+            {/* Bottom section: training state, the test card, model details */}
+            <div>
             
                          {/* Loading State */}
              {isInitializing && (
@@ -1554,7 +1531,7 @@ export default function LearnPage() {
 
                          {/* Trained Model Interface */}
              {trainedModel && !isTraining && (
-               <div className="space-y-6">
+               <div className="space-y-4">
                  {/* Status indicator */}
                  {isStatusLoading && (
                    <div className="text-center mb-4">
@@ -1562,7 +1539,7 @@ export default function LearnPage() {
                    </div>
                  )}
                                  {/* Model Testing Section */}
-                 <div id="test" className="bg-canvas border border-magenta-brand/20 rounded-lg p-6 scroll-mt-24">
+                 <div id="test" className="bg-canvas border border-magenta-brand/20 rounded-xl px-5 py-4 shadow-lg scroll-mt-24">
                    {selectedProject?.type === 'image-recognition' ? (
                      // Image Recognition Interface
                      <>
@@ -1870,10 +1847,10 @@ export default function LearnPage() {
                    ) : (
                      // Text Recognition Interface
                      <>
-                       <h4 className="text-lg font-semibold text-fg mb-4">
-                         Try putting in some text to see how it is recognised based on your training.
+                       <h4 className="text-base font-semibold text-fg mb-2">
+                         Try some text and see how your model recognises it.
                        </h4>
-                       <div className="flex gap-4 items-end mb-4">
+                       <div className="flex gap-3 items-end">
                          <div className="flex-1">
                            <input
                              type="text"
@@ -1923,12 +1900,6 @@ export default function LearnPage() {
                          </div>
                        )}
 
-                       {trainedModel.status === 'available' && (
-                         <SampleTestMessages
-                           projectLabels={trainingStats.labelBreakdown.map((l) => l.name)}
-                           predict={predictText}
-                         />
-                       )}
                      </>
                    )}
                 </div>
@@ -1996,48 +1967,26 @@ export default function LearnPage() {
                 </div>
                 )}
 
-                {/* Model Information */}
-                <div className="bg-canvas border border-magenta-brand/20 rounded-lg p-6">
-                  <div className="space-y-3 mb-6">
-                    <div className="flex justify-between">
-                      <span className="text-fg/70">Model started training at:</span>
-                      <span className="text-fg font-medium">
-                        {trainedModel.startedAt.toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-fg/70">Current model status:</span>
-                      <span className="text-pink-brand font-medium">{trainedModel.status}</span>
-                    </div>
+                {/* Model details: one line, then the actions */}
+                <div className="px-1">
+                  <p className="text-sm text-fg/60 mb-3 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="inline-flex items-center gap-1.5 text-fg font-medium">
+                      <span className={`w-2 h-2 rounded-full ${trainedModel.status === 'available' ? 'bg-[var(--success)]' : 'bg-pink-brand'}`} aria-hidden="true" />
+                      {trainedModel.status === 'available' ? 'Model ready' : `Model ${trainedModel.status}`}
+                    </span>
                     {isTextProject && trainedModelType && (
-                      <div className="flex justify-between">
-                        <span className="text-fg/70">Model used:</span>
-                        <span className="text-fg font-medium">{modelTypeLabel(trainedModelType)}</span>
-                      </div>
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span>{modelTypeLabel(trainedModelType)}</span>
+                      </>
                     )}
-                    <div className="flex justify-between">
-                      <span className="text-fg/70">Model will automatically be deleted after:</span>
-                      <span className="text-fg font-medium">
-                        {trainedModel.expiresAt.toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </span>
-                    </div>
-                  </div>
+                    <span aria-hidden="true">·</span>
+                    <span>Trained {trainedModel.startedAt.toLocaleString('en-US', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>Deleted after {trainedModel.expiresAt.toLocaleString('en-US', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                  </p>
 
-                  <div className="flex gap-4">
+                  <div className="flex flex-wrap gap-3">
                                          <button
                        onClick={handleDeleteModel}
                        disabled={isDeletingModel || !trainedModel}
@@ -2058,7 +2007,32 @@ export default function LearnPage() {
                     >
                       Train new machine learning model
                     </button>
+                    {isTextProject && sampleTestSet && trainedModel.status === 'available' && (
+                      <button
+                        onClick={() => setShowTestData((v) => !v)}
+                        aria-expanded={showTestData}
+                        className={showTestData
+                          ? 'border border-magenta-brand/50 text-fg hover:bg-purple-brand/10 px-6 py-3 rounded-lg font-medium transition-colors duration-300'
+                          : 'bg-pink-brand hover:bg-pink-brand/90 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-300'}
+                      >
+                        {showTestData ? 'Hide test data' : 'Test data'}
+                      </button>
+                    )}
                   </div>
+                  {isTextProject && sampleTestSet && showTestData && trainedModel.status === 'available' && (
+                    <div
+                      className="mt-5 scroll-mt-24"
+                      ref={(el) => {
+                        // bring the table into view when it opens
+                        if (el && !el.dataset.shown) {
+                          el.dataset.shown = '1';
+                          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }}
+                    >
+                      <SampleTestMessages data={sampleTestSet} predict={predictText} />
+                    </div>
+                  )}
                 </div>
               </div>
             )}

@@ -1803,7 +1803,6 @@ export default function TrainPage() {
               existing={images}
               onAdd={uploadSampleImages}
               onClose={() => setShowSampleImages(false)}
-              onTrain={() => { window.location.href = `/projects/${urlUserId}/${urlProjectId}/learn`; }}
             />
           )}
 

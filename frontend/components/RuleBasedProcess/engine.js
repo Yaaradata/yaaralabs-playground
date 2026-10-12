@@ -24,6 +24,20 @@ export function mountRuleBasedProcess(root, options) {
     }
     var mk = function (op, o) { return BL.make(op, o); };
     var V = function (n) { return mk("var_get", { f: { VAR: n } }); };
+
+    // Machine Learning mode (Text Recognition "Use the AI"): options.ml = { trained, labels, recognise }.
+    // The Machine Learning blocks appear only once the model is trained; the LLM "Model" preset and
+    // tab are left out because this page has no language model behind it.
+    var ML = options.ml || null;
+    var mlImage = !!(ML && ML.kind === "image");
+    var mlReady = !!(ML && ML.trained && ML.labels && ML.labels.length &&
+      typeof (mlImage ? ML.recogniseImage : ML.recognise) === "function");
+    var mlLabels = mlReady ? ML.labels.map(String) : [];
+    function hiddenCat(cat) {
+      if (cat === "ml") return !mlReady;
+      if (cat === "model") return !!ML;
+      return false;
+    }
   
     // ------------------------------------------------------------------ concepts
     function grade() {
@@ -161,6 +175,59 @@ export function mountRuleBasedProcess(root, options) {
       },
     ];
 
+    if (ML) {
+      PRESETS = PRESETS.filter(function (p) { return p.id !== "model"; });
+    }
+    if (mlReady) {
+      if (mlImage) PRESETS.unshift({
+        id: "ml_image", title: "Image recognition",
+        vars: ["Label"],
+        answer: { type: "text" },
+        brief: "Use your trained model.\n\n" +
+               "Press Run and choose an image (upload, webcam or a test image). " +
+               "The model recognises it, then Sparky says what it found.\n\n" +
+               "Your labels: " + mlLabels.join(", ") + "\n\n" +
+               "Try: if recognised label = " + mlLabels[0] + " then say something special.",
+        tests: [],
+        solution: function () {
+          return [
+            mk("when_flag"),
+            mk("ml_recognise_image"),
+            mk("set_var", { f: { VAR: "Label" }, i: { VAL: mk("ml_label") } }),
+            mk("if_else", {
+              i: { COND: mk("op_eq", { i: { A: V("Label"), B: mk("ml_label_name", { f: { LABEL: mlLabels[0] } }) } }) },
+              body: [mk("say", { i: { MSG: mk("op_join", { i: { A: "This looks like ", B: V("Label") } }) } })],
+              body2: [mk("say", { i: { MSG: mk("op_join", { i: { A: "I think this is ", B: V("Label") } }) } })],
+            }),
+          ];
+        },
+      });
+      else PRESETS.unshift({
+        id: "ml_text", title: "Text recognition",
+        vars: ["Message", "Label"],
+        answer: { type: "text" },
+        brief: "Use your trained model.\n\n" +
+               "Ask for a message, let the model recognise it, then say what it found.\n\n" +
+               "Your labels: " + mlLabels.join(", ") + "\n\n" +
+               "Try: if recognised label = " + mlLabels[0] + " then say something special.",
+        tests: [],
+        solution: function () {
+          return [
+            mk("when_flag"),
+            mk("ask", { i: { Q: "Type a message" } }),
+            mk("set_var", { f: { VAR: "Message" }, i: { VAL: mk("answer") } }),
+            mk("ml_recognise", { i: { TEXT: V("Message") } }),
+            mk("set_var", { f: { VAR: "Label" }, i: { VAL: mk("ml_label") } }),
+            mk("if_else", {
+              i: { COND: mk("op_eq", { i: { A: V("Label"), B: mk("ml_label_name", { f: { LABEL: mlLabels[0] } }) } }) },
+              body: [mk("say", { i: { MSG: mk("op_join", { i: { A: "This sounds like ", B: V("Label") } }) } })],
+              body2: [mk("say", { i: { MSG: mk("op_join", { i: { A: "I think this is ", B: V("Label") } }) } })],
+            }),
+          ];
+        },
+      });
+    }
+
     var BUILTIN_SOLUTIONS = {};
     PRESETS.forEach(function (p) {
       if (p.solution) BUILTIN_SOLUTIONS[p.id] = p.solution;
@@ -216,7 +283,7 @@ export function mountRuleBasedProcess(root, options) {
     var zoom = 1;
     var ZOOM_MIN = 0.5, ZOOM_MAX = 2, ZOOM_STEP = 0.1;
     var palModels = {};
-    var tab = "control";
+    var tab = mlReady ? "ml" : "control";
     var undo = [];
     // True after Clear workspace so an empty save is not replaced by a built-in solution on reload
     var emptyCanvas = false;
@@ -250,7 +317,7 @@ export function mountRuleBasedProcess(root, options) {
   
     function ctx(editable) {
       var vars = (concept && concept.vars) ? concept.vars.slice() : [];
-      return { vars: vars, editable: editable !== false };
+      return { vars: vars, labels: mlLabels, editable: editable !== false };
     }
     function syncUndoBtn() {
       var btn = $("#undoBtn");
@@ -391,6 +458,7 @@ export function mountRuleBasedProcess(root, options) {
       var t = $("#tabs");
       t.innerHTML = "";
       Object.keys(BL.PALETTE).forEach(function (cat) {
+        if (hiddenCat(cat)) return;
         var b = document.createElement("button");
         b.className = "tab" + (cat === tab ? " on" : "");
         b.innerHTML = '<i style="background:' + BL.CAT[cat].dot + '"></i>' + BL.CAT[cat].name;
@@ -436,6 +504,19 @@ export function mountRuleBasedProcess(root, options) {
         if (typeof op === "string" && op.charAt(0) === "#") pushSec(op.slice(1), false);
         else pushOp(op);
       });
+
+      // Machine Learning: one block per trained label, to compare with recognised label
+      if (tab === "ml") {
+        list = list.filter(function (it) {
+          return !(it.kind === "op" && it.op === (mlImage ? "ml_recognise" : "ml_recognise_image"));
+        });
+        var at = -1;
+        for (var li = 0; li < list.length; li++) if (list[li].kind === "op" && list[li].op === "ml_label_name") at = li;
+        if (at > -1) {
+          var labelItems = mlLabels.map(function (l) { return { kind: "op", op: "ml_label_name", opts: { f: { LABEL: l } } }; });
+          list.splice.apply(list, [at, 1].concat(labelItems));
+        }
+      }
 
       // Variables: show reporters for this concept under their own section (above Change)
       if (tab === "data" && concept.vars && concept.vars.length) {
@@ -1037,7 +1118,7 @@ export function mountRuleBasedProcess(root, options) {
   
     // ------------------------------------------------------------------ runtime
     var R = { on: false, stop: false, fast: false, auto: false, stepMs: 0, queue: [], outs: [], vars: {}, vis: {},
-              answer: "", prediction: "", pending: null, keys: {}, t0: Date.now(), depth: 0,
+              answer: "", prediction: "", mlLabel: "", mlConf: 0, pending: null, keys: {}, t0: Date.now(), depth: 0,
               assigned: {}, warnedUnset: {} };
   
     function keyName(e) {
@@ -1094,7 +1175,7 @@ export function mountRuleBasedProcess(root, options) {
     function isNum(v) { return v !== "" && v !== null && !isNaN(parseFloat(v)) && isFinite(v); }
   
     function resetVars() {
-      R.vars = {}; R.vis = {}; R.answer = ""; R.prediction = "";
+      R.vars = {}; R.vis = {}; R.answer = ""; R.prediction = ""; R.mlLabel = ""; R.mlConf = 0;
       R.assigned = {}; R.warnedUnset = {};
       concept.vars.forEach(function (v) { R.vars[v] = 0; R.vis[v] = true; });
       drawWatchers();
@@ -1443,6 +1524,58 @@ export function mountRuleBasedProcess(root, options) {
       return new Promise(function (res) { R.pending = res; });
     }
 
+    /** Run the trained Text Recognition model; sets recognised label and confidence %. */
+    async function recogniseText(text) {
+      var t = String(text == null ? "" : text).trim();
+      R.mlLabel = ""; R.mlConf = 0;
+      if (!mlReady) {
+        logLine("warn", "!", "Train your Text Recognition model first, then the Machine Learning blocks work.");
+        return;
+      }
+      if (!t) {
+        logLine("warn", "!", "Nothing to recognise: the text is empty.");
+        return;
+      }
+      if (!R.fast) {
+        logLine("think", "?", "recognise text: " + t);
+        setBuddyMood("think", "Let me check with your model…");
+      }
+      try {
+        var res = await ML.recognise(t);
+        R.mlLabel = String(res && res.label != null ? res.label : "");
+        R.mlConf = Math.round(Number(res && res.confidence) || 0);
+        if (!R.fast) logLine("out", "\u203A", R.mlLabel + " (" + R.mlConf + "% confident)");
+      } catch (err) {
+        logLine("warn", "!", (err && err.message) ? String(err.message) : "The model could not be reached.");
+      }
+    }
+
+    /** Ask the host to let the learner choose an image, then run the trained Image Recognition model. */
+    async function recogniseImage() {
+      R.mlLabel = ""; R.mlConf = 0;
+      if (!mlReady || !mlImage) {
+        logLine("warn", "!", "Train your Image Recognition model first, then the ML Model blocks work.");
+        return;
+      }
+      if (!R.fast) {
+        logLine("think", "?", "Choose an image for your model…");
+        setBuddyMood("think", "Show me an image…");
+      }
+      try {
+        var res = await ML.recogniseImage();
+        if (R.stop) return;
+        if (!res) {
+          logLine("warn", "!", "No image chosen.");
+          return;
+        }
+        R.mlLabel = String(res.label != null ? res.label : "");
+        R.mlConf = Math.round(Number(res.confidence) || 0);
+        if (!R.fast) logLine("out", "\u203A", (res.name ? res.name + ": " : "") + R.mlLabel + " (" + R.mlConf + "% confident)");
+      } catch (err) {
+        logLine("warn", "!", (err && err.message) ? String(err.message) : "The model could not be reached.");
+      }
+    }
+
     async function callAskModel(prompt) {
       var text = String(prompt == null ? "" : prompt).trim();
       if (!text) {
@@ -1506,6 +1639,9 @@ export function mountRuleBasedProcess(root, options) {
         case "answer": return R.answer;
         case "answer_empty": return String(R.answer || "").trim() === "";
         case "prediction": return R.prediction;
+        case "ml_label": return R.mlLabel;
+        case "ml_confidence": return R.mlConf;
+        case "ml_label_name": return String(b.fields.LABEL || "");
         case "op_add": return num(evalIn(b, "A")) + num(evalIn(b, "B"));
         case "op_sub": return num(evalIn(b, "A")) - num(evalIn(b, "B"));
         case "op_mul": return num(evalIn(b, "A")) * num(evalIn(b, "B"));
@@ -1685,6 +1821,18 @@ export function mountRuleBasedProcess(root, options) {
             R.prediction = await callAskModel(modelPrompt);
             if (!R.fast) logLine("out", "\u203A", R.prediction);
           }
+          if (R.stop) { highlight(b, false); return "stop"; }
+          highlight(b, true);
+          break;
+        case "ml_recognise_image":
+          highlight(b, false);
+          await recogniseImage();
+          if (R.stop) { highlight(b, false); return "stop"; }
+          highlight(b, true);
+          break;
+        case "ml_recognise":
+          highlight(b, false);
+          await recogniseText(String(evalIn(b, "TEXT")));
           if (R.stop) { highlight(b, false); return "stop"; }
           highlight(b, true);
           break;
@@ -1967,6 +2115,9 @@ export function mountRuleBasedProcess(root, options) {
         case "var_get": return ident(v.fields.VAR);
         case "answer": return "answer";
         case "prediction": return "prediction";
+        case "ml_label": return "label";
+        case "ml_confidence": return "confidence";
+        case "ml_label_name": return pyLit(v.fields.LABEL || "");
         case "op_add": return "(" + A() + " + " + B() + ")";
         case "op_sub": return "(" + A() + " - " + B() + ")";
         case "op_mul": return "(" + A() + " * " + B() + ")";
@@ -2038,6 +2189,12 @@ export function mountRuleBasedProcess(root, options) {
           }
           case "ask_model":
             out.push(pad + "prediction = ask_model(" + px(b.inputs.PROMPT) + ")");
+            break;
+          case "ml_recognise":
+            out.push(pad + "label, confidence = recognise_text(" + px(b.inputs.TEXT) + ")");
+            break;
+          case "ml_recognise_image":
+            out.push(pad + "label, confidence = recognise_image(choose_image())");
             break;
           case "say": out.push(pad + "print(" + px(b.inputs.MSG) + ")"); break;
           case "say_secs":
@@ -3221,6 +3378,8 @@ export function mountRuleBasedProcess(root, options) {
         concepts: PRESETS.map(serializeConcept),
         stacks: JSON.parse(JSON.stringify(W.stacks)),
         empty_canvas: emptyCanvas && W.stacks.length === 0,
+        // saved after the Machine Learning blocks were available (see the start-up check below)
+        ml_ready: mlReady || undefined,
       };
     }
 
@@ -3288,7 +3447,9 @@ export function mountRuleBasedProcess(root, options) {
       render();
     }
 
-    if (options.initialState) {
+    // A workspace saved before the model was trained has no Machine Learning blocks: the first
+    // time the trained model is here, open on the Text recognition starter instead.
+    if (options.initialState && !(mlReady && !options.initialState.ml_ready)) {
       applyState(options.initialState);
     } else {
       fillPicker();

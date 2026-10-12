@@ -1,8 +1,9 @@
 'use client';
 
 /**
- * Unseen test messages from the sample file, shown on the test step when the project uses the
- * sample's labels. Each one goes through the same prediction call as the test box.
+ * Unseen test messages from the sample file, for projects that use the sample's labels. The page
+ * shows a "Test data" button when useSampleTestSet returns a set, and this table when it is open.
+ * Each message goes through the same prediction call as the test box.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -16,17 +17,9 @@ export interface Prediction {
 const NONE = 'None of these';
 export const LOW_CONFIDENCE = 50; // below this the model is unsure
 
-interface Props {
-  projectLabels: string[];
-  predict: (text: string) => Promise<Prediction>;
-}
-
-export default function SampleTestMessages({ projectLabels, predict }: Props) {
+/** The sample test set when this project uses the sample's labels, else null. */
+export function useSampleTestSet(projectLabels: string[]): SampleDataset | null {
   const [data, setData] = useState<SampleDataset | null>(null);
-  const [results, setResults] = useState<Record<number, Prediction | 'error'>>({});
-  const [running, setRunning] = useState<Set<number>>(new Set());
-  const [open, setOpen] = useState(false);
-
   useEffect(() => {
     let alive = true;
     fetch(SAMPLE_SOURCES[0].url)
@@ -37,8 +30,18 @@ export default function SampleTestMessages({ projectLabels, predict }: Props) {
       alive = false;
     };
   }, []);
+  const key = projectLabels.join('|');
+  return useMemo(() => (data && usesSampleLabels(data, key ? key.split('|') : []) ? data : null), [data, key]);
+}
 
-  const show = !!data && usesSampleLabels(data, projectLabels);
+interface Props {
+  data: SampleDataset;
+  predict: (text: string) => Promise<Prediction>;
+}
+
+export default function SampleTestMessages({ data, predict }: Props) {
+  const [results, setResults] = useState<Record<number, Prediction | 'error'>>({});
+  const [running, setRunning] = useState<Set<number>>(new Set());
 
   const run = async (id: number, text: string) => {
     setRunning((s) => new Set(s).add(id));
@@ -56,12 +59,10 @@ export default function SampleTestMessages({ projectLabels, predict }: Props) {
     }
   };
   const runAll = async () => {
-    if (!data) return;
     for (const t of data.test) await run(t.id, t.text); // one at a time: same as clicking each
   };
 
   const summary = useMemo(() => {
-    if (!data) return null;
     const inScope = data.test.filter((t) => t.expected !== NONE);
     const scored = inScope.filter((t) => results[t.id] && results[t.id] !== 'error');
     if (scored.length === 0) return null;
@@ -69,31 +70,11 @@ export default function SampleTestMessages({ projectLabels, predict }: Props) {
     return { right, scored: scored.length, total: inScope.length };
   }, [data, results]);
 
-  if (!show || !data) return null;
-
   return (
-    <div className="mt-6 border-t border-magenta-brand/20 pt-5">
-      {!open ? (
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <h5 className="text-md font-semibold text-fg">Sample test messages</h5>
-            <p className="text-sm text-fg/60">New messages the model has never seen.</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="px-4 py-2 rounded-lg bg-purple-brand hover:bg-purple-brand/90 text-white text-sm font-medium transition-colors"
-          >
-            Test data
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="flex flex-wrap items-center gap-3 mb-3">
-            <div className="flex-1 min-w-0">
-              <h5 className="text-md font-semibold text-fg">Sample test messages</h5>
-              <p className="text-sm text-fg/60">New messages the model has never seen. Click a row to test it.</p>
-            </div>
+    <div>
+      <>
+          <div className="flex flex-wrap items-center gap-3 mb-2">
+            <p className="flex-1 min-w-0 text-sm text-fg/60">Messages the model has never seen. Click a row to test it.</p>
             {summary && (
               <span className="text-sm text-fg" aria-live="polite">
                 <b>{summary.right} of {summary.scored}</b> correct
@@ -114,10 +95,10 @@ export default function SampleTestMessages({ projectLabels, predict }: Props) {
             <table className="w-full min-w-[40rem] text-sm text-left border-collapse">
               <thead>
                 <tr className="bg-canvas border-b border-magenta-brand/20 text-fg/70">
-                  <th scope="col" className="px-4 py-3 font-medium">Text</th>
-                  <th scope="col" className="px-4 py-3 font-medium whitespace-nowrap">Expected</th>
-                  <th scope="col" className="px-4 py-3 font-medium whitespace-nowrap">Model output</th>
-                  <th scope="col" className="px-4 py-3 font-medium whitespace-nowrap">Confidence</th>
+                  <th scope="col" className="px-4 py-2 font-medium">Text</th>
+                  <th scope="col" className="px-4 py-2 font-medium whitespace-nowrap">Expected</th>
+                  <th scope="col" className="px-4 py-2 font-medium whitespace-nowrap">Model output</th>
+                  <th scope="col" className="px-4 py-2 font-medium whitespace-nowrap">Confidence</th>
                 </tr>
               </thead>
               <tbody>
@@ -148,11 +129,11 @@ export default function SampleTestMessages({ projectLabels, predict }: Props) {
                         busy ? 'opacity-70 cursor-wait' : 'cursor-pointer hover:bg-purple-brand/5'
                       }`}
                     >
-                      <td className="px-4 py-3 text-fg align-top">
+                      <td className="px-4 py-2 text-fg align-top">
                         &ldquo;{t.text}&rdquo;
                       </td>
-                      <td className="px-4 py-3 text-fg/80 align-top whitespace-nowrap">{expectedLabel}</td>
-                      <td className="px-4 py-3 align-top whitespace-nowrap">
+                      <td className="px-4 py-2 text-fg/80 align-top whitespace-nowrap">{expectedLabel}</td>
+                      <td className="px-4 py-2 align-top whitespace-nowrap">
                         {busy && <span className="text-fg/60">Testing…</span>}
                         {res === 'error' && !busy && (
                           <span className="text-pink-brand">Could not test</span>
@@ -164,7 +145,7 @@ export default function SampleTestMessages({ projectLabels, predict }: Props) {
                         )}
                         {!busy && !res && <span className="text-fg/40">—</span>}
                       </td>
-                      <td className="px-4 py-3 align-top whitespace-nowrap tabular-nums">
+                      <td className="px-4 py-2 align-top whitespace-nowrap tabular-nums">
                         {busy && <span className="text-fg/60">…</span>}
                         {pred && !busy && (
                           <span className="text-fg/80">{pred.confidence.toFixed(1)}%</span>
@@ -177,8 +158,7 @@ export default function SampleTestMessages({ projectLabels, predict }: Props) {
               </tbody>
             </table>
           </div>
-        </>
-      )}
+      </>
     </div>
   );
 }

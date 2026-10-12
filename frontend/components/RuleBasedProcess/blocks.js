@@ -1,4 +1,6 @@
 var CAT = {
+    // Machine Learning: only shown when a trained Text Recognition model is plugged in (options.ml)
+    ml:        { fill: "#0FBD8C", line: "#0B9A71", dot: "#0FBD8C", name: "ML Model" },
     model:     { fill: "#CF63CF", line: "#C94FC9", dot: "#CF63CF", name: "Model" },
     events:    { fill: "#C88330", line: "#A96C22", dot: "#C88330", name: "Events" },
     control:   { fill: "#E1A91A", line: "#B88B12", dot: "#E1A91A", name: "Control" },
@@ -36,6 +38,13 @@ var CAT = {
     ask_model:  { cat: "model", shape: "stack",
                   parts: [L("ask the model about"), T("PROMPT", "What should I send to the model?")] },
     prediction: { cat: "model", shape: "rep", parts: [L("prediction")] },
+
+    // Machine Learning (your trained Text Recognition model)
+    ml_recognise:  { cat: "ml", shape: "stack", parts: [L("recognise text"), T("TEXT", "hello"), L("and wait")] },
+    ml_recognise_image: { cat: "ml", shape: "stack", parts: [L("recognise an image and wait")] },
+    ml_label:      { cat: "ml", shape: "rep", parts: [L("recognised label")] },
+    ml_confidence: { cat: "ml", shape: "rep", parts: [L("confidence %")] },
+    ml_label_name: { cat: "ml", shape: "rep", parts: [{ t: "fld", n: "LABEL", src: "labels" }] },
 
     ask:        { cat: "sensing", shape: "stack", parts: [L("ask"), T("Q", "What is your name?"), L("and wait")] },
     answer:     { cat: "sensing", shape: "rep", parts: [L("answer")] },
@@ -127,6 +136,12 @@ var CAT = {
   // palette order per category
   // Strings starting with "#" are section headers (not blocks) — used by buildPalette.
   var PALETTE = {
+    // Machine Learning first when it is available (the engine hides it otherwise)
+    ml: [
+      "#Recognise", "ml_recognise", "ml_recognise_image",
+      "#Result", "ml_label", "ml_confidence",
+      "#Your labels", "ml_label_name",
+    ],
     // Model first — ask an LLM and read its prediction
     model: [
       "#Ask", "ask_model",
@@ -364,7 +379,9 @@ var CAT = {
     sel.className = "dd";
     sel.dataset.field = p.n;
     sel.dataset.owner = b.id;
-    var opts = p.src === "vars" ? (ctx.vars.length ? ctx.vars : ["(no variables)"]) : p.opts;
+    var opts = p.src === "vars" ? (ctx.vars.length ? ctx.vars : ["(no variables)"])
+      : p.src === "labels" ? ((ctx.labels && ctx.labels.length) ? ctx.labels : ["(no labels)"])
+      : p.opts;
     var cur = b.fields[p.n];
     if (cur && opts.indexOf(cur) < 0) opts = opts.concat([cur]);
     opts.forEach(function (o) {

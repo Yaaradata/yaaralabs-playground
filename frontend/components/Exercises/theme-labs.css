@@ -709,6 +709,9 @@
   color: #152033;
   background-color: rgba(255, 255, 255, 0.55);
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='6'><path d='M0 0h8L4 6z' fill='%23152033'/></svg>");
+  /* keep one arrow on the right (without these the arrow tiles across the field) */
+  background-repeat: no-repeat;
+  background-position: right 7px center;
 }
 
 .rbp-root[data-theme='light'] #menu {

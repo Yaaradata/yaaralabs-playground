@@ -15,6 +15,7 @@ import {
 } from '../../../../../lib/session-utils';
 import { cleanupSessionWithReason, SessionCleanupReason } from '../../../../../lib/session-cleanup';
 import { SCRATCH_EDITOR_URL } from '@/config/scratch-editor';
+import ProjectAI from '../../../../../components/ProjectAI';
 
 interface GuestSession {
   session_id: string;
@@ -469,6 +470,25 @@ export default function MakePage() {
             </a>
           </div>
         </main>
+      </div>
+    );
+  }
+
+  // Text / Image Recognition: the block editor with ML Model blocks (no external Scratch)
+  if (selectedProject.type === 'text-recognition' || selectedProject.type === 'image-recognition') {
+    return (
+      <div className="h-screen overflow-hidden flex flex-col bg-canvas text-fg">
+        <Header fixed={false} showMobileMenu={false} className="flex-shrink-0" />
+        <div className="flex-1 min-h-0">
+          <ProjectAI
+            kind={selectedProject.type === 'image-recognition' ? 'image' : 'text'}
+            projectName={selectedProject.name}
+            sessionId={actualSessionId}
+            projectId={actualProjectId}
+            backHref={`/projects/${urlUserId}/${urlProjectId}`}
+            trainHref={`/projects/${urlUserId}/${urlProjectId}/learn`}
+          />
+        </div>
       </div>
     );
   }

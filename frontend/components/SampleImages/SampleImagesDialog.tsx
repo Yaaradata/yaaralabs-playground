@@ -25,11 +25,9 @@ interface Props {
   /** Uploads every image with its label in one request; throws with a readable message on failure. */
   onAdd: (items: { file: File; label: string }[]) => Promise<void>;
   onClose: () => void;
-  /** Called after "Add and train" has added everything. */
-  onTrain: () => void;
 }
 
-export default function SampleImagesDialog({ namesKey, existing, onAdd, onClose, onTrain }: Props) {
+export default function SampleImagesDialog({ namesKey, existing, onAdd, onClose }: Props) {
   const [data, setData] = useState<SampleImageSet | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -71,8 +69,8 @@ export default function SampleImagesDialog({ namesKey, existing, onAdd, onClose,
   const toAdd = todo.reduce((n, t) => n + t.files.length, 0);
   const total = data ? data.labels.reduce((n, l) => n + l.files.length, 0) : 0;
 
-  const add = async (thenTrain: boolean) => {
-    if (!data || invalid) return;
+  const add = async () => {
+    if (!data || invalid || toAdd === 0) return;
     setError(null);
     try {
       setBusy(`Adding ${toAdd} image${toAdd === 1 ? '' : 's'}…`);
@@ -82,8 +80,7 @@ export default function SampleImagesDialog({ namesKey, existing, onAdd, onClose,
       await onAdd(items);
       writeLabelNames(namesKey, Object.fromEntries(data.labels.map((l) => [l.label, nameOf(l.label)])));
       setBusy(null);
-      if (thenTrain) onTrain();
-      else onClose();
+      onClose();
     } catch (e) {
       setBusy(null);
       setError(e instanceof Error ? e.message : 'Could not add the images. Please try again.');
@@ -97,7 +94,7 @@ export default function SampleImagesDialog({ namesKey, existing, onAdd, onClose,
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wider text-pink-brand">Sample data</p>
             <h2 id="sample-images-title" className="text-xl font-semibold mt-1">{data?.name ?? 'Sample images'}</h2>
-            {data && <p className="text-sm text-fg/70 mt-1">{data.labels.length} labels, {total} images. Rename a label if you like, then add them and train straight away.</p>}
+            {data && <p className="text-sm text-fg/70 mt-1">{data.labels.length} labels, {total} images. Rename a label if you like, then add them to your project.</p>}
           </div>
           <button type="button" onClick={onClose} disabled={!!busy} className="text-fg/60 hover:text-fg p-1 rounded disabled:opacity-40" aria-label="Close">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -158,19 +155,11 @@ export default function SampleImagesDialog({ namesKey, existing, onAdd, onClose,
               </p>
               <button
                 type="button"
-                onClick={() => add(false)}
+                onClick={() => void add()}
                 disabled={!!busy || toAdd === 0 || invalid}
-                className="px-4 py-2.5 rounded-lg border border-magenta-brand/50 text-fg hover:bg-purple-brand/10 text-sm font-medium disabled:opacity-40"
-              >
-                Add to project
-              </button>
-              <button
-                type="button"
-                onClick={() => (toAdd === 0 ? onTrain() : add(true))}
-                disabled={!!busy || invalid}
                 className="bg-purple-brand hover:bg-purple-brand/90 text-white px-5 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-40"
               >
-                {busy ? 'Adding…' : toAdd === 0 ? 'Go to training' : 'Add and train'}
+                {busy ? 'Adding…' : 'Add to project'}
               </button>
               {error && <p className="w-full text-sm text-pink-brand" role="alert">{error}</p>}
             </div>
