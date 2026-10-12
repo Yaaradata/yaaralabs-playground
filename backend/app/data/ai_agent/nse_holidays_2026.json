@@ -1,0 +1,212 @@
+{
+ "year": 2026,
+ "source": "https://www.nseindia.com/resources/exchange-communication-holidays",
+ "fetched": "2026-10-11",
+ "note": "Capital-market (CM) segment, weekdays only. Trading holidays: no trading. Settlement holidays: the clearing corporation does not settle (bank holidays), so a T+1 trade the day before settles one business day later.",
+ "trading": [
+  {
+   "date": "2026-01-15",
+   "day": "Thursday",
+   "name": "Municipal Corporation Election - Maharashtra"
+  },
+  {
+   "date": "2026-01-26",
+   "day": "Monday",
+   "name": "Republic Day"
+  },
+  {
+   "date": "2026-03-03",
+   "day": "Tuesday",
+   "name": "Holi"
+  },
+  {
+   "date": "2026-03-26",
+   "day": "Thursday",
+   "name": "Shri Ram Navami"
+  },
+  {
+   "date": "2026-03-31",
+   "day": "Tuesday",
+   "name": "Shri Mahavir Jayanti"
+  },
+  {
+   "date": "2026-04-03",
+   "day": "Friday",
+   "name": "Good Friday"
+  },
+  {
+   "date": "2026-04-14",
+   "day": "Tuesday",
+   "name": "Dr. Baba Saheb Ambedkar Jayanti"
+  },
+  {
+   "date": "2026-05-01",
+   "day": "Friday",
+   "name": "Maharashtra Day"
+  },
+  {
+   "date": "2026-05-28",
+   "day": "Thursday",
+   "name": "Bakri Id"
+  },
+  {
+   "date": "2026-06-26",
+   "day": "Friday",
+   "name": "Muharram"
+  },
+  {
+   "date": "2026-09-14",
+   "day": "Monday",
+   "name": "Ganesh Chaturthi"
+  },
+  {
+   "date": "2026-10-02",
+   "day": "Friday",
+   "name": "Mahatma Gandhi Jayanti"
+  },
+  {
+   "date": "2026-10-20",
+   "day": "Tuesday",
+   "name": "Dussehra"
+  },
+  {
+   "date": "2026-11-10",
+   "day": "Tuesday",
+   "name": "Diwali-Balipratipada"
+  },
+  {
+   "date": "2026-11-24",
+   "day": "Tuesday",
+   "name": "Prakash Gurpurb Sri Guru Nanak Dev"
+  },
+  {
+   "date": "2026-12-25",
+   "day": "Friday",
+   "name": "Christmas"
+  }
+ ],
+ "settlement": [
+  {
+   "date": "2026-01-15",
+   "day": "Thursday",
+   "name": "Municipal Corporation Election in Maharashtra"
+  },
+  {
+   "date": "2026-01-26",
+   "day": "Monday",
+   "name": "Republic Day"
+  },
+  {
+   "date": "2026-02-19",
+   "day": "Thursday",
+   "name": "Chhatrapati Shivaji Maharaj Jayanti"
+  },
+  {
+   "date": "2026-03-03",
+   "day": "Tuesday",
+   "name": "Holi (Second Day)"
+  },
+  {
+   "date": "2026-03-19",
+   "day": "Thursday",
+   "name": "Gudhi Padwa"
+  },
+  {
+   "date": "2026-03-26",
+   "day": "Thursday",
+   "name": "Ram Navami"
+  },
+  {
+   "date": "2026-03-31",
+   "day": "Tuesday",
+   "name": "Mahavir Jayanti"
+  },
+  {
+   "date": "2026-04-01",
+   "day": "Wednesday",
+   "name": "Annual Bank Closing"
+  },
+  {
+   "date": "2026-04-03",
+   "day": "Friday",
+   "name": "Good Friday"
+  },
+  {
+   "date": "2026-04-14",
+   "day": "Tuesday",
+   "name": "Dr. Babasaheb Ambedkar Jayanti"
+  },
+  {
+   "date": "2026-05-01",
+   "day": "Friday",
+   "name": "Maharashtra Din / Buddha Pournima"
+  },
+  {
+   "date": "2026-05-28",
+   "day": "Thursday",
+   "name": "Bakri ID (Id-Uz-Zuha)"
+  },
+  {
+   "date": "2026-06-26",
+   "day": "Friday",
+   "name": "Muharram"
+  },
+  {
+   "date": "2026-08-26",
+   "day": "Wednesday",
+   "name": "Id-E-Milad"
+  },
+  {
+   "date": "2026-09-14",
+   "day": "Monday",
+   "name": "Ganesh Chaturthi"
+  },
+  {
+   "date": "2026-10-02",
+   "day": "Friday",
+   "name": "Mahatma Gandhi Jayanti"
+  },
+  {
+   "date": "2026-10-20",
+   "day": "Tuesday",
+   "name": "Dussehra"
+  },
+  {
+   "date": "2026-11-10",
+   "day": "Tuesday",
+   "name": "Diwali (Bali Pratipada)"
+  },
+  {
+   "date": "2026-11-24",
+   "day": "Tuesday",
+   "name": "Guru Nanak Jayanti"
+  },
+  {
+   "date": "2026-12-25",
+   "day": "Friday",
+   "name": "Christmas"
+  }
+ ],
+ "settlementOnly": [
+  {
+   "date": "2026-02-19",
+   "day": "Thursday",
+   "name": "Chhatrapati Shivaji Maharaj Jayanti"
+  },
+  {
+   "date": "2026-03-19",
+   "day": "Thursday",
+   "name": "Gudhi Padwa"
+  },
+  {
+   "date": "2026-04-01",
+   "day": "Wednesday",
+   "name": "Annual Bank Closing"
+  },
+  {
+   "date": "2026-08-26",
+   "day": "Wednesday",
+   "name": "Id-E-Milad"
+  }
+ ]
+}

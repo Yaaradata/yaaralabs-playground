@@ -25,6 +25,8 @@ service-account-keys/
 *.json
 !package.json
 !package-lock.json
+# Lab data the app reads at runtime (not keys): RAG library + test questions, AI agent data
+!app/data/**/*.json
 venv
 # Logs
 logs
