@@ -55,6 +55,10 @@ export const config = {
       project: (sessionId: string, projectId: string) =>
         `/api/ai-agent/session/${sessionId}/projects/${projectId}`,
     },
+    // Live Object Detection (custom mode): the project's model, saved after every training
+    imageModels: {
+      project: (sessionId: string, projectId: string) => `/api/image-models/session/${sessionId}/projects/${projectId}`,
+    },
     // Rules Bot: the board used by Rule Based Process projects
     rulesBot: {
       samples: '/api/rules-bot/samples',

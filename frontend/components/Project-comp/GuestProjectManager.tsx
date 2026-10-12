@@ -361,6 +361,7 @@ const GuestProjectManager: React.FC<GuestProjectManagerProps> = ({ sessionId }) 
                             <option value="confusion-matrix">Confusion Matrix</option>
                             <option value="rag-chatbot">RAG Chatbot</option>
                             <option value="ai-agent">AI Agent</option>
+                            <option value="live-object-detection">Live Object Detection</option>
                             <option value="image-recognition">Image Recognition</option>
                             <option value="image-recognition-teachable-machine">Image Recognition - Teachable Machine</option>
                             <option value="pose-recognition-teachable-machine">Pose Recognition - Teachable Machine</option>
@@ -491,6 +492,7 @@ const GuestProjectManager: React.FC<GuestProjectManagerProps> = ({ sessionId }) 
                                          project.type === 'custom' ? 'Custom' :
                                          project.type === 'rule-based-process' ? 'Rule Based Process' :
                                          project.type === 'live-object-detection' ? 'Live Object Detection' :
+                                         project.type === 'live-video-classification' ? 'Live Object Detection' :
                                          project.type === 'exercises' ? 'Exercises' :
                                          project.type === 'confusion-matrix' ? 'Confusion Matrix' :
                                          project.type === 'rag-chatbot' ? 'RAG Chatbot' :

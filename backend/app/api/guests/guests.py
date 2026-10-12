@@ -21,6 +21,7 @@ from ...services.rules_bot_service import RulesBotService
 from ...services.confusion_matrix_service import ConfusionMatrixService
 from ...services.rag_chatbot_service import RagChatbotService
 from ...services.ai_agent_service import AiAgentService
+from ...services.image_model_service import ImageModelService
 from ...services.exercises_service import ExercisesService
 from ...services.guest_service import GuestService
 from ...services.project_service import ProjectService
@@ -133,7 +134,7 @@ async def fix_project_types(session_id: str):
         for doc in docs:
             try:
                 data = doc.to_dict()
-                if 'type' in data and data['type'] not in ['text-recognition', 'image-recognition', 'image-recognition-teachable-machine', 'pose-recognition-teachable-machine', 'classification', 'regression', 'custom', 'rule-based-process', 'live-object-detection', 'exercises', 'confusion-matrix', 'rag-chatbot', 'ai-agent']:
+                if 'type' in data and data['type'] not in ['text-recognition', 'image-recognition', 'image-recognition-teachable-machine', 'pose-recognition-teachable-machine', 'classification', 'regression', 'custom', 'rule-based-process', 'live-object-detection', 'exercises', 'confusion-matrix', 'rag-chatbot', 'ai-agent', 'live-video-classification']:
                     # Fix invalid type
                     old_type = data['type']
                     data['type'] = 'text-recognition'  # Default to text-recognition
@@ -514,6 +515,12 @@ async def delete_guest_project(
             except Exception as e:
                 logger.warning("AI agent cleanup failed for %s: %s", project_id, e)
 
+        if str(getattr(project.type, "value", project.type)) in ("live-object-detection", "live-video-classification"):
+            try:
+                ImageModelService().delete(session_id, project_id)
+            except Exception as e:
+                logger.warning("Saved image model cleanup failed for %s: %s", project_id, e)
+
         if project.type == ProjectType.EXERCISES or str(project.type) == "exercises":
             try:
                 ExercisesService().delete(project_id)
@@ -654,12 +661,25 @@ async def upload_guest_images(
     session_id: str,
     project_id: str,
     files: List[UploadFile] = File(..., description="Image files to upload"),
-    label: str = Form(..., description="Label for these images"),
+    label: Optional[str] = Form(None, description="Label for these images"),
+    labels: Optional[List[str]] = Form(None, description="One label per file, in file order (instead of label)"),
     session: dict = Depends(validate_session_dependency),
     project_service: ProjectService = Depends(get_project_service)
 ):
-    """Upload image examples to a guest project"""
+    """Upload image examples to a guest project. One request can cover several labels (labels=...),
+    so a whole sample set is one upload and one project update."""
     try:
+        if labels:
+            if len(labels) != len(files):
+                raise HTTPException(status_code=400, detail="Give one label per file.")
+            file_labels = [l.strip() for l in labels]
+        elif label and label.strip():
+            file_labels = [label.strip()] * len(files)
+        else:
+            raise HTTPException(status_code=400, detail="A label is required.")
+        if any(not l for l in file_labels):
+            raise HTTPException(status_code=400, detail="A label is required.")
+
         # Verify project belongs to this session
         project = await project_service.get_project(project_id)
         if not project or project.student_id != session_id:
@@ -682,8 +702,9 @@ async def upload_guest_images(
         # Validate file types
         allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
         uploaded_images = []
+        pending = []
         
-        for file in files:
+        for file, file_label in zip(files, file_labels):
             if file.content_type not in allowed_types:
                 raise HTTPException(
                     status_code=400,
@@ -698,28 +719,29 @@ async def upload_guest_images(
                     detail=f"File {file.filename} is too large. Maximum size is 10MB per image."
                 )
             
-            # Upload to GCS
-            gcs_path = f"images/{project_id}/{label}/{file.filename}"
-            blob = project_service.bucket.blob(gcs_path)
-            blob.upload_from_string(file_content, content_type=file.content_type)
-            
-            # Generate public URL
-            image_url = f"gs://{project_service.bucket.name}/{gcs_path}"
-            
+            gcs_path = f"images/{project_id}/{file_label}/{file.filename}"
+            pending.append((gcs_path, file_content, file.content_type))
             uploaded_images.append({
-                "image_url": image_url,
-                "label": label,
+                "image_url": f"gs://{project_service.bucket.name}/{gcs_path}",
+                "label": file_label,
                 "filename": file.filename,
                 "size": len(file_content),
                 "content_type": file.content_type
             })
+        
+        # Upload to GCS in parallel (each upload is a blocking network call)
+        def _put(item):
+            path, content, ctype = item
+            project_service.bucket.blob(path).upload_from_string(content, content_type=ctype)
+        loop = asyncio.get_event_loop()
+        await asyncio.gather(*(loop.run_in_executor(None, _put, item) for item in pending))
         
         # Add image examples to project
         result = await project_service.add_image_examples(project_id, uploaded_images)
         
         return {
             "success": True,
-            "message": f"Uploaded {len(uploaded_images)} images with label '{label}'",
+            "message": f"Uploaded {len(uploaded_images)} images to {', '.join(sorted(set(file_labels)))}",
             "totalImages": result['totalImages'],
             "labels": result['labels'],
             "uploadedImages": len(uploaded_images),
@@ -1562,7 +1584,7 @@ async def predict_guest_text(
                     {
                         'label': prob['class'],
                         'confidence': prob['confidence']
-                    } for prob in prediction_result['all_probabilities'][:2]  # Top 2 alternatives
+                    } for prob in prediction_result['all_probabilities'][1:]  # every other label, highest first
                 ]
             )
         elif model_type == OVR_MODEL_TYPE:
@@ -2864,6 +2886,12 @@ async def delete_guest_session(
         else:
             logger.info(f"No projects found for session {session_id}")
         
+        # Saved models (Live Object Detection, custom mode) belong to the session: remove them all
+        try:
+            ImageModelService().delete_owner(session_id)
+        except Exception as e:
+            logger.warning("Cleanup of saved image models for %s failed: %s", session_id, e)
+
         # Delete the session
         success = await guest_service.delete_simple_guest_session(session_id)
         

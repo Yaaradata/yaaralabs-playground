@@ -90,6 +90,7 @@ class ProjectType(str, Enum):
     CONFUSION_MATRIX = "confusion-matrix"
     RAG_CHATBOT = "rag-chatbot"
     AI_AGENT = "ai-agent"
+    LIVE_VIDEO_CLASSIFICATION = "live-video-classification"
 
 
 class ProjectStatus(str, Enum):

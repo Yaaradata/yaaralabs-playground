@@ -740,15 +740,6 @@
   background: var(--lod-surface);
 }
 
-.lod-studio .lod-stage-tools .np-theme {
-  margin-right: 2px;
-}
-
-.lod-studio .lod-stage-tools .np-theme-opt {
-  padding: 4px 8px;
-  font-size: 11px;
-}
-
 .rbp-root .np-theme {
   --np-theme-line: var(--line2);
   --np-theme-track: var(--bg);

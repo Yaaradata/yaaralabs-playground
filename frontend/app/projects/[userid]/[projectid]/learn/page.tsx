@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Header from '../../../../../components/Header';
@@ -16,6 +16,8 @@ import {
 } from '../../../../../lib/session-utils';
 import { cleanupSessionWithReason, SessionCleanupReason } from '../../../../../lib/session-cleanup';
 import SampleTestMessages, { type Prediction } from '../../../../../components/SampleLabelling/SampleTestMessages';
+import SampleImageTest, { type ImagePrediction } from '../../../../../components/SampleImages/SampleImageTest';
+import { labelNamesKey } from '../../../../../components/SampleImages/sampleImages';
 
 interface GuestSession {
   session_id: string;
@@ -786,15 +788,41 @@ export default function LearnPage() {
     }
   };
 
-  // "3. Test" on the project page opens this page at #test: scroll there once the model is shown
-  const scrolledToTest = useRef(false);
+  // "3. Test" on the project page opens this page at #test. The page keeps loading for a while
+  // (project, images, model status) and can re-render, so keep the test section in view until it
+  // has stayed put for a moment, or until the learner scrolls themselves.
   useEffect(() => {
-    if (scrolledToTest.current || window.location.hash !== '#test' || !trainedModel || isTraining) return;
-    const el = document.getElementById('test');
-    if (!el) return;
-    scrolledToTest.current = true;
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [trainedModel, isTraining]);
+    if (window.location.hash !== '#test') return;
+    let stableSince = 0;
+    let lastTop = NaN;
+    let stopped = false;
+    const stop = () => { stopped = true; };
+    const events = ['wheel', 'touchstart', 'keydown', 'mousedown'] as const;
+    events.forEach((e) => window.addEventListener(e, stop, { passive: true }));
+    const started = Date.now();
+    const timer = window.setInterval(() => {
+      const el = document.getElementById('test');
+      if (stopped || Date.now() - started > 20000) {
+        window.clearInterval(timer);
+        return;
+      }
+      if (!el) { stableSince = 0; return; }
+      const top = Math.round(el.getBoundingClientRect().top);
+      // In place: near the top, or as far as the page can scroll (the last scroll did not move it)
+      if ((top >= 0 && top < 160) || top === lastTop) {
+        if (!stableSince) stableSince = Date.now();
+        else if (Date.now() - stableSince > 1500) window.clearInterval(timer);
+      } else {
+        stableSince = 0;
+        el.scrollIntoView({ block: 'start' });
+      }
+      lastTop = Math.round(el.getBoundingClientRect().top);
+    }, 250);
+    return () => {
+      window.clearInterval(timer);
+      events.forEach((e) => window.removeEventListener(e, stop));
+    };
+  }, []);
 
   const handleGoToTrain = () => {
     window.location.href = `/projects/${urlUserId}/${urlProjectId}/train`;
@@ -1155,6 +1183,30 @@ export default function LearnPage() {
     }
   };
 
+  /** Upload-for-prediction then predict: the same two calls as an uploaded image, for the test dataset. */
+  const predictImageFile = async (file: File): Promise<ImagePrediction> => {
+    const base = `${config.apiBaseUrl}/api/guests/session/${actualSessionId}/projects/${actualProjectId}`;
+    const form = new FormData();
+    form.append('files', file);
+    const up = await fetch(`${base}/predict-image`, { method: 'POST', body: form });
+    if (!up.ok) throw new Error(`Could not upload the image (${up.status}).`);
+    const { imageUrl: gcsUrl } = await up.json();
+    if (!gcsUrl) throw new Error('No image URL came back from the upload.');
+    const res = await fetch(`${base}/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: gcsUrl }),
+    });
+    if (!res.ok) {
+      let detail = '';
+      try { detail = (await res.json())?.detail ?? ''; } catch { /* no body */ }
+      throw new Error(detail || `Prediction failed (${res.status}).`);
+    }
+    const data = await res.json();
+    if (!data.success || !data.label) throw new Error('Prediction failed.');
+    return { label: data.label, confidence: Number(data.confidence) || 0, alternatives: data.alternatives || [] };
+  };
+
   const predictImage = async () => {
     if (!trainedModel || !actualSessionId || !actualProjectId) return;
 
@@ -1430,7 +1482,7 @@ export default function LearnPage() {
                     onClick={handleGoToTrain}
                     className="text-pink-brand hover:text-pink-brand/80 underline font-medium"
                   >
-                    {selectedProject?.type === 'text-recognition' ? 'Data' : 'Train'}
+                    Data
                   </button>
                   {' '}page if you want to collect some more examples first.)
                 </p>
@@ -1514,6 +1566,13 @@ export default function LearnPage() {
                    {selectedProject?.type === 'image-recognition' ? (
                      // Image Recognition Interface
                      <>
+                       {trainedModel.status === 'available' && (
+                         <SampleImageTest
+                           projectLabels={trainingStats.labelBreakdown.map((l) => l.name)}
+                           namesKey={labelNamesKey(actualSessionId || '', actualProjectId || '')}
+                           predict={predictImageFile}
+                         />
+                       )}
                        <h4 className="text-lg font-semibold text-fg mb-4">
                          Upload an image, provide an image URL, or capture with your webcam to see how it&apos;s classified based on your training.
                        </h4>
@@ -2022,7 +2081,7 @@ export default function LearnPage() {
                           onClick={handleGoToTrain}
                           className="mt-3 bg-purple-brand hover:bg-purple-brand/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300"
                         >
-                          {selectedProject?.type === 'text-recognition' ? 'Go to Data Page' : 'Go to Train Page'}
+                          Go to Data Page
                         </button>
                       </div>
                     </div>
