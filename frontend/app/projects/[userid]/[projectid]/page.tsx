@@ -23,6 +23,7 @@ import RulesBot from '../../../../components/RulesBot'
 import ConfusionMatrixLab from '../../../../components/ConfusionMatrix'
 import RagChatbotLab from '../../../../components/RagChatbot'
 import AiAgentLab from '../../../../components/AiAgent'
+import LiveObjectDetectionProject from '../../../../components/VideoClassifier'
 import Exercises from '../../../../components/Exercises'
 
 interface GuestSession {
@@ -1722,7 +1723,9 @@ export default function ProjectDetailsPage() {
   const isConfusionMatrix = selectedProject.type === 'confusion-matrix';
   const isRagChatbot = selectedProject.type === 'rag-chatbot';
   const isAiAgent = selectedProject.type === 'ai-agent';
-  const studioHeader = isRbp || isExercises || isConfusionMatrix || isRagChatbot || isAiAgent;
+  // 'live-video-classification' is the name this type had briefly; those projects open the same way
+  const isLiveObjectDetection = selectedProject.type === 'live-object-detection' || selectedProject.type === 'live-video-classification';
+  const studioHeader = isRbp || isExercises || isConfusionMatrix || isRagChatbot || isAiAgent || isLiveObjectDetection;
 
   return (
     <div className="h-screen overflow-hidden flex flex-col bg-canvas text-fg">
@@ -3869,20 +3872,12 @@ export default function ProjectDetailsPage() {
               sessionId={actualSessionId}
               projectId={selectedProject.id}
             />
-          ) : selectedProject.type === 'live-object-detection' ? (
-            <div className="h-full flex flex-col items-center justify-center gap-4 px-6 text-center">
-              <h2 className="text-2xl font-semibold text-fg">Live Object Detection moved</h2>
-              <p className="max-w-md text-fg/70">
-                Open an <strong className="text-fg">Exercises</strong> project and launch{' '}
-                <strong className="text-fg">Exercise 4.5</strong> for live object detection.
-              </p>
-              <Link
-                href={`/projects/${urlUserId}`}
-                className="bg-purple-brand text-white px-6 py-3 rounded-lg font-medium hover:scale-105 transition-all"
-              >
-                Back to Projects
-              </Link>
-            </div>
+          ) : isLiveObjectDetection ? (
+            <LiveObjectDetectionProject
+              projectName={selectedProject.name}
+              sessionId={actualSessionId}
+              projectId={selectedProject.id}
+            />
           ) : selectedProject.type === 'ai-agent' ? (
             <AiAgentLab
               projectName={selectedProject.name}
@@ -3953,7 +3948,7 @@ export default function ProjectDetailsPage() {
                     <span>{selectedProject.name}</span>
             </h1>
           </div>
-                <div className={`grid grid-cols-1 gap-8 mx-auto ${selectedProject.type === 'text-recognition' ? 'md:grid-cols-3 max-w-6xl' : 'md:grid-cols-2 max-w-4xl'}`}>
+                <div className={`grid grid-cols-1 gap-8 mx-auto ${['text-recognition', 'image-recognition'].includes(selectedProject.type) ? 'md:grid-cols-3 max-w-6xl' : 'md:grid-cols-2 max-w-4xl'}`}>
             {/* Train Card */}
             <div className="bg-canvas border border-magenta-brand/20 rounded-xl p-8 text-center hover:bg-purple-brand/5 transition-all duration-300 flex flex-col">
               <h2 className="text-2xl md:text-3xl font-bold text-blue-400 mb-6">
@@ -3990,14 +3985,14 @@ export default function ProjectDetailsPage() {
               </button>
             </div>
 
-            {/* Test Card (Text Recognition) */}
-            {selectedProject.type === 'text-recognition' && (
+            {/* Test Card (Text and Image Recognition) */}
+            {['text-recognition', 'image-recognition'].includes(selectedProject.type) && (
               <div className="bg-canvas border border-magenta-brand/20 rounded-xl p-8 text-center hover:bg-purple-brand/5 transition-all duration-300 flex flex-col">
                 <h2 className="text-2xl md:text-3xl font-bold text-pink-brand mb-6">
                   3. Test
                 </h2>
                 <p className="text-fg mb-8 text-sm md:text-base leading-relaxed flex-grow">
-                  Try new text on your trained model and see what it predicts
+                  Try new {selectedProject.type === 'image-recognition' ? 'images' : 'text'} on your trained model and see what it predicts
                 </p>
                 <button
                   onClick={() => {

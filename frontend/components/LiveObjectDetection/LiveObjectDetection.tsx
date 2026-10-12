@@ -42,16 +42,10 @@ import {
   requestElementFullscreen,
   subscribeFullscreen,
 } from './compat';
-import ThemeToggle from '../Exercises/ThemeToggle';
 import UndoButton from '../Exercises/UndoButton';
 import ExerciseHeaderIcon from '../Exercises/ExerciseHeaderIcon';
 import { useUndoHistory } from '../Exercises/useUndoHistory';
-import {
-  readExerciseTheme,
-  subscribeExerciseTheme,
-  type ExerciseTheme,
-} from '../Exercises/theme';
-import '../Exercises/ThemeToggle.css';
+import { useAppTheme } from '../../lib/theme';
 import '../Exercises/theme-labs.css';
 import '../Exercises/exerciseHeader.css';
 import './liveObjectDetection.css';
@@ -61,6 +55,8 @@ type LiveObjectDetectionProps = {
   sessionId?: string;
   projectId?: string;
   onClose?: () => void;
+  /** Inside a project page (not Exercise 4.5): no exercise title bar. */
+  embedded?: boolean;
 };
 
 type LodUndoSnapshot = {
@@ -227,9 +223,9 @@ export default function LiveObjectDetection({
   sessionId,
   projectId,
   onClose,
+  embedded = false,
 }: LiveObjectDetectionProps) {
-  const [theme, setTheme] = useState<ExerciseTheme>(() => readExerciseTheme());
-  useEffect(() => subscribeExerciseTheme(setTheme), []);
+  const [theme] = useAppTheme();
   const stageRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -1065,12 +1061,14 @@ export default function LiveObjectDetection({
 
   return (
     <div className="lod-studio" data-theme={theme}>
-      <header className="lod-ex-head">
-        <div className="ex-lab-brand">
-          <ExerciseHeaderIcon id={4.5} />
-          <h1 className="ex-lab-brand-title">Exercise - 4.5 : Live Object Detection</h1>
-        </div>
-      </header>
+      {!embedded && (
+        <header className="lod-ex-head">
+          <div className="ex-lab-brand">
+            <ExerciseHeaderIcon id={4.5} />
+            <h1 className="ex-lab-brand-title">Exercise - 4.5 : Live Object Detection</h1>
+          </div>
+        </header>
+      )}
       <div className="lod-body">
         <div className="lod-left">
           <section className="lod-card lod-camera-card">
@@ -1097,7 +1095,6 @@ export default function LiveObjectDetection({
                 <span className="lod-camera-chip lod-camera-chip-fps">{fps} FPS</span>
               </div>
               <div className="lod-stage-tools">
-                <ThemeToggle />
                 <UndoButton
                   canUndo={canLodUndo}
                   onUndo={handleLodUndo}

@@ -18,6 +18,8 @@ import Link from 'next/link';
 import { ImageUpload, ImageGallery } from '../../../../../components/ImageCollection';
 import SampleLabeller, { SampleDataButton } from '../../../../../components/SampleLabelling/SampleLabeller';
 import { batches, type NewExample, type SampleSource } from '../../../../../components/SampleLabelling/sample';
+import SampleImagesDialog from '../../../../../components/SampleImages/SampleImagesDialog';
+import { MIN_IMAGES_PER_LABEL, labelNamesKey } from '../../../../../components/SampleImages/sampleImages';
 
 interface GuestSession {
   session_id: string;
@@ -85,6 +87,7 @@ export default function TrainPage() {
   const [images, setImages] = useState<{ label: string; image_url: string; id: string; filename: string }[]>([]);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [isLoadingImages, setIsLoadingImages] = useState(false);
+  const [showSampleImages, setShowSampleImages] = useState(false);
 
   // Image delete state
   const [isDeletingImageLabel, setIsDeletingImageLabel] = useState(false);
@@ -1298,6 +1301,23 @@ export default function TrainPage() {
     }
   };
 
+  /** Sample images: every label in one upload (labels sent per file), then one reload. */
+  const uploadSampleImages = async (items: { file: File; label: string }[]) => {
+    if (!actualSessionId || !actualProjectId) throw new Error('Your session is not ready yet. Please reload the page.');
+    const form = new FormData();
+    items.forEach(({ file, label }) => {
+      form.append('files', file);
+      form.append('labels', label);
+    });
+    const response = await fetch(`${config.apiBaseUrl}${config.api.guests.images(actualSessionId, actualProjectId)}`, { method: 'POST', body: form });
+    if (!response.ok) {
+      let detail = '';
+      try { detail = (await response.json())?.detail ?? ''; } catch { /* no body */ }
+      throw new Error(`Could not add the images${detail ? `: ${detail}` : ''}.`);
+    }
+    await loadImages();
+  };
+
   const handleDeleteImage = async (imageUrl: string) => {
     // For now, just remove from local state
     // In a full implementation, you'd call a delete API endpoint
@@ -1689,77 +1709,102 @@ export default function TrainPage() {
           </div>
 
           {/* Image Collection for Image Recognition Projects */}
-          {selectedProject?.type === 'image-recognition' && (
-            <div className="space-y-8">
-              <div className="bg-canvas border border-magenta-brand/20 rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-fg mb-4">Collect Image Data</h2>
-                <p className="text-fg/70 mb-6">
-                  Upload images and organize them by labels to train your AI model.
-                </p>
-                
-                <ImageUpload
-                  onUpload={handleImageUpload}
-                  isUploading={isUploadingImages}
-                  projectType={selectedProject.type}
-                />
-              </div>
-
-              <div className="bg-canvas border border-magenta-brand/20 rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-fg mb-4">Your Image Collection</h2>
-                <ImageGallery
-                  images={images}
-                  labels={labels.map(label => label.name)}
-                  onDelete={handleDeleteImage}
-                  onDeleteLabel={handleDeleteImageLabel}
-                  onDeleteAllExamples={handleDeleteImageExamplesByLabel}
-                  onDeleteSpecificExample={handleDeleteSpecificImageExample}
-                  onDeleteEmptyLabel={handleDeleteEmptyImageLabel}
-                  onUploadImages={handleImageUpload}
-                  isLoading={isLoadingImages}
-                  sessionId={actualSessionId}
-                  projectId={actualProjectId}
-                  isDeletingLabel={isDeletingImageLabel}
-                  isDeletingExamples={isDeletingImageExamples}
-                  deletingLabelId={deletingImageLabelId || undefined}
-                  deletingExampleId={deletingImageExampleId || undefined}
-                />
-              </div>
-
-              {/* Requirements Note for Images */}
-              <div className="bg-canvas border border-magenta-brand/20 rounded-lg p-4 max-w-lg">
-                <div className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-pink-brand mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                  <div className="flex-1">
-                    <h3 className="text-pink-brand font-medium mb-2">Note: Before you can proceed to next step</h3>
-                    <div className="text-fg text-sm space-y-1">
-                      <p>
-                        <strong>1.</strong> Upload images with at least <strong>2 different labels</strong> (e.g., &ldquo;cats&rdquo;, &ldquo;dogs&rdquo;)
-                      </p>
-                      <p>
-                        <strong>2.</strong> For each label upload at least <strong>5 images at minimum</strong>
-                      </p>
+          {selectedProject?.type === 'image-recognition' && (() => {
+            const counts = labels.map((l) => ({ name: l.name, n: images.filter((img) => img.label === l.name).length }));
+            const enoughLabels = counts.length >= 2;
+            const enoughEach = counts.length > 0 && counts.every((c) => c.n >= MIN_IMAGES_PER_LABEL);
+            const ready = enoughLabels && enoughEach;
+            const Check = ({ ok, children }: { ok: boolean; children: React.ReactNode }) => (
+              <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${ok ? 'border-[var(--success)] text-[var(--success)] bg-[var(--success)]/10' : 'border-fg/20 text-fg/70'}`}>
+                <span aria-hidden="true">{ok ? '✓' : '○'}</span>{children}
+              </span>
+            );
+            return (
+              <div className="space-y-5">
+                {/* toolbar */}
+                <div className="flex flex-wrap items-center gap-3 rounded-xl border border-magenta-brand/20 bg-card px-5 py-4">
+                  <div className="flex-1 min-w-[16rem]">
+                    <h2 className="text-lg font-semibold text-fg">Collect image data</h2>
+                    <div className="flex flex-wrap gap-2 mt-2" aria-label="Before you can train">
+                      <Check ok={enoughLabels}>At least 2 labels</Check>
+                      <Check ok={enoughEach}>At least {MIN_IMAGES_PER_LABEL} images in every label</Check>
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSampleImages(true)}
+                    className="border-2 border-purple-brand text-purple-brand hover:bg-purple-brand/10 rounded-lg px-4 py-2 inline-flex items-center gap-2 text-sm font-medium transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Use sample data
+                  </button>
+                  {ready ? (
+                    <Link
+                      href={`/projects/${urlUserId}/${urlProjectId}/learn`}
+                      className="bg-purple-brand hover:bg-purple-brand/90 text-white px-4 py-2.5 rounded-lg text-sm font-semibold inline-flex items-center gap-2 transition-colors"
+                    >
+                      Move to next - Training
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </Link>
+                  ) : (
+                    <span className="bg-purple-brand/40 text-white/80 px-4 py-2.5 rounded-lg text-sm font-semibold cursor-not-allowed" aria-disabled="true" title="Finish the checklist first">
+                      Move to next - Training
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid gap-5 lg:grid-cols-[22rem_minmax(0,1fr)] items-start">
+                  <section className="rounded-xl border border-magenta-brand/20 bg-card p-5 lg:sticky lg:top-24" aria-labelledby="add-images-h">
+                    <h3 id="add-images-h" className="font-semibold text-fg mb-3">Add images</h3>
+                    <ImageUpload
+                      onUpload={handleImageUpload}
+                      isUploading={isUploadingImages}
+                      projectType={selectedProject.type}
+                    />
+                  </section>
+
+                  <section className="rounded-xl border border-magenta-brand/20 bg-card p-5 min-w-0" aria-labelledby="your-images-h">
+                    <div className="flex items-baseline gap-2 mb-4">
+                      <h3 id="your-images-h" className="font-semibold text-fg">Your images</h3>
+                      <span className="text-sm text-fg/60">
+                        {images.length} image{images.length === 1 ? '' : 's'} in {counts.length} label{counts.length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    <ImageGallery
+                      images={images}
+                      labels={labels.map(label => label.name)}
+                      onDelete={handleDeleteImage}
+                      onDeleteLabel={handleDeleteImageLabel}
+                      onDeleteAllExamples={handleDeleteImageExamplesByLabel}
+                      onDeleteSpecificExample={handleDeleteSpecificImageExample}
+                      onDeleteEmptyLabel={handleDeleteEmptyImageLabel}
+                      onUploadImages={handleImageUpload}
+                      isLoading={isLoadingImages}
+                      sessionId={actualSessionId}
+                      projectId={actualProjectId}
+                      isDeletingLabel={isDeletingImageLabel}
+                      isDeletingExamples={isDeletingImageExamples}
+                      deletingLabelId={deletingImageLabelId || undefined}
+                      deletingExampleId={deletingImageExampleId || undefined}
+                    />
+                  </section>
                 </div>
               </div>
+            );
+          })()}
 
-              {/* Next Step Button for Images */}
-              {images.length > 0 && (
-                <div className="flex justify-center">
-                  <Link
-                    href={`/projects/${urlUserId}/${urlProjectId}/learn`}
-                    className="bg-purple-brand hover:bg-purple-brand/90 text-white px-8 py-3 rounded-lg font-medium transition-all duration-300 inline-flex items-center gap-2"
-                  >
-                    Move to next - Training
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </Link>
-                </div>
-              )}
-            </div>
+          {showSampleImages && (
+            <SampleImagesDialog
+              namesKey={labelNamesKey(actualSessionId || '', actualProjectId || '')}
+              existing={images}
+              onAdd={uploadSampleImages}
+              onClose={() => setShowSampleImages(false)}
+              onTrain={() => { window.location.href = `/projects/${urlUserId}/${urlProjectId}/learn`; }}
+            />
           )}
 
           {/* Text Recognition Content - only show for text-recognition projects */}

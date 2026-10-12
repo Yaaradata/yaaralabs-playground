@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     
     # CORS Configuration
     cors_origin: str = Field(default="", env="CORS_ORIGIN")
+    # Live Object Detection model saves: true = browser uploads straight to GCS with signed URLs
+    # (needs the bucket CORS rule); false = files go through the backend
+    image_models_signed_urls: bool = Field(default=False, env="IMAGE_MODELS_SIGNED_URLS")
     
     # Scratch Editor Configuration
     scratch_editor_url: str = Field(default="https://scratch-editor-773717965404.us-central1.run.app", env="SCRATCH_EDITOR_URL")
