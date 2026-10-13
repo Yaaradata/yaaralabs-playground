@@ -32,7 +32,6 @@ import {
 interface Props {
   sessionId: string;
   projectId: string;
-  makeHref: string;
   learnHref: string;
 }
 
@@ -41,7 +40,7 @@ type Setup = { trained: boolean; labels: string[]; items: { text: string; expect
 const card = 'bg-card border border-magenta-brand/20 rounded-2xl p-5 md:p-6';
 const btn = 'inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-lg font-semibold transition-colors';
 
-export default function ProjectEvaluate({ sessionId, projectId, makeHref, learnHref }: Props) {
+export default function ProjectEvaluate({ sessionId, projectId, learnHref }: Props) {
   const base = `${config.apiBaseUrl}/api/guests/session/${sessionId}/projects/${projectId}`;
   const [setup, setSetup] = useState<Setup | null>(null);
   const [running, setRunning] = useState(false);
@@ -132,12 +131,12 @@ export default function ProjectEvaluate({ sessionId, projectId, makeHref, learnH
     );
   }
 
-  return <Results res={res} makeHref={makeHref} learnHref={learnHref} />;
+  return <Results res={res} learnHref={learnHref} />;
 }
 
 /* ───────────────────────── results ───────────────────────── */
 
-function Results({ res, makeHref, learnHref }: { res: EvalResponse; makeHref: string; learnHref: string }) {
+function Results({ res, learnHref }: { res: EvalResponse; learnHref: string }) {
   const labels = useMemo(() => orderLabels(res.labels), [res.labels]);
   const items = res.items;
   const own = res.source === 'own-examples';
@@ -157,9 +156,6 @@ function Results({ res, makeHref, learnHref }: { res: EvalResponse; makeHref: st
       </p>
       <p className="text-lg font-semibold mt-1">Always judge a bot on messages it hasn’t seen.</p>
       <div className="flex flex-wrap gap-3 mt-4">
-        <Link href={makeHref} className={`${btn} border-2 border-magenta-brand/40 hover:bg-purple-brand/10`}>
-          ← Back to Use the AI
-        </Link>
         <Link href={learnHref} className={`${btn} bg-purple-brand hover:bg-purple-brand/90 text-white`}>
           Add more examples
         </Link>

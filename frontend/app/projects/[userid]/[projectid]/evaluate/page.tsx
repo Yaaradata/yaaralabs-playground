@@ -116,18 +116,17 @@ export default function EvaluatePage() {
 
         {state === 'ready' && project && (
           <>
-            <div className="max-w-7xl mx-auto flex items-center gap-3 mb-6">
+            <div className="max-w-7xl mx-auto mb-6">
               <Link
                 href={makeHref}
-                className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-lg border border-magenta-brand/30 text-fg/80 hover:bg-purple-brand/10"
-                aria-label="Back to Use the AI"
-                title="Back to Use the AI"
+                className="inline-flex items-center gap-2 text-fg/70 hover:text-fg transition-colors whitespace-nowrap text-sm"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M15 19l-7-7 7-7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
+                <span>Back to Use the AI</span>
               </Link>
-              <h1 className="text-2xl md:text-3xl font-bold truncate">
+              <h1 className="text-2xl md:text-3xl font-bold truncate mt-3">
                 Evaluate <span className="text-fg/40">:</span> {project.name}
               </h1>
             </div>
@@ -136,7 +135,6 @@ export default function EvaluatePage() {
               <ProjectEvaluate
                 sessionId={ids.sessionId}
                 projectId={ids.projectId}
-                makeHref={makeHref}
                 learnHref={`/projects/${urlUserId}/${urlProjectId}/learn`}
               />
             ) : (
