@@ -131,12 +131,12 @@ export default function ProjectEvaluate({ sessionId, projectId, learnHref }: Pro
     );
   }
 
-  return <Results res={res} learnHref={learnHref} />;
+  return <Results res={res} />;
 }
 
 /* ───────────────────────── results ───────────────────────── */
 
-function Results({ res, learnHref }: { res: EvalResponse; learnHref: string }) {
+function Results({ res }: { res: EvalResponse }) {
   const labels = useMemo(() => orderLabels(res.labels), [res.labels]);
   const items = res.items;
   const own = res.source === 'own-examples';
@@ -148,25 +148,10 @@ function Results({ res, learnHref }: { res: EvalResponse; learnHref: string }) {
   const normal = deskAtLean(items, labels, desk, 0);
   const live = deskAtLean(items, labels, desk, lean);
 
-  const footer = (
-    <section className={card} aria-label="Practice score and exam score">
-      <p className="text-lg">
-        Practice score <b>{res.practice.correct} of {res.practice.total}</b> (messages it learned from) · Exam score{' '}
-        <b>{acc.right} of {acc.total}</b> ({own ? 'each example hidden while tested' : 'messages it has never seen'}).
-      </p>
-      <p className="text-lg font-semibold mt-1">Always judge a bot on messages it hasn’t seen.</p>
-      <div className="flex flex-wrap gap-3 mt-4">
-        <Link href={learnHref} className={`${btn} bg-purple-brand hover:bg-purple-brand/90 text-white`}>
-          Add more examples
-        </Link>
-      </div>
-    </section>
-  );
-
   return (
     <div className="max-w-7xl mx-auto text-lg">
-      <div className="grid gap-4 lg:grid-cols-2 items-start">
-      <div className="space-y-4 min-w-0">
+      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="flex flex-col gap-4 min-w-0">
       {/* 1. Overall score */}
       <section className={card} aria-labelledby="b1">
         <h2 id="b1" className="sr-only">Overall score</h2>
@@ -178,12 +163,11 @@ function Results({ res, learnHref }: { res: EvalResponse; learnHref: string }) {
       </section>
 
       {/* 2. Where it got confused */}
-      <Confusion items={items} labels={labels} />
+      <Confusion items={items} labels={labels} className="flex-1" />
 
-      <div className="hidden lg:block">{footer}</div>
       </div>
 
-      <div className="space-y-4 min-w-0">
+      <div className="flex flex-col gap-4 min-w-0">
       {/* 4. The desk that matters most */}
       <section className={card} aria-labelledby="b4">
         <h2 id="b4" className="text-2xl font-bold">The desk that matters most</h2>
@@ -227,7 +211,7 @@ function Results({ res, learnHref }: { res: EvalResponse; learnHref: string }) {
       </section>
 
       {/* 5. Pick the right metric */}
-      <section className={card} aria-labelledby="b5">
+      <section className={`${card} flex-1`} aria-labelledby="b5">
         <h2 id="b5" className="text-2xl font-bold">Which is worse for us?</h2>
         <div className="flex flex-wrap gap-3 mt-4">
           {([
@@ -295,8 +279,6 @@ function Results({ res, learnHref }: { res: EvalResponse; learnHref: string }) {
       </div>
       </div>
 
-      {/* Practice vs exam: under the grid on wide screens (evens out the two columns), last otherwise */}
-      <div className="lg:hidden mt-4">{footer}</div>
     </div>
   );
 }
@@ -316,7 +298,7 @@ function Tile({ title, big, pct, sub, on }: { title: string; big: string; pct: s
 
 /* ───────── block 2 ───────── */
 
-function Confusion({ items, labels }: { items: EvalItem[]; labels: string[] }) {
+function Confusion({ items, labels, className = '' }: { items: EvalItem[]; labels: string[]; className?: string }) {
   const g = grid(items, labels);
   const [open, setOpen] = useState<{ r: number; c: number } | null>(null);
   const picked = open ? cellItems(items, labels[open.r], labels[open.c]) : [];
@@ -324,7 +306,7 @@ function Confusion({ items, labels }: { items: EvalItem[]; labels: string[] }) {
   const off = offTopicLine(items);
 
   return (
-    <section className={card} aria-labelledby="b2">
+    <section className={`${card} ${className}`} aria-labelledby="b2">
       <h2 id="b2" className="text-2xl font-bold">Where it got confused</h2>
       <div className="overflow-x-auto mt-4">
         <table className="border-separate border-spacing-1.5 text-lg">
