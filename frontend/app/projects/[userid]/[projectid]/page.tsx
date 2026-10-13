@@ -19,7 +19,7 @@ import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { TeachYourAgent } from '../../../../components/TeachYourAgent'
-import RuleBasedProcessProject from '../../../../components/RuleBasedProcessProject'
+import RuleBasedProcessProject, { resolveRbpEditor } from '../../../../components/RuleBasedProcessProject'
 import ConfusionMatrixLab from '../../../../components/ConfusionMatrix'
 import RagChatbotLab from '../../../../components/RagChatbot'
 import AiAgentLab from '../../../../components/AiAgent'
@@ -1726,6 +1726,8 @@ export default function ProjectDetailsPage() {
   // 'live-video-classification' is the name this type had briefly; those projects open the same way
   const isLiveObjectDetection = selectedProject.type === 'live-object-detection' || selectedProject.type === 'live-video-classification';
   const studioHeader = isRbp || isExercises || isConfusionMatrix || isRagChatbot || isAiAgent || isLiveObjectDetection;
+  // The Rule Based Process block editor has its own back button in its header (like "Use the AI")
+  const ownBackButton = isRbp && resolveRbpEditor(selectedProject.rbpEditor) === 'blocks';
 
   return (
     <div className="h-screen overflow-hidden flex flex-col bg-canvas text-fg">
@@ -1740,7 +1742,7 @@ export default function ProjectDetailsPage() {
           : {})}
       />
 
-      {studioHeader && (
+      {studioHeader && !ownBackButton && (
         <div className="flex-shrink-0 px-4 sm:px-6 lg:px-8 py-2.5 border-b border-fg/10 bg-canvas">
           {isExercises && exerciseOpen ? (
             <button
@@ -3853,6 +3855,7 @@ export default function ProjectDetailsPage() {
               sessionId={actualSessionId}
               projectId={selectedProject.id}
               editor={selectedProject.rbpEditor}
+              backHref={`/projects/${urlUserId}`}
             />
           ) : isLiveObjectDetection ? (
             <LiveObjectDetectionProject

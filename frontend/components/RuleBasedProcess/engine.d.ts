@@ -7,6 +7,8 @@ export function mountRuleBasedProcess(
     onSave?: (state: Record<string, unknown>) => void;
     askModel?: (prompt: string) => Promise<string>;
     onReset?: () => Promise<Record<string, unknown> | null | undefined>;
+    /** "desk-routing": open on the keyword-rules starter (Rule Based Process projects). */
+    starter?: 'desk-routing';
     /** Machine Learning blocks (Text Recognition "Use the AI"). */
     ml?: {
       kind?: 'text' | 'image';

@@ -21,9 +21,11 @@ interface Props {
   projectId: string;
   /** The project's stored `rbpEditor` value. */
   editor?: string | null;
+  /** The projects list: the block editor header's back button (the page hides its own back bar). */
+  backHref: string;
 }
 
-export default function RuleBasedProcessProject({ projectName, sessionId, projectId, editor }: Props) {
+export default function RuleBasedProcessProject({ projectName, sessionId, projectId, editor, backHref }: Props) {
   const view = resolveRbpEditor(editor);
 
   if (view === 'scratch') {
@@ -35,7 +37,8 @@ export default function RuleBasedProcessProject({ projectName, sessionId, projec
   }
 
   return (
-    <BlockStudioShell title={`Rule Based Process : ${projectName}`}>
+    // Same frame as Text Recognition "Use the AI": back button and title, Run / Stop on the canvas
+    <BlockStudioShell title={`Rule Based Process : ${projectName}`} backHref={backHref} backLabel="Back to Projects">
       {(toolbarHostRef) =>
         sessionId ? (
           <RuleBasedProcess
@@ -43,6 +46,7 @@ export default function RuleBasedProcessProject({ projectName, sessionId, projec
             sessionId={sessionId}
             projectId={projectId}
             toolbarHostRef={toolbarHostRef}
+            starter="desk-routing"
           />
         ) : null
       }

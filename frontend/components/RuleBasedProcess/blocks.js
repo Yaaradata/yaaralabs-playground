@@ -133,6 +133,8 @@ var CAT = {
     op_true:    { cat: "operators", shape: "bool", parts: [L("true")] },
     op_false:   { cat: "operators", shape: "bool", parts: [L("false")] },
     op_contains:{ cat: "operators", shape: "bool", parts: [T("A", "apple"), L("contains"), T("B", "a")] },
+    // keyword rules: true when A contains any of the comma-separated words in B
+    op_contains_any:{ cat: "operators", shape: "bool", parts: [T("A", "apple"), L("contains any of"), T("B", "fee, bill")] },
     op_startswith:{ cat: "operators", shape: "bool", parts: [T("A", "hello"), L("starts with"), T("B", "he")] },
     op_endswith:{ cat: "operators", shape: "bool", parts: [T("A", "hello"), L("ends with"), T("B", "lo")] },
     op_if:      { cat: "operators", shape: "rep",
@@ -191,7 +193,7 @@ var CAT = {
     operators: [
       "#Compare", "op_eq", "op_ne", "op_gt", "op_ge", "op_lt", "op_le",
       "#Logic", "op_and", "op_or", "op_not", "op_true", "op_false",
-      "#Text", "op_join", "op_letter", "op_length", "op_contains", "op_startswith", "op_endswith", "op_if",
+      "#Text", "op_join", "op_letter", "op_length", "op_contains", "op_contains_any", "op_startswith", "op_endswith", "op_if",
       "#Math", "op_add", "op_sub", "op_mul", "op_div", "op_mod", "op_random", "op_math",
               "op_min", "op_max", "op_round", "op_num",
     ],

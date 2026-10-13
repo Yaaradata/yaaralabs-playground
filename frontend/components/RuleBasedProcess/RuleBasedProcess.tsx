@@ -27,6 +27,8 @@ type RuleBasedProcessProps = {
   toolbarHostRef?: RefObject<HTMLElement | null>;
   /** Text Recognition "Use the AI": the trained model behind the Machine Learning blocks. */
   ml?: MlOptions;
+  /** "desk-routing": open on the keyword-rules starter (Rule Based Process projects). */
+  starter?: 'desk-routing';
 };
 
 export type MlOptions = {
@@ -56,6 +58,7 @@ export default function RuleBasedProcess({
   extraPanel,
   toolbarHostRef,
   ml,
+  starter,
 }: RuleBasedProcessProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<RbpApi | null>(null);
@@ -279,6 +282,7 @@ export default function RuleBasedProcess({
             : undefined,
         onReset: persistLocal || persistCloud ? () => resetWorkspace() : undefined,
         ml: mlRef.current,
+        starter,
       } as {
         initialState?: Record<string, unknown>;
         toolbarHost?: HTMLElement | null;

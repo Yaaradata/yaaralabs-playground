@@ -35,7 +35,11 @@ export function mountRuleBasedProcess(root, options) {
     var mlLabels = mlReady ? ML.labels.map(String) : [];
     var mlModel = (ML && ML.model) || {};
     var mlModelName = String(mlModel.name || "My model");
-    if (ML) root.classList.add("rbp-ml");
+    // Chat view: Text / Image Recognition "Use the AI" and Rule Based Process projects. No task text
+    // (the right column is the chat), one Run / Stop button on the canvas instead of the header
+    // toolbar, and one colour for every Sparky bubble (.rbp-ml in the CSS).
+    var CHAT_VIEW = !!ML || options.starter === "desk-routing";
+    if (CHAT_VIEW) root.classList.add("rbp-ml");
     // Saved workspaces from before the current ML starter open on the new starter once
     var ML_STATE_TAG = mlImage ? "image-2" : "text-3";
     function hiddenCat(cat) {
@@ -234,6 +238,56 @@ export function mountRuleBasedProcess(root, options) {
       });
     }
 
+    // Rule Based Process projects (options.starter = "desk-routing"): route client messages to the
+    // Text Recognition labels with keyword rules. Each desk starts with ONE keyword; the learner makes
+    // it smarter by adding more keywords with "or" blocks. The same labels as the Text Recognition
+    // sample data, so the two projects can be compared on the same messages.
+    var DESK_RULES = [
+      { label: "Corporate action", keyword: "dividend", more: "bonus, split, buyback, record date" },
+      { label: "Fees & billing", keyword: "fee", more: "invoice, charge, bill, GST" },
+      { label: "Onboarding & KYC", keyword: "KYC", more: "PAN, FATCA, address, signatory" },
+      { label: "Complaint / escalation", keyword: "complaint", more: "unacceptable, escalate, regulator, wrong" },
+    ];
+    var DESK_NONE = "none";
+    var DESK_REPLY = "Sorry, I didn't understand. A person will reply.";
+    var DESK_CONCEPT = options.starter === "desk-routing" ? {
+      id: "desks", title: "Route client messages",
+      vars: ["Desk"],
+      answer: { type: "text" },
+      brief: "Send each client message to the right desk.\n\n" +
+             "One keyword per desk:\n" +
+             DESK_RULES.map(function (r) { return r.label + " ← " + r.keyword; }).join("\n") + "\n\n" +
+             "Make it smarter: put an \"or\" block in an if and add more keywords, e.g. " +
+             DESK_RULES.map(function (r) { return r.more.split(", ")[0]; }).join(", ") + ".",
+      tests: [],
+      solution: function () {
+        // if answer contains any of <keywords> then set Desk to <label>: one keyword to start, the
+        // learner types more, comma separated, in the same block. The last match wins, so
+        // Complaint / escalation (checked last) beats the others
+        var rules = DESK_RULES.map(function (r) {
+          return mk("if_then", {
+            i: { COND: mk("op_contains_any", { i: { A: mk("answer"), B: r.keyword } }) },
+            body: [mk("set_var", { f: { VAR: "Desk" }, i: { VAL: r.label } })],
+          });
+        });
+        return [
+          mk("when_flag"),
+          mk("forever", { body: [
+            // no question text: Sparky just waits for the client message in the reply box
+            mk("ask", { i: { Q: "" } }),
+            mk("set_var", { f: { VAR: "Desk" }, i: { VAL: DESK_NONE } }),
+          ].concat(rules, [
+            mk("if_else", {
+              i: { COND: mk("op_eq", { i: { A: V("Desk"), B: DESK_NONE } }) },
+              body: [mk("say", { i: { MSG: DESK_REPLY } })],
+              body2: [mk("say", { i: { MSG: mk("op_join", { i: { A: "Send this to: ", B: V("Desk") } }) } })],
+            }),
+          ]) }),
+        ];
+      },
+    } : null;
+    if (DESK_CONCEPT) PRESETS.unshift(DESK_CONCEPT);
+
     /** What Sparky says for each label in the text starter (the Nuvama sample desks, else generic). */
     function deskFor(label) {
       var desks = {
@@ -243,6 +297,26 @@ export function mountRuleBasedProcess(root, options) {
         "complaint or escalation": "Escalate this to a senior manager now.",
       };
       return desks[String(label).toLowerCase()] || ("This is about " + label + ".");
+    }
+
+    /** "fee, Invoice , bill" -> ["fee", "invoice", "bill"] */
+    function keywordList(v) {
+      return String(v == null ? "" : v).split(",").map(function (k) { return k.trim().toLowerCase(); })
+        .filter(function (k) { return k; });
+    }
+    /** Desk-routing workspaces saved by an older starter: answer contains X becomes answer contains any of X. */
+    function upgradeDeskRules(stacks) {
+      function walk(b) {
+        if (!b || typeof b !== "object") return;
+        if (b.op === "op_contains" && b.inputs && b.inputs.A && b.inputs.A.op === "answer" &&
+            typeof b.inputs.B === "string") b.op = "op_contains_any";
+        // the starter used to ask "Type a client message"; Sparky now just waits, like a chat bot
+        if (b.op === "ask" && b.inputs && b.inputs.Q === "Type a client message") b.inputs.Q = "";
+        Object.keys(b.inputs || {}).forEach(function (k) { walk(b.inputs[k]); });
+        (b.body || []).forEach(walk);
+        (b.body2 || []).forEach(walk);
+      }
+      (stacks || []).forEach(function (s) { (s.blocks || []).forEach(walk); });
     }
 
     var BUILTIN_SOLUTIONS = {};
@@ -514,7 +588,7 @@ export function mountRuleBasedProcess(root, options) {
       if (tab === "operators" && selectedNeedsCompare()) {
         pushSec("For your if", true);
         // Compare for numbers; contains for text (e.g. Answer / prediction)
-        ["op_eq", "op_gt", "op_lt", "op_contains"].forEach(function (op) { pushOp(op); });
+        ["op_eq", "op_gt", "op_lt", "op_contains", "op_contains_any"].forEach(function (op) { pushOp(op); });
       }
 
       ops.forEach(function (op) {
@@ -1883,6 +1957,10 @@ export function mountRuleBasedProcess(root, options) {
           if (Array.isArray(ca)) return ca.some(function (x) { return cmp(x, cb) === 0; });
           return String(ca).toLowerCase().indexOf(String(cb).toLowerCase()) > -1;
         }
+        case "op_contains_any": {
+          var hayA = String(evalIn(b, "A")).toLowerCase();
+          return keywordList(evalIn(b, "B")).some(function (k) { return hayA.indexOf(k) > -1; });
+        }
         case "op_startswith":
           return String(evalIn(b, "A")).toLowerCase().indexOf(String(evalIn(b, "B")).toLowerCase()) === 0;
         case "op_endswith": {
@@ -2192,11 +2270,11 @@ export function mountRuleBasedProcess(root, options) {
     });
     // "Use the AI" (ML mode) shows only the Stage: no Python tab
     if (ML && $("#ptabs")) $("#ptabs").style.display = "none";
-    // ...no header toolbar (run, stop, restart, reset, undo, full screen): the canvas button runs it.
-    // The buttons stay in the page, hidden, because the canvas button clicks #run / #stop.
-    if (ML && $(".runbar")) $(".runbar").style.display = "none";
+    // Chat view: no header toolbar (run, stop, restart, reset, undo, full screen): the canvas button
+    // runs it. The buttons stay in the page, hidden, because the canvas button clicks #run / #stop.
+    if (CHAT_VIEW && $(".runbar")) $(".runbar").style.display = "none";
     // ...and a Run / Stop button on the canvas itself, next to the script
-    if (ML && $("#wrap") && !$("#canvasrun")) {
+    if (CHAT_VIEW && $("#wrap") && !$("#canvasrun")) {
       var cr = document.createElement("button");
       cr.id = "canvasrun";
       cr.type = "button";
@@ -2211,7 +2289,7 @@ export function mountRuleBasedProcess(root, options) {
       $("#wrap").appendChild(cr);
     }
     // ...and one colour for every Sparky bubble (see .rbp-ml in the CSS)
-    if (ML && $("#console") && $("#console").closest(".rbp-root")) $("#console").closest(".rbp-root").classList.add("rbp-ml");
+    if (CHAT_VIEW && $("#console") && $("#console").closest(".rbp-root")) $("#console").closest(".rbp-root").classList.add("rbp-ml");
   
     $("#restart").onclick = function () {
       if (R.on) $("#stop").onclick();
@@ -2355,6 +2433,7 @@ export function mountRuleBasedProcess(root, options) {
         case "op_true": return "True";
         case "op_false": return "False";
         case "op_contains": return "(str(" + B() + ").lower() in str(" + A() + ").lower())";
+        case "op_contains_any": PYNEED._contains_any = 1; return "contains_any(" + A() + ", " + B() + ")";
         case "op_startswith": return "str(" + A() + ").lower().startswith(str(" + B() + ").lower())";
         case "op_endswith": return "str(" + A() + ").lower().endswith(str(" + B() + ").lower())";
         case "answer_empty": return '(str(answer).strip() == "")';
@@ -2522,6 +2601,12 @@ export function mountRuleBasedProcess(root, options) {
       var imports = Object.keys(PYNEED).filter(function (k) { return k.charAt(0) !== "_"; }).sort();
       if (imports.length) head.push("import " + imports.join(", "));
       if (PYNEED._timer) head.push("start = time.time()");
+      if (PYNEED._contains_any) {
+        if (head.length) head.push("");
+        head.push("def contains_any(text, keywords):",
+                  "    # True when text contains any of the comma-separated keywords",
+                  "    return any(k.strip().lower() in str(text).lower() for k in keywords.split(\",\") if k.strip())");
+      }
       if (head.length) head.push("");
   
   
@@ -2790,6 +2875,7 @@ export function mountRuleBasedProcess(root, options) {
           case "random.randint": return mk("op_random", { i: { A: unstr(E(args[0])), B: unstr(E(args[1])) } });
           case "min": return mk("op_min", { i: { A: unstr(E(args[0])), B: unstr(E(args[1])) } });
           case "max": return mk("op_max", { i: { A: unstr(E(args[0])), B: unstr(E(args[1])) } });
+          case "contains_any": return mk("op_contains_any", { i: { A: unstr(E(args[0])), B: unstr(E(args[1])) } });
           case "key_pressed": { var k = E(args[0]); return mk("key_down", { f: { KEY: litOf(k) || "space" } }); }
         }
         throw perr(line2, nm + "() is not one of the blocks");
@@ -3152,7 +3238,11 @@ export function mountRuleBasedProcess(root, options) {
       while (pos < items.length) {
         var it = items[pos];
         if (it.ind !== 0) throw perr(it.n, "this line is indented but nothing opens a block above it");
-        if ((m2 = /^def\s+([A-Za-z_]\w*)\s*\(\s*\)\s*:$/.exec(it.text))) {
+        if (/^def\s+contains_any\s*\(/.test(it.text)) {
+          // the helper printed above the code for "contains any of": it is the block itself
+          pos++;
+          while (pos < items.length && items[pos].ind > 0) pos++;
+        } else if ((m2 = /^def\s+([A-Za-z_]\w*)\s*\(\s*\)\s*:$/.exec(it.text))) {
           var nm = m2[1]; pos++;
           defs.push({ name: nm, body: kids(0) });
         } else if ((m2 = /^def\s+([A-Za-z_]\w*)\s*\([^)]*\)\s*:$/.exec(it.text))) {
@@ -3601,6 +3691,13 @@ export function mountRuleBasedProcess(root, options) {
           });
         });
       }
+      // Projects saved before the desk-routing starter still get it in the concept list. A workspace
+      // with no blocks yet (the backend's seed for a new project) opens on it.
+      var openDesks = false;
+      if (DESK_CONCEPT && !findPresetById("desks")) {
+        PRESETS.unshift(DESK_CONCEPT);
+        openDesks = !(Array.isArray(state.stacks) && state.stacks.length) && !state.empty_canvas;
+      }
       // Older saves may lack the Ask-the-model concept — keep the starter available
       if (!findPresetById("model") && BUILTIN_SOLUTIONS.model) {
         var modelConcept = {
@@ -3628,13 +3725,14 @@ export function mountRuleBasedProcess(root, options) {
       if (state.zoom != null) zoom = clampZoom(Number(state.zoom) || 1);
       else zoom = 1;
       W = { stacks: Array.isArray(state.stacks) ? JSON.parse(JSON.stringify(state.stacks)) : [] };
+      if (DESK_CONCEPT && state.active_concept_id === "desks") upgradeDeskRules(W.stacks);
       emptyCanvas = !!state.empty_canvas && W.stacks.length === 0;
       undo.length = 0;
       syncUndoBtn();
       selId = null;
       fillPicker();
       var idx = 0;
-      if (state.active_concept_id) {
+      if (state.active_concept_id && !openDesks) {
         for (var i = 0; i < PRESETS.length; i++) {
           if (PRESETS[i].id === state.active_concept_id) { idx = i; break; }
         }
