@@ -133,15 +133,16 @@ export default function EvaluatePage() {
               <span />
             </div>
 
-            {project.type === 'text-recognition' ? (
+            {project.type === 'text-recognition' || project.type === 'image-recognition' ? (
               <ProjectEvaluate
+                kind={project.type === 'image-recognition' ? 'image' : 'text'}
                 sessionId={ids.sessionId}
                 projectId={ids.projectId}
                 learnHref={`/projects/${urlUserId}/${urlProjectId}/learn`}
               />
             ) : (
               <div className="max-w-7xl mx-auto bg-card border border-magenta-brand/20 rounded-2xl p-8 text-lg">
-                <p>Evaluate is available for Text recognition projects.</p>
+                <p>Evaluate is available for Text and Image recognition projects.</p>
                 <Link href={`/projects/${urlUserId}/${urlProjectId}`} className="inline-block mt-4 text-pink-brand font-semibold underline">
                   Back to the project
                 </Link>

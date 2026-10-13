@@ -13,6 +13,7 @@ import {
   accuracy,
   cellItems,
   defaultDesk,
+  deskNoun,
   deskAtLean,
   deskDots,
   examItems,
@@ -140,6 +141,24 @@ test('dots: Complaint recall row and precision row agree with the numbers', () =
   assert.equal(flagged.length, r.flagged);
   assert.equal(flagged.filter((d) => !d.ok).length, r.falseAlarms);
   assert.deepEqual(flagged.filter((d) => !d.ok).map((d) => d.item.text), ['Our authorised signatory has left the company. Please remove her.']);
+});
+
+test('images: wording uses images, not messages or complaints', () => {
+  assert.equal(deskNoun('Invoice', 2, 'images'), 'Invoice images');
+  assert.equal(deskNoun('Invoice', 1, 'images'), 'Invoice image');
+  assert.equal(deskNoun(COMPLAINT, 2, 'images'), 'Complaint images');
+  assert.equal(deskNoun(COMPLAINT, 2), 'complaints');
+  const items = [
+    { text: 'Deep 01', expected: 'KYC', predicted: 'KYC', scores: { KYC: 0.9, Invoice: 0.1 }, image: '/x.jpg' },
+    { text: 'Deep 02', expected: 'Invoice', predicted: 'KYC', scores: { KYC: 0.6, Invoice: 0.4 }, image: '/y.jpg' },
+  ];
+  assert.equal(mostMissesLine(items, ['KYC', 'Invoice'], 'images'), 'Most mistakes: Invoice images sent to other desks (1 of 1).');
+  const r = deskAtLean(items, ['KYC', 'Invoice'], 'Invoice', 0);
+  assert.ok(hiddenWeakDeskLine(accuracy(items), 'Invoice', r, 'images').includes('0 of 1 Invoice image.'));
+});
+
+test('labels outside the standard desks keep their given order', () => {
+  assert.deepEqual(orderLabels(['KYC', 'Invoice', 'Cheque']), ['KYC', 'Invoice', 'Cheque']);
 });
 
 test('practice 20 of 20', () => {

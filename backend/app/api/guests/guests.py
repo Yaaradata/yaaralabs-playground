@@ -28,7 +28,7 @@ from ...services.project_service import ProjectService
 from ...training_service import trainer, distilbert_trainer
 from ...text_ovr_service import ovr_text_trainer, MODEL_TYPE as OVR_MODEL_TYPE
 from ...text_embed_service import embed_text_trainer, MODEL_TYPE as EMBED_MODEL_TYPE
-from ...image_training_service import image_trainer, ImageRecognitionTrainer
+from ...image_training_service import image_trainer, ImageRecognitionTrainer, get_cached_predictor
 from ...services.image_url_fetcher import fetch_image_from_url, ImageUrlError
 from ...training_job_service import training_job_service
 from ...config import gcp_clients
@@ -1367,7 +1367,9 @@ async def _train_image_recognition_project(
 
         # Own trainer for this request: the model/labels must not be swapped out by another
         # project's training or prediction between training and saving
-        trainer = ImageRecognitionTrainer()
+        # Model chosen on the training page: "mobilenet" (default) or "efficientnet"
+        requested = (training_config.modelType if training_config else None) or ""
+        trainer = ImageRecognitionTrainer(architecture=requested)
 
         try:
             # Prepare training data directly from GCS
@@ -1392,6 +1394,7 @@ async def _train_image_recognition_project(
 
             logger.info(f"Saving image model to GCS directory: {model_path}")
             saved_model_path = trainer.save_model(gcp_clients.get_bucket(), model_path)
+            training_result['model_bytes'] = trainer.last_model_bytes
             logger.info("Image model saved to GCS successfully")
             
             # Update Firestore with completed status and model info
@@ -1461,6 +1464,9 @@ async def get_guest_training_status(
             "success": True,
             "projectStatus": guest_project.get('status', 'draft'),
             "modelType": guest_project.get('model', {}).get('modelType'),
+            # Image models: how long training took and how big the model is (training page)
+            "trainingSeconds": guest_project.get('model', {}).get('trainingSeconds'),
+            "modelSizeBytes": guest_project.get('model', {}).get('sizeBytes'),
             "currentJob": current_job.model_dump() if current_job else None,
             "allJobs": [job.model_dump() for job in jobs],
             "totalJobs": len(jobs)
@@ -1567,19 +1573,20 @@ async def predict_guest_text(
             
             # Always load the model for each prediction, into a trainer owned by this request
             # so a concurrent training or prediction can't swap the model mid-request
-            logger.info(f"Loading image model from GCS path: {model_gcs_path}")
-            predictor = ImageRecognitionTrainer()
-            success = predictor.load_model_from_gcs(gcp_clients.get_bucket(), model_gcs_path)
-            if not success:
-                logger.error(f"Failed to load image model from GCS path: {model_gcs_path}")
+            # Loaded once and reused until the model is retrained (get_cached_predictor). Loading and
+            # predicting run on a worker thread, so one image never blocks the rest of the server.
+            loop = asyncio.get_event_loop()
+            try:
+                predictor = await loop.run_in_executor(None, get_cached_predictor, gcp_clients.get_bucket(), model_gcs_path)
+            except Exception as load_error:
+                logger.error(f"Failed to load image model from GCS path: {model_gcs_path}: {load_error}")
                 raise HTTPException(
                     status_code=500,
-                    detail=f"Failed to load image model from GCS: {predictor.last_error}"
+                    detail=f"Failed to load image model from GCS: {load_error}"
                 )
-            logger.info("Image model loaded successfully from GCS")
 
             # Make prediction using image URL
-            prediction_result = predictor.predict_from_gcs(prediction_request.text)
+            prediction_result = await loop.run_in_executor(None, predictor.predict_from_gcs, prediction_request.text)
             
             # Convert to the expected format
             return PredictionResponse(

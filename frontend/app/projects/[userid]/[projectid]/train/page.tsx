@@ -276,9 +276,9 @@ export default function TrainPage() {
         return;
       }
     } catch (error) {
+      // Could not reach the server (network blip, server restarting): keep the session, so the
+      // learner's projects are still there when they come back
       console.error('Error validating session:', error);
-      localStorage.removeItem('yaaralabs_playground_session_id');
-      localStorage.removeItem('yaaralabs_playground_session_created');
       window.location.href = '/projects';
       return;
     }

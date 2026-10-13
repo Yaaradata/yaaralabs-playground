@@ -139,6 +139,9 @@ interface TrainingStatusResponse {
   success: boolean;
   projectStatus: 'untrained' | 'training' | 'trained' | 'failed';
   modelType?: string | null;
+  /** Image models: how long training took and the saved model's size. */
+  trainingSeconds?: number | null;
+  modelSizeBytes?: number | null;
   currentJob: TrainingJob | null;
   allJobs: TrainingJob[];
   totalJobs: number;
@@ -210,8 +213,17 @@ export default function LearnPage() {
   const [selectedTextModel, setSelectedTextModel] = useState<'logistic_regression' | 'distilbert'>('logistic_regression');
   const [trainedModelType, setTrainedModelType] = useState<string | null>(null);
   const isTextProject = !selectedProject?.type || selectedProject.type === 'text-recognition';
+  const isImageProject = selectedProject?.type === 'image-recognition';
+  // Text and Image Recognition share the compact training page (train card left, test right)
+  const isCompact = isTextProject || isImageProject;
+  // Image recognition: MobileNet (fast, small) or EfficientNet (bigger, slower)
+  const [selectedImageModel, setSelectedImageModel] = useState<'mobilenet' | 'efficientnet'>('mobilenet');
+  const [modelStats, setModelStats] = useState<{ seconds: number | null; bytes: number | null }>({ seconds: null, bytes: null });
   const modelTypeLabel = (type: string | null) => {
     if (!type) return 'Unknown';
+    if (type === 'mobilenet') return 'MobileNet';
+    // Image models saved before the model choice existed were MobileNet but stored as "efficientnet"
+    if (type === 'efficientnet') return modelStats.seconds != null ? 'EfficientNet' : 'MobileNet';
     if (type === 'sentence_embed_lr') return 'Logistic Regression';
     if (type === 'logistic_regression_ovr') return 'Logistic Regression (word matching)';
     if (type === 'distilbert') return 'DistilBERT';
@@ -520,6 +532,9 @@ export default function LearnPage() {
         if (statusData.success) {
           const { projectStatus, currentJob } = statusData;
           setTrainedModelType(statusData.modelType ?? null);
+          setModelStats({ seconds: statusData.trainingSeconds ?? null, bytes: statusData.modelSizeBytes ?? null });
+          if (statusData.modelType === 'efficientnet' && statusData.trainingSeconds != null) setSelectedImageModel('efficientnet');
+          else if (statusData.modelType === 'mobilenet') setSelectedImageModel('mobilenet');
           if (statusData.modelType === 'distilbert') setSelectedTextModel('distilbert');
           else if (statusData.modelType === 'sentence_embed_lr' || statusData.modelType === 'logistic_regression_ovr') setSelectedTextModel('logistic_regression');
           
@@ -653,7 +668,7 @@ export default function LearnPage() {
         batchSize: 32,
         learningRate: 0.001,
         validationSplit: 0.2,
-        ...(isTextProject ? { modelType: selectedTextModel } : {})
+        ...(isTextProject ? { modelType: selectedTextModel } : isImageProject ? { modelType: selectedImageModel } : {})
       };
       
       console.log('📋 Training config:', trainingConfig);
@@ -683,7 +698,7 @@ export default function LearnPage() {
           return;
         }
         
-                 if (result.success && result.message === 'Training completed successfully!') {
+                 if (result.success && /training completed successfully/i.test(String(result.message))) {
            // Training completed immediately (synchronous training)
            console.log('🎉 Training completed immediately!');
            setIsTraining(false);
@@ -702,6 +717,7 @@ export default function LearnPage() {
            setTrainedModel(completedModel);
            // The model just trained (the status read before training still shows the project's old default)
            if (isTextProject) setTrainedModelType(selectedTextModel === 'distilbert' ? 'distilbert' : 'sentence_embed_lr');
+           if (isImageProject) setTrainedModelType(selectedImageModel);
 
            // Save to localStorage
            const modelKey = `yaaralabs_playground_model_${actualSessionId}_${actualProjectId}`;
@@ -937,17 +953,25 @@ export default function LearnPage() {
     { id: 'logistic_regression' as const, name: 'Logistic Regression', hint: 'Fast, reads meaning' },
     { id: 'distilbert' as const, name: 'DistilBERT', hint: 'Slower, bigger model' },
   ];
-  const modelSelector = isTextProject ? (
+  const imageModels = [
+    { id: 'mobilenet' as const, name: 'MobileNet', hint: 'Fast, small' },
+    { id: 'efficientnet' as const, name: 'EfficientNet', hint: 'Bigger, slower' },
+  ];
+  const choices: { id: string; name: string; hint: string }[] = isImageProject ? imageModels : textModels;
+  const chosen = isImageProject ? selectedImageModel : selectedTextModel;
+  const choose = (id: string) =>
+    isImageProject ? setSelectedImageModel(id as 'mobilenet' | 'efficientnet') : setSelectedTextModel(id as 'logistic_regression' | 'distilbert');
+  const modelSelector = isCompact ? (
     <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Model to train">
-      {textModels.map((m) => {
-        const on = selectedTextModel === m.id;
+      {choices.map((m) => {
+        const on = chosen === m.id;
         return (
           <button
             key={m.id}
             type="button"
             role="radio"
             aria-checked={on}
-            onClick={() => setSelectedTextModel(m.id)}
+            onClick={() => choose(m.id)}
             disabled={isTraining}
             className={`rounded-lg border-2 px-3 py-2 text-left transition-colors disabled:opacity-50 ${
               on ? 'border-pink-brand bg-purple-brand/15' : 'border-magenta-brand/25 hover:border-magenta-brand/50'
@@ -1488,8 +1512,8 @@ export default function LearnPage() {
             ) : <span />}
           </div>
 
-          <div className={isTextProject ? 'grid gap-4 lg:grid-cols-[minmax(0,25rem)_minmax(0,1fr)] items-start' : undefined}>
-          {isTextProject ? (
+          <div className={isCompact ? 'grid gap-4 lg:grid-cols-[minmax(0,25rem)_minmax(0,1fr)] items-start' : undefined}>
+          {isCompact ? (
             /* Text: one compact card: what you collected, which model, train, status */
             (() => {
               const counts = trainingStats.labelBreakdown.map((l) => l.count);
@@ -1583,6 +1607,14 @@ export default function LearnPage() {
                             </button>
                           </div>
                           {trainedModelType && <p className="text-sm text-fg/80 mt-1.5">{modelTypeLabel(trainedModelType)}</p>}
+                          {(modelStats.seconds != null || modelStats.bytes != null) && (
+                            <p className="text-sm text-fg mt-1 font-medium">
+                              {[
+                                modelStats.seconds != null ? `Trained in ${Math.round(modelStats.seconds)} s` : null,
+                                modelStats.bytes != null ? `model ${(modelStats.bytes / (1024 * 1024)).toFixed(1)} MB` : null,
+                              ].filter(Boolean).join(' · ')}
+                            </p>
+                          )}
                           <p className="text-xs text-fg/60 mt-1">
                             Trained {time(trainedModel.startedAt)} · Deleted after {time(trainedModel.expiresAt)}
                           </p>
@@ -1650,10 +1682,10 @@ export default function LearnPage() {
           )}
 
             {/* Bottom section: training state, the test card, model details (text: the right column, scrolls inside the window) */}
-            <div className={isTextProject ? 'min-w-0 space-y-4 lg:max-h-[calc(100dvh-14.5rem)] lg:overflow-y-auto lg:pr-1' : undefined}>
+            <div className={isCompact ? 'min-w-0 space-y-4 lg:max-h-[calc(100dvh-14.5rem)] lg:overflow-y-auto lg:pr-1' : undefined}>
 
              {/* Text: the right column before testing opens: an empty state, or the training stages */}
-             {isTextProject && !isInitializing && (!trainedModel || isTraining || trainPhase !== null) && (() => {
+             {isCompact && !isInitializing && (!trainedModel || isTraining || trainPhase !== null) && (() => {
                const busy = trainPhase !== null || isTraining;
                const stage = trainPhase ?? 0;
                const STEP_TEXT = [
@@ -1661,7 +1693,7 @@ export default function LearnPage() {
                  'Putting the model online so you can test it',
                  'Your model is ready. Opening the test area…',
                ];
-               const steps = busy ? TRAIN_STEPS : (['Train', 'Test your own text', 'Evaluate on sample data'] as const);
+               const steps = busy ? TRAIN_STEPS : (['Train', isImageProject ? 'Test your own image' : 'Test your own text', 'Evaluate on sample data'] as const);
                return (
                  <div className="bg-canvas border border-magenta-brand/20 rounded-xl px-6 py-10 lg:min-h-[26rem] flex flex-col items-center justify-center text-center" aria-live="polite">
                    <div className="w-14 h-14 rounded-full bg-purple-brand/15 flex items-center justify-center mb-4">
@@ -1721,7 +1753,7 @@ export default function LearnPage() {
              )}
 
                          {/* Training in Progress (text projects show it in the train card) */}
-             {isTraining && !isTextProject && (
+             {isTraining && !isCompact && (
                <div className="text-center mb-6">
                  <div className="w-16 h-16 border-4 border-magenta-brand/20 border-t-pink-brand rounded-full animate-spin mx-auto mb-4"></div>
                  <h4 className="text-xl font-bold text-fg mb-2">Training in Progress</h4>
@@ -2159,7 +2191,7 @@ export default function LearnPage() {
                 )}
 
                 {/* Training Results */}
-                {!isTextProject && currentTrainingJob && currentTrainingJob.result && (
+                {!isCompact && currentTrainingJob && currentTrainingJob.result && (
                   <div className="bg-canvas border border-magenta-brand/20 rounded-lg p-6 mb-6">
                     <h4 className="text-lg font-semibold text-fg mb-4">Training Results</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -2222,7 +2254,7 @@ export default function LearnPage() {
                 )}
 
                 {/* Model details: one line, then the actions (text projects show them in the train card) */}
-                {!isTextProject && (
+                {!isCompact && (
                 <div className="px-1">
                   <p className="text-sm text-fg/60 mb-3 flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="inline-flex items-center gap-1.5 text-fg font-medium">
@@ -2271,7 +2303,7 @@ export default function LearnPage() {
             )}
 
                                       {/* Default Training Interface */}
-             {!isTraining && !trainedModel && !isTextProject && (
+             {!isTraining && !trainedModel && !isCompact && (
                <div className="flex flex-col items-center gap-3 pt-1">
                 {!canTrainModel && (
                   <div className="text-center p-4 bg-canvas border border-magenta-brand/20 rounded-lg max-w-md">

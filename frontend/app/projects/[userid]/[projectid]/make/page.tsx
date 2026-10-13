@@ -259,9 +259,9 @@ export default function MakePage() {
         return;
       }
     } catch (error) {
+      // Could not reach the server (network blip, server restarting): keep the session, so the
+      // learner's projects are still there when they come back
       console.error('Error validating session:', error);
-      localStorage.removeItem('yaaralabs_playground_session_id');
-      localStorage.removeItem('yaaralabs_playground_session_created');
       window.location.href = '/projects';
       return;
     }
@@ -483,9 +483,8 @@ export default function MakePage() {
             projectId={actualProjectId}
             backHref={`/projects/${urlUserId}/${urlProjectId}`}
             trainHref={`/projects/${urlUserId}/${urlProjectId}/learn`}
-            {...(selectedProject.type === 'image-recognition'
-              ? {}
-              : { nextHref: `/projects/${urlUserId}/${urlProjectId}/evaluate`, nextLabel: 'Move to next - Evaluate' })}
+            nextHref={`/projects/${urlUserId}/${urlProjectId}/evaluate`}
+            nextLabel="Move to next - Evaluate"
           />
         </div>
       </div>

@@ -51,6 +51,12 @@ RUN mkdir -p /app/.cache/huggingface && \
 ENV TEXT_EMBED_MODEL=BAAI/bge-small-en-v1.5     TEXT_EMBED_MODEL_DIR=/app/models/text-embed
 RUN python -c "from huggingface_hub import snapshot_download;     snapshot_download('BAAI/bge-small-en-v1.5', local_dir='/app/models/text-embed',     allow_patterns=['*.json', '*.txt', 'model.safetensors'])" &&     python -c "from transformers import AutoTokenizer, AutoModel;     AutoTokenizer.from_pretrained('/app/models/text-embed', local_files_only=True);     AutoModel.from_pretrained('/app/models/text-embed', local_files_only=True);     print('✅ Text embedding model baked into the image')"
 
+# Image Recognition: pre-download the ImageNet weights of both models a learner can pick
+# (MobileNetV2 width 0.35 at 128 px, ~2 MB; EfficientNetB0 at 224 px, ~16 MB), so training never
+# downloads them during a session. KERAS_HOME is shared so the non-root user can read them.
+ENV KERAS_HOME=/app/.keras
+RUN mkdir -p /app/.keras && python -c "import keras;     keras.applications.MobileNetV2(include_top=False, weights='imagenet', input_shape=(128, 128, 3), alpha=0.35);     keras.applications.EfficientNetB0(include_top=False, weights='imagenet', input_shape=(224, 224, 3));     print('✅ Image model weights cached')"
+
 # Copy application code
 COPY . .
 
@@ -59,7 +65,7 @@ RUN groupadd -g 1001 appgroup && \
     useradd -u 1001 -g appgroup -s /bin/false -m appuser && \
     chown -R appuser:appgroup /app && \
     chmod -R 755 /app && \
-    chmod -R 755 /app/.cache
+    chmod -R 755 /app/.cache /app/.keras
 
 # Switch to non-root user
 USER appuser

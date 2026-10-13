@@ -131,6 +131,13 @@ export const cleanupSessionWithReason = async (
   reason: SessionCleanupReason, 
   sessionId?: string
 ): Promise<void> => {
+  // "Could not check the session" (server restarting, network blip, a 5xx) is not "the session is
+  // gone": deleting it here wiped every project of a learner who opened a page at the wrong moment.
+  // Keep everything; the page sends the learner back to /projects and they can carry on.
+  if (reason === SessionCleanupReason.ERROR_FALLBACK) {
+    console.warn('⚠️ Could not check the session; keeping it (no cleanup).');
+    return;
+  }
   console.log(`🧹 Cleaning up session. Reason: ${reason}`);
   await cleanupSession(sessionId);
 };

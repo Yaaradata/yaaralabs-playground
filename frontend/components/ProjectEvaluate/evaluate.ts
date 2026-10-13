@@ -14,6 +14,7 @@ export interface EvalItem {
   expected: string; // a project label, or NONE
   predicted: string; // the bot's normal choice (highest score)
   scores: Record<string, number>; // every label, 0-1
+  image?: string; // Image Recognition: the test image (shown instead of text)
 }
 
 export interface EvalResponse {
@@ -41,10 +42,10 @@ export function examItems(dataset: SampleDataset, projectLabels: string[]): { te
 
 const STANDARD = STANDARD_LABELS.map(projectLabelName);
 
-/** Grid order: the standard desks first (Fees, Corporate action, KYC, Complaint), then the rest. */
+/** Grid order: the standard desks first (Fees, Corporate action, KYC, Complaint), then the rest in the order given. */
 export function orderLabels(labels: string[]): string[] {
   const std = STANDARD.filter((l) => labels.includes(l));
-  return [...std, ...labels.filter((l) => !std.includes(l)).sort()];
+  return [...std, ...labels.filter((l) => !std.includes(l))];
 }
 
 const SHORT: Record<string, string> = {
@@ -55,11 +56,14 @@ const SHORT: Record<string, string> = {
 };
 export const shortName = (label: string) => SHORT[label] ?? label;
 
-/** "complaints", "KYC messages": how a desk's messages are named in a sentence. */
-export function deskNoun(label: string, n = 2): string {
+/** What one test item is: a message (Text Recognition) or an image (Image Recognition). */
+export type Unit = 'messages' | 'images';
+
+/** "complaints", "KYC messages", "Invoice images": how a desk's items are named in a sentence. */
+export function deskNoun(label: string, n = 2, unit: Unit = 'messages'): string {
   const s = shortName(label);
-  if (s === 'Complaint') return n === 1 ? 'complaint' : 'complaints';
-  return `${s} ${n === 1 ? 'message' : 'messages'}`;
+  if (s === 'Complaint' && unit === 'messages') return n === 1 ? 'complaint' : 'complaints';
+  return `${s} ${n === 1 ? unit.slice(0, -1) : unit}`;
 }
 
 export function defaultDesk(labels: string[]): string {
@@ -90,7 +94,7 @@ export function cellItems(items: EvalItem[], really: string, said: string): Eval
 }
 
 /** "Most mistakes: Complaint messages sent to other desks (2 of 3)." or null when there are none. */
-export function mostMissesLine(items: EvalItem[], labels: string[]): string | null {
+export function mostMissesLine(items: EvalItem[], labels: string[], unit: Unit = 'messages'): string | null {
   let best: { label: string; missed: number; total: number } | null = null;
   for (const label of labels) {
     const mine = deskItems(items).filter((i) => i.expected === label);
@@ -100,7 +104,7 @@ export function mostMissesLine(items: EvalItem[], labels: string[]): string | nu
     }
   }
   if (!best) return null;
-  return `Most mistakes: ${shortName(best.label)} messages sent to other desks (${best.missed} of ${best.total}).`;
+  return `Most mistakes: ${shortName(best.label)} ${unit} sent to other desks (${best.missed} of ${best.total}).`;
 }
 
 const sure = (i: EvalItem) => Math.round((i.scores[i.predicted] ?? 0) * 100);
@@ -168,12 +172,12 @@ export function deskAtLean(items: EvalItem[], labels: string[], desk: string, le
 }
 
 /** Block 4's closing line: only says "one score can hide a weak desk" when it really does. */
-export function hiddenWeakDeskLine(acc: { pct: number }, desk: string, r: DeskResult): string {
-  if (r.total === 0) return `There were no ${deskNoun(desk)} in this exam.`;
+export function hiddenWeakDeskLine(acc: { pct: number }, desk: string, r: DeskResult, unit: Unit = 'messages'): string {
+  if (r.total === 0) return `There were no ${deskNoun(desk, 2, unit)} in this exam.`;
   if (r.recall < acc.pct) {
-    return `Overall it scores ${acc.pct}%, but it caught only ${r.caught} of ${r.total} ${deskNoun(desk, r.total)}. One overall score can hide a weak desk.`;
+    return `Overall it scores ${acc.pct}%, but it caught only ${r.caught} of ${r.total} ${deskNoun(desk, r.total, unit)}. One overall score can hide a weak desk.`;
   }
-  return `Overall it scores ${acc.pct}%, and it caught ${r.caught} of ${r.total} ${deskNoun(desk, r.total)}.`;
+  return `Overall it scores ${acc.pct}%, and it caught ${r.caught} of ${r.total} ${deskNoun(desk, r.total, unit)}.`;
 }
 
 /* ───────── graph: right per desk ───────── */

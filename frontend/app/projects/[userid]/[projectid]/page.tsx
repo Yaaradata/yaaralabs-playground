@@ -3935,8 +3935,7 @@ export default function ProjectDetailsPage() {
             </h1>
           </div>
                 <div className={`grid grid-cols-1 gap-8 mx-auto ${
-                  selectedProject.type === 'text-recognition' ? 'md:grid-cols-2 xl:grid-cols-4 max-w-7xl' :
-                  selectedProject.type === 'image-recognition' ? 'md:grid-cols-3 max-w-6xl' : 'md:grid-cols-2 max-w-4xl'}`}>
+                  ['text-recognition', 'image-recognition'].includes(selectedProject.type) ? 'md:grid-cols-2 xl:grid-cols-4 max-w-7xl' : 'md:grid-cols-2 max-w-4xl'}`}>
             {/* Train Card */}
             <div className="bg-canvas border border-magenta-brand/20 rounded-xl p-8 text-center hover:bg-purple-brand/5 transition-all duration-300 flex flex-col">
               <h2 className="text-2xl md:text-3xl font-bold text-blue-400 mb-6">
@@ -3993,14 +3992,14 @@ export default function ProjectDetailsPage() {
               </div>
             )}
 
-            {/* Evaluate Card (Text Recognition): the trained model on sample messages it has never seen */}
-            {selectedProject.type === 'text-recognition' && (
+            {/* Evaluate Card (Text and Image Recognition): the trained model on sample data it has never seen */}
+            {['text-recognition', 'image-recognition'].includes(selectedProject.type) && (
               <div className="bg-canvas border border-magenta-brand/20 rounded-xl p-8 text-center hover:bg-purple-brand/5 transition-all duration-300 flex flex-col">
                 <h2 className="text-2xl md:text-3xl font-bold text-pink-brand mb-6">
                   4. Evaluate
                 </h2>
                 <p className="text-fg mb-8 text-sm md:text-base leading-relaxed flex-grow">
-                  Check your trained model on sample messages it has never seen
+                  Check your trained model on sample {selectedProject.type === 'image-recognition' ? 'images' : 'messages'} it has never seen
                 </p>
                 <button
                   onClick={() => {

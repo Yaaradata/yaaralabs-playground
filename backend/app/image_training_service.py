@@ -5,7 +5,7 @@
 # turned into ~300 tf_op_lambda layers with zero trainable weights, so every prediction was 50/50.
 import keras
 from keras import layers
-from keras.applications import MobileNetV2
+from keras.applications import EfficientNetB0, MobileNetV2
 from keras.applications.mobilenet_v2 import preprocess_input as mobilenet_v2_preprocess_input
 import h5py
 import numpy as np
@@ -32,6 +32,24 @@ logger = logging.getLogger(__name__)
 # Models saved before this field existed were trained on pixels / 255 ([0, 1]).
 PREPROCESSING_MOBILENET_V2 = "mobilenet_v2"
 PREPROCESSING_LEGACY_0_1 = "rescale_0_1"
+# EfficientNet rescales inside the model (Keras applications), so it takes raw 0-255 pixels.
+PREPROCESSING_EFFICIENTNET = "efficientnet"
+
+# The two models a learner can pick on the training page (Image Recognition):
+#   mobilenet     MobileNetV2 (width 0.35) at 128 px: small and fast. The default, and every model
+#                 saved before this choice existed.
+#   efficientnet  EfficientNetB0 at 224 px: bigger and slower, usually steadier on harder images.
+# The choice is stored in metadata.json ("architecture") so prediction rebuilds the same model.
+ARCHITECTURES = {
+    "mobilenet": {"img_size": (128, 128), "preprocessing": PREPROCESSING_MOBILENET_V2, "label": "MobileNet"},
+    "efficientnet": {"img_size": (224, 224), "preprocessing": PREPROCESSING_EFFICIENTNET, "label": "EfficientNet"},
+}
+DEFAULT_ARCHITECTURE = "mobilenet"
+
+
+def normalize_architecture(name: Optional[str]) -> str:
+    name = (name or "").strip().lower()
+    return name if name in ARCHITECTURES else DEFAULT_ARCHITECTURE
 
 class ImageRecognitionTrainer:
     """Ultra-lightweight training service optimized for small datasets (5-10 images per class).
@@ -40,27 +58,38 @@ class ImageRecognitionTrainer:
     train/predict request rather than sharing one across concurrent requests.
     """
 
-    def __init__(self):
-        self.img_size = (128, 128)  # Smaller images for faster processing
+    def __init__(self, architecture: str = DEFAULT_ARCHITECTURE):
+        self.architecture = normalize_architecture(architecture)
+        self.img_size = ARCHITECTURES[self.architecture]["img_size"]
         self.batch_size = 8  # Larger batch size for efficiency
-        self.epochs = 20  # Much fewer epochs for speed
+        # Learning rate 0.001 for 60 epochs (early stopping on loss): picked with
+        # scripts/benchmark_image_models.py by leave-one-out on the 20 sample training images.
+        # The old 0.01 x 20 overfitted: EfficientNet 15/20 -> 17/20 leave-one-out, 10/12 -> 12/12 on
+        # the standard test images; MobileNet 16/20 -> 17/20, handwritten 15/20 -> 17/20.
+        self.epochs = 60
+        self.learning_rate = 0.001
+        self.seed = 7  # same images -> same model, so a workshop room sees the same results
         self.model = None
         self.class_names = []
         self.is_trained = False
         self.use_lightweight = True  # Use lightweight MobileNetV2
-        self.preprocessing = PREPROCESSING_MOBILENET_V2
+        self.preprocessing = ARCHITECTURES[self.architecture]["preprocessing"]
         self.last_error = None  # Reason the last load_model_from_gcs failed, for the API response
+        self.last_model_bytes = 0  # size of the saved weights, shown on the training page
 
     def _preprocess(self, images: np.ndarray) -> np.ndarray:
         """Scale raw 0-255 pixels the same way the model was trained."""
         images = np.array(images, dtype=np.float32, copy=True)
         if self.preprocessing == PREPROCESSING_LEGACY_0_1:
             return images / 255.0
+        if self.preprocessing == PREPROCESSING_EFFICIENTNET:
+            return images  # the model rescales its own input
         return mobilenet_v2_preprocess_input(images)
 
         
     def prepare_training_data_direct(self, image_examples: List[Dict[str, Any]]) -> Tuple[np.ndarray, np.ndarray, List[str]]:
         """Prepare training data directly from GCS images with minimal augmentation for speed"""
+        random.seed(self.seed)  # the same augmented copies on every run (see self.seed)
         try:
             # Group images by label
             label_groups = {}
@@ -174,8 +203,9 @@ class ImageRecognitionTrainer:
     def _download_image_to_memory(self, gcs_url: str) -> Optional[np.ndarray]:
         """Download image from GCS URL directly to memory and return as numpy array"""
         try:
-            # Initialize GCS client
-            client = storage.Client()
+            # The app's shared GCS client (a new client per image costs about a second)
+            from .config import gcp_clients
+            client = gcp_clients.get_storage_client() or storage.Client()
             
             # Parse GCS URL to get bucket and blob name
             if gcs_url.startswith('gs://'):
@@ -262,23 +292,23 @@ class ImageRecognitionTrainer:
             raise
 
     def _build_model(self, num_classes: int, load_pretrained: bool = True):
-        """Build MobileNetV2 + classifier. Same architecture for training and load-from-weights.
-        Use load_pretrained=False when loading our saved weights to avoid loading ImageNet (~14MB)."""
-        base_model = MobileNetV2(
-            include_top=False,
-            weights="imagenet" if load_pretrained else None,
-            input_shape=(128, 128, 3),
-            alpha=0.35,
-        )
+        """Build the chosen base model + classifier. Same architecture for training and load-from-weights.
+        Use load_pretrained=False when loading our saved weights to avoid loading ImageNet weights."""
+        shape = (int(self.img_size[0]), int(self.img_size[1]), 3)
+        weights = "imagenet" if load_pretrained else None
+        if self.architecture == "efficientnet":
+            base_model = EfficientNetB0(include_top=False, weights=weights, input_shape=shape)
+        else:
+            base_model = MobileNetV2(include_top=False, weights=weights, input_shape=shape, alpha=0.35)
         base_model.trainable = False
-        inputs = keras.Input(shape=(128, 128, 3), name='rgb_input')
+        inputs = keras.Input(shape=shape, name='rgb_input')
         x = base_model(inputs, training=False)
         x = layers.GlobalAveragePooling2D()(x)
         x = layers.Dropout(0.2)(x)
         outputs = layers.Dense(num_classes, activation="softmax", name='predictions')(x)
-        model = keras.Model(inputs, outputs, name=f'mobilenetv2_lightweight_{num_classes}classes')
+        model = keras.Model(inputs, outputs, name=f'{self.architecture}_{num_classes}classes')
         model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=0.01),
+            optimizer=keras.optimizers.Adam(learning_rate=self.learning_rate),
             loss="sparse_categorical_crossentropy",
             metrics=["accuracy"],
         )
@@ -302,7 +332,8 @@ class ImageRecognitionTrainer:
             # Get number of classes
             num_classes = len(class_names)
             self.class_names = class_names
-            self.preprocessing = PREPROCESSING_MOBILENET_V2
+            self.preprocessing = ARCHITECTURES[self.architecture]["preprocessing"]
+            started = time.time()
             
             logger.info(f"📊 Detected {num_classes} classes: {class_names}")
             
@@ -316,6 +347,9 @@ class ImageRecognitionTrainer:
             if actual_channels != 3:
                 raise ValueError(f"MobileNetV2 requires RGB images (3 channels), got {actual_channels} channels")
             
+            # Fixed seed: classifier weights, dropout and shuffling are the same on every run
+            keras.utils.set_random_seed(self.seed)
+
             # Build model (shared architecture for training and load-from-weights)
             self.model = self._build_model(num_classes)
 
@@ -345,7 +379,7 @@ class ImageRecognitionTrainer:
             # Shuffle once (data arrives grouped label by label). No validation split: with
             # 5-10 images per label, a split is a handful of augmented copies of training images
             # (and used to be almost entirely the last label), so callbacks watch training loss.
-            order = np.random.permutation(len(x))
+            order = np.random.RandomState(self.seed).permutation(len(x))
             x, y = x[order], labels[order]
 
             # Single phase training for speed
@@ -386,7 +420,9 @@ class ImageRecognitionTrainer:
                 'training_examples': len(images),
                 'model': self.model,
                 'class_names': class_names,
-                'img_size': self.img_size
+                'img_size': self.img_size,
+                'architecture': self.architecture,
+                'training_seconds': round(time.time() - started, 1),
             }
             
             logger.info("🎉 Ultra-lightweight MobileNetV2 training completed successfully!")
@@ -522,7 +558,8 @@ class ImageRecognitionTrainer:
                 'img_size': self.img_size,
                 'num_classes': len(self.class_names),
                 'color_mode': 'rgb',
-                'model_type': 'mobilenetv2_lightweight',
+                'model_type': 'mobilenetv2_lightweight' if self.architecture == 'mobilenet' else 'efficientnet_b0',
+                'architecture': self.architecture,
                 'preprocessing': self.preprocessing,
                 'trained_at': datetime.now(timezone.utc).isoformat()
             }
@@ -556,6 +593,7 @@ class ImageRecognitionTrainer:
             weights_path = tempfile.mktemp(suffix='.weights.h5')
             try:
                 self.model.save_weights(weights_path)
+                self.last_model_bytes = os.path.getsize(weights_path)
                 with open(weights_path, 'rb') as f:
                     weights_data = f.read()
                 weights_blob = bucket.blob(f"{model_gcs_prefix}.weights.h5")
@@ -586,6 +624,10 @@ class ImageRecognitionTrainer:
             metadata = json.loads(metadata_data)
             logger.info(f"Metadata loaded: {metadata}")
             
+            # Models saved before the model choice existed are MobileNet
+            self.architecture = normalize_architecture(metadata.get('architecture'))
+            self.img_size = tuple(metadata.get('img_size') or ARCHITECTURES[self.architecture]["img_size"])
+
             # Load main model (weights-only first, then SavedModel dir, then legacy .keras)
             model_gcs_prefix = f"{gcs_path}/saved_model"
             num_classes = len(metadata['class_names'])
@@ -722,7 +764,12 @@ class ImageRecognitionTrainer:
                 if model_gcs_path:
                     update_data['model.gcsPath'] = model_gcs_path
                     update_data['model.filename'] = f"image_model_{project_id}"
-                    update_data['model.modelType'] = "efficientnet"
+                    # the chosen model; before the choice existed every image model was stored as "efficientnet"
+                    update_data['model.modelType'] = (training_result or {}).get('architecture', DEFAULT_ARCHITECTURE)
+                    if training_result and training_result.get('training_seconds') is not None:
+                        update_data['model.trainingSeconds'] = training_result['training_seconds']
+                    if training_result and training_result.get('model_bytes'):
+                        update_data['model.sizeBytes'] = training_result['model_bytes']
                     update_data['model.endpointUrl'] = f"/api/guests/session/{session_id}/projects/{project_id}/predict"
                     
             elif status == "failed":
@@ -775,3 +822,34 @@ class ImageRecognitionTrainer:
 
 # Global trainer instance
 image_trainer = ImageRecognitionTrainer()
+
+
+# Loaded models for prediction, so a run of predictions (the Evaluate exam, the test set) does not
+# download and rebuild the model for every image. Keyed by GCS path; a retrained model has a new
+# metadata.json generation, so the cached one is replaced. Small LRU: models are 2-16 MB each.
+import threading
+from collections import OrderedDict
+
+_PREDICTORS: "OrderedDict[str, Tuple[int, ImageRecognitionTrainer]]" = OrderedDict()
+_PREDICTORS_LOCK = threading.Lock()
+_PREDICTORS_MAX = 8
+
+
+def get_cached_predictor(bucket, gcs_path: str) -> ImageRecognitionTrainer:
+    blob = bucket.get_blob(f"{gcs_path}/metadata.json")
+    if blob is None:
+        raise FileNotFoundError(f"No image model at {gcs_path}")
+    with _PREDICTORS_LOCK:
+        hit = _PREDICTORS.get(gcs_path)
+        if hit and hit[0] == blob.generation:
+            _PREDICTORS.move_to_end(gcs_path)
+            return hit[1]
+    predictor = ImageRecognitionTrainer()
+    if not predictor.load_model_from_gcs(bucket, gcs_path):
+        raise RuntimeError(predictor.last_error or "Could not load the image model")
+    with _PREDICTORS_LOCK:
+        _PREDICTORS[gcs_path] = (blob.generation, predictor)
+        _PREDICTORS.move_to_end(gcs_path)
+        while len(_PREDICTORS) > _PREDICTORS_MAX:
+            _PREDICTORS.popitem(last=False)
+    return predictor
