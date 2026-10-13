@@ -43,3 +43,17 @@ Old `rag-chatbot` / `ai-agent` guest projects keep opening in `RagChatbotLab` / 
 - AI Agent's tool rule also says "Indian equity trades settle T+1 unless the user says otherwise" (the AI Agent lab's
   instructions carry the same line). Without it the model sometimes called settlement_date with T+2 for p01.
 - Agent steps show a tool's result as its key fields in words (settlement date, weekday, valid…), not raw JSON.
+- The smoke grader marks Ex 7's q11 trap as failed with guardrails on: the bot declined with the hand-off message,
+  which rag_text.check_answer's "doesn't cover" wording check does not recognise. The behaviour is right; the
+  grader is left unchanged (it belongs to the RAG Chatbot lab).
+
+## Tests
+
+- Backend (offline): `cd backend && .venv/Scripts/python.exe -m unittest test_agent_studio test_agent_guardrails -v`
+- Backend (all): `.venv/Scripts/python.exe -m unittest discover -p "test_*.py"` (13 exercise-lab failures exist on
+  the base commit too)
+- Frontend: `npm run test:agent-studio` (and test:evaluate, test:sample-labelling, test:exercises), `npm run lint`,
+  `npx tsc --noEmit`
+- Live smoke (backend running): `cd backend && .venv/Scripts/python.exe scripts/smoke_agent_studio.py`, writes
+  `docs/day2-agent-studio-smoke.md`
+- Screenshots (1366×768, light and dark): `docs/day2-agent-studio-screens/`
