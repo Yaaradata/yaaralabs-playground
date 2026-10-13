@@ -19,7 +19,7 @@ import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { TeachYourAgent } from '../../../../components/TeachYourAgent'
-import RulesBot from '../../../../components/RulesBot'
+import RuleBasedProcessProject from '../../../../components/RuleBasedProcessProject'
 import ConfusionMatrixLab from '../../../../components/ConfusionMatrix'
 import RagChatbotLab from '../../../../components/RagChatbot'
 import AiAgentLab from '../../../../components/AiAgent'
@@ -50,7 +50,7 @@ interface Project {
   status?: string;
   maskedId?: string;
   agent_id?: string;  // For Custom AI Agent projects
-  rbpEditor?: 'rules-bot' | 'scratch' | 'legacy' | null;  // Rule Based Process: Rules Bot (default), or older Scratch / built-in editors
+  rbpEditor?: 'blocks' | 'legacy' | 'scratch' | 'rules-bot' | null;  // Rule Based Process editor: see components/RuleBasedProcessProject/editors.ts
 }
 
 // Web source interface for citations
@@ -3846,31 +3846,13 @@ export default function ProjectDetailsPage() {
                 </button>
               )}
             </div>
-          ) : selectedProject.type === 'rule-based-process' && selectedProject.rbpEditor === 'scratch' ? (
-            // Older projects built in Scratch keep opening there; new ones use the Rules Bot below
-            <div className="h-full flex flex-col items-center justify-center gap-4 px-6 text-center">
-              <h2 className="text-2xl font-semibold text-fg">{selectedProject.name}</h2>
-              <p className="max-w-md text-fg/70">
-                This project is built in Scratch. Your work is saved automatically and opens where you left off.
-              </p>
-              <button
-                onClick={() => {
-                  if (!actualSessionId) return;
-                  window.open(
-                    `${config.scratchEditor.gui}?sessionId=${encodeURIComponent(actualSessionId)}&projectId=${encodeURIComponent(selectedProject.id)}&mode=rbp`,
-                    '_blank'
-                  );
-                }}
-                className="bg-purple-brand text-white px-8 py-4 rounded-lg text-lg font-medium hover:scale-105 transition-all duration-300"
-              >
-                Open in Scratch
-              </button>
-            </div>
           ) : selectedProject.type === 'rule-based-process' ? (
-            <RulesBot
+            // Block editor (see components/RuleBasedProcessProject/editors.ts for which editor opens)
+            <RuleBasedProcessProject
               projectName={selectedProject.name}
               sessionId={actualSessionId}
               projectId={selectedProject.id}
+              editor={selectedProject.rbpEditor}
             />
           ) : isLiveObjectDetection ? (
             <LiveObjectDetectionProject

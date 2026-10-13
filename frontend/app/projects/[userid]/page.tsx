@@ -79,7 +79,7 @@ interface Project {
   teachable_machine_link?: string;  // Changed from teachable_link to teachable_machine_link to match backend
   agent_id?: string;  // For Custom AI Agent projects
   modelStatus?: 'available' | 'unavailable';  // Model training status
-  rbpEditor?: 'rules-bot' | 'scratch' | 'legacy' | null;  // Rule Based Process: Rules Bot (default), or older Scratch / built-in editors
+  rbpEditor?: 'blocks' | 'legacy' | 'scratch' | 'rules-bot' | null;  // Rule Based Process editor: see components/RuleBasedProcessProject/editors.ts
   scratchSavedAt?: string | null;  // Rule Based Process: when the Scratch project was last saved
 }
 

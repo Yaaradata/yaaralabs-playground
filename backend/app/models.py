@@ -189,7 +189,7 @@ class Project(BaseModel):
 
     # Rule Based Process projects edited in Scratch (saved as an .sb3 in Cloud Storage).
     # Kept on the model so whole-document rewrites (e.g. update_project) don't drop them.
-    rbpEditor: Optional[str] = Field(None, description="Rule Based Process editor: 'rules-bot' (default), 'scratch' or 'legacy' (built-in block editor)")
+    rbpEditor: Optional[str] = Field(None, description="Rule Based Process editor: 'blocks' (default, block editor), 'legacy' (same block editor, older projects), 'scratch', or 'rules-bot' (parked)")
     scratchProjectPath: Optional[str] = Field(None, description="GCS path of the saved Scratch project (.sb3)")
     scratchSavedAt: Optional[datetime] = Field(None, description="When the Scratch project was last saved")
     scratchSizeBytes: Optional[int] = Field(None, description="Size of the saved .sb3 in bytes")

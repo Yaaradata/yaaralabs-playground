@@ -11,14 +11,10 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import config from '../../lib/config';
+import BlockStudioShell from '../BlockStudio/BlockStudioShell';
 import RuleBasedProcess, { type MlOptions } from '../RuleBasedProcess/RuleBasedProcess';
-import { readExerciseTheme, subscribeExerciseTheme } from '../Exercises/theme';
 import { labelNamesKey } from '../SampleImages/sampleImages';
 import ImagePicker, { type PickedImage } from './ImagePicker';
-import '../Exercises/Exercises.css';
-import '../Exercises/ThemeToggle.css';
-import '../Exercises/theme-labs.css';
-import '../Exercises/exerciseHeader.css';
 
 interface Props {
   kind: 'text' | 'image';
@@ -33,21 +29,28 @@ interface Props {
 interface MlState {
   trained: boolean;
   labels: string[];
+  /** Shown by the "use deployed model" block. */
+  modelType?: string;
+  trainedAt?: string;
 }
+
+const MODEL_TYPES: Record<string, string> = {
+  logistic_regression_ovr: 'Logistic Regression',
+  logistic_regression: 'Logistic Regression',
+  distilbert: 'DistilBERT',
+  efficientnet: 'Image model (EfficientNet)',
+  mobilenet: 'Image model (MobileNet)',
+};
 
 type Result = { label: string; confidence: number; name?: string };
 
 export default function ProjectAI({ kind, projectName, sessionId, projectId, backHref, trainHref }: Props) {
-  const [theme, setTheme] = useState(() => readExerciseTheme());
   const [ml, setMl] = useState<MlState | null>(null);
   const [picker, setPicker] = useState(false);
   const [pickBusy, setPickBusy] = useState<string | null>(null);
   const [pickError, setPickError] = useState<string | null>(null);
   const pending = useRef<((r: Result | null) => void) | null>(null);
-  const toolbarHostRef = useRef<HTMLDivElement>(null);
   const base = `${config.apiBaseUrl}/api/guests/session/${sessionId}/projects/${projectId}`;
-
-  useEffect(() => subscribeExerciseTheme(setTheme), []);
 
   // Is the model trained, and with which labels?
   useEffect(() => {
@@ -55,16 +58,28 @@ export default function ProjectAI({ kind, projectName, sessionId, projectId, bac
     (async () => {
       let trained = false;
       let labels: string[] = [];
+      let modelType: string | undefined;
+      let trainedAt: string | undefined;
       try {
         const status = await fetch(`${config.apiBaseUrl}${config.api.guests.trainingStatus(sessionId, projectId)}`).then((r) => r.json());
         trained = status?.projectStatus === 'trained';
+        if (status?.modelType) modelType = MODEL_TYPES[status.modelType] ?? String(status.modelType);
+        const jobs: { completedAt?: string; startedAt?: string; createdAt?: string }[] = status?.allJobs ?? [];
+        const last = status?.currentJob ?? jobs.filter((j) => j.completedAt).sort((x, y) => String(y.completedAt).localeCompare(String(x.completedAt)))[0];
+        const done = last?.completedAt ?? last?.startedAt ?? last?.createdAt;
+        if (done) {
+          trainedAt = new Date(done).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        }
         const details = await fetch(base).then((r) => r.json());
         const d = details?.data ?? {};
         labels = (d.model?.labels?.length ? d.model.labels : d.dataset?.labels ?? []).map(String);
+        if (d.model?.trainedAt) {
+          trainedAt = new Date(d.model.trainedAt).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        }
       } catch {
         /* treated as not trained */
       }
-      if (alive) setMl({ trained: trained && labels.length > 0, labels });
+      if (alive) setMl({ trained: trained && labels.length > 0, labels, modelType, trainedAt });
     })();
     return () => {
       alive = false;
@@ -131,63 +146,55 @@ export default function ProjectAI({ kind, projectName, sessionId, projectId, bac
     }
   };
 
+  const model = ml ? { name: projectName, type: ml.modelType, trainedAt: ml.trainedAt } : undefined;
   const mlOptions: MlOptions | undefined = ml
     ? kind === 'image'
-      ? { kind: 'image', trained: ml.trained, labels: ml.labels, recogniseImage }
-      : { kind: 'text', trained: ml.trained, labels: ml.labels, recognise: predictText }
+      ? { kind: 'image', trained: ml.trained, labels: ml.labels, model, recogniseImage }
+      : { kind: 'text', trained: ml.trained, labels: ml.labels, model, recognise: predictText }
     : undefined;
 
+  const subtitle = ml ? (
+    ml.trained ? (
+      <span className="text-[#0FBD8C] font-semibold">● ML Model blocks ready · labels: {ml.labels.join(', ')}</span>
+    ) : (
+      <span className="opacity-75">
+        Train your model to unlock the ML Model blocks.{' '}
+        <Link href={trainHref} className="underline font-semibold">Go to training</Link>
+      </span>
+    )
+  ) : null;
+
   return (
-    <div className="ex-root h-full" data-theme={theme}>
-      <div className="ex-shell ex-shell-fill">
-        <div className="ex-shell-head">
-          <div className="min-w-0 flex items-center gap-3">
-            <Link href={backHref} className="ex-fs-btn shrink-0" aria-label="Back to project" title="Back to project">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </Link>
-            <div className="min-w-0">
-              <h1 className="ex-lab-brand-title truncate">Use the AI : {projectName}</h1>
-              {ml && (
-                <p className="text-xs mt-0.5" role="status">
-                  {ml.trained ? (
-                    <span className="text-[#0FBD8C] font-semibold">● ML Model blocks ready · labels: {ml.labels.join(', ')}</span>
-                  ) : (
-                    <span className="opacity-75">
-                      Train your model to unlock the ML Model blocks.{' '}
-                      <Link href={trainHref} className="underline font-semibold">Go to training</Link>
-                    </span>
-                  )}
-                </p>
-              )}
-            </div>
-          </div>
-          <div ref={toolbarHostRef} className="rbp-shell-toolbar" />
-        </div>
-        <div className="ex-workspace">
-          {ml && (
-            <RuleBasedProcess
-              // remount when the model becomes available so the ML Model blocks appear
-              key={ml.trained ? `ml:${kind}:${ml.labels.join('|')}` : 'no-ml'}
-              projectName={projectName}
-              localStorageKey={`np-${kind === 'image' ? 'imgrec' : 'textrec'}-ai:${sessionId}:${projectId}`}
-              toolbarHostRef={toolbarHostRef}
-              ml={mlOptions}
-            />
-          )}
-        </div>
-      </div>
-      {picker && ml && (
-        <ImagePicker
-          labels={ml.labels}
-          namesKey={labelNamesKey(sessionId, projectId)}
-          busy={pickBusy}
-          error={pickError}
-          onPick={onPick}
-          onCancel={() => finish(null)}
-        />
-      )}
-    </div>
+    <BlockStudioShell
+      title={`Use the AI : ${projectName}`}
+      subtitle={subtitle}
+      backHref={backHref}
+      backLabel="Back to project"
+      overlay={
+        picker && ml ? (
+          <ImagePicker
+            labels={ml.labels}
+            namesKey={labelNamesKey(sessionId, projectId)}
+            busy={pickBusy}
+            error={pickError}
+            onPick={onPick}
+            onCancel={() => finish(null)}
+          />
+        ) : null
+      }
+    >
+      {(toolbarHostRef) =>
+        ml && (
+          <RuleBasedProcess
+            // remount when the model becomes available so the ML Model blocks appear
+            key={ml.trained ? `ml:${kind}:${ml.labels.join('|')}` : 'no-ml'}
+            projectName={projectName}
+            localStorageKey={`np-${kind === 'image' ? 'imgrec' : 'textrec'}-ai:${sessionId}:${projectId}`}
+            toolbarHostRef={toolbarHostRef}
+            ml={mlOptions}
+          />
+        )
+      }
+    </BlockStudioShell>
   );
 }

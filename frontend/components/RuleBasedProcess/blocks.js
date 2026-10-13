@@ -39,7 +39,13 @@ var CAT = {
                   parts: [L("ask the model about"), T("PROMPT", "What should I send to the model?")] },
     prediction: { cat: "model", shape: "rep", parts: [L("prediction")] },
 
-    // Machine Learning (your trained Text Recognition model)
+    // Machine Learning (your trained model). Text models use the Machine Learning for Kids style
+    // reporters (ml_text_label / ml_text_conf); ml_recognise + ml_label / ml_confidence remain for
+    // workspaces saved before them and for image models.
+    // Connects the run to the learner's deployed (trained) model; the recognise blocks need it first
+    ml_use_model:  { cat: "ml", shape: "stack", parts: [L("use deployed model"), { t: "fld", n: "MODEL", src: "models" }] },
+    ml_text_label: { cat: "ml", shape: "rep", parts: [L("recognise text"), T("TEXT", "text"), L("(label)")] },
+    ml_text_conf:  { cat: "ml", shape: "rep", parts: [L("recognise text"), T("TEXT", "text"), L("(confidence)")] },
     ml_recognise:  { cat: "ml", shape: "stack", parts: [L("recognise text"), T("TEXT", "hello"), L("and wait")] },
     ml_recognise_image: { cat: "ml", shape: "stack", parts: [L("recognise an image and wait")] },
     ml_label:      { cat: "ml", shape: "rep", parts: [L("recognised label")] },
@@ -138,7 +144,8 @@ var CAT = {
   var PALETTE = {
     // Machine Learning first when it is available (the engine hides it otherwise)
     ml: [
-      "#Recognise", "ml_recognise", "ml_recognise_image",
+      "#Model", "ml_use_model",
+      "#Recognise", "ml_text_label", "ml_text_conf", "ml_recognise_image",
       "#Result", "ml_label", "ml_confidence",
       "#Your labels", "ml_label_name",
     ],
@@ -381,6 +388,7 @@ var CAT = {
     sel.dataset.owner = b.id;
     var opts = p.src === "vars" ? (ctx.vars.length ? ctx.vars : ["(no variables)"])
       : p.src === "labels" ? ((ctx.labels && ctx.labels.length) ? ctx.labels : ["(no labels)"])
+      : p.src === "models" ? ((ctx.models && ctx.models.length) ? ctx.models : ["(no model)"])
       : p.opts;
     var cur = b.fields[p.n];
     if (cur && opts.indexOf(cur) < 0) opts = opts.concat([cur]);

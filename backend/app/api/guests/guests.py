@@ -16,7 +16,7 @@ from ...models import (
     PaginationInfo, ProjectType,
 )
 from ...services.rule_based_process_service import RuleBasedProcessService
-from ...services.scratch_project_service import ScratchProjectService, EDITOR_RULES_BOT
+from ...services.scratch_project_service import ScratchProjectService, EDITOR_BLOCKS
 from ...services.rules_bot_service import RulesBotService
 from ...services.confusion_matrix_service import ConfusionMatrixService
 from ...services.rag_chatbot_service import RagChatbotService
@@ -374,10 +374,10 @@ async def create_guest_project(
         
         project = await project_service.create_project(project_data)
 
-        # New Rule Based Process projects open the Rules Bot board
+        # New Rule Based Process projects open the block editor (the Rules Bot board is parked)
         if project.type == ProjectType.RULE_BASED_PROCESS:
-            project_service.collection.document(project.id).update({'rbpEditor': EDITOR_RULES_BOT})
-            project.rbpEditor = EDITOR_RULES_BOT
+            project_service.collection.document(project.id).update({'rbpEditor': EDITOR_BLOCKS})
+            project.rbpEditor = EDITOR_BLOCKS
 
         return ProjectResponse(data=project)
     except HTTPException:

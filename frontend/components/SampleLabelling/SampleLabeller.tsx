@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Label a sample dataset, then "Group it": every chosen label becomes a project label with its
+ * Label a sample dataset, then "Finish": every chosen label becomes a project label with its
  * queries inside, exactly like labels added by hand. Choices are kept in this browser as a draft.
  */
 
@@ -12,9 +12,7 @@ import {
   canGroup,
   countByLabel,
   examplesToAdd,
-  fillAllLabels,
   inOtherLabel,
-  labelledCount,
   validateDataset,
   type Choices,
   type NewExample,
@@ -69,7 +67,7 @@ export function SampleDataButton({ onPick, compact }: { onPick: (s: SampleSource
               className="w-full text-left px-4 py-3 hover:bg-purple-brand/10 focus:bg-purple-brand/10 focus:outline-none"
             >
               <span className="block text-sm font-medium text-fg">{s.name}</span>
-              <span className="block text-xs text-fg/60 mt-0.5">36 client messages to sort into 6 labels</span>
+              <span className="block text-xs text-fg/60 mt-0.5">20 client messages to sort into 4 labels</span>
             </button>
           ))}
         </div>
@@ -79,8 +77,6 @@ export function SampleDataButton({ onPick, compact }: { onPick: (s: SampleSource
 }
 
 /* ───────── Labelling table ───────── */
-
-type Filter = 'all' | 'unlabelled' | string;
 
 interface Props {
   source: SampleSource;
@@ -111,8 +107,6 @@ export default function SampleLabeller({ source, draftKey, existing, onClose, on
   const [data, setData] = useState<SampleDataset | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [choices, setChoices] = useState<Choices>({});
-  const [filter, setFilter] = useState<Filter>('all');
-  const [showGuide, setShowGuide] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -151,32 +145,8 @@ export default function SampleLabeller({ source, draftKey, existing, onClose, on
     setNotice(null);
   };
 
-  const fillLabels = () => {
-    if (!data) return;
-    const next = fillAllLabels(data.queries);
-    setChoices(next);
-    writeDraft(draftKey, next);
-    setNotice(null);
-  };
-
-  const clearLabels = () => {
-    setChoices({});
-    writeDraft(draftKey, {});
-    setNotice(null);
-  };
-
   const counts = useMemo(() => (data ? countByLabel(data.labels, choices) : {}), [data, choices]);
-  const done = data ? labelledCount(choices) : 0;
   const ready = !!data && canGroup(data.labels, choices);
-  const rows = useMemo(() => {
-    if (!data) return [];
-    if (filter === 'all') return data.queries;
-    if (filter === 'unlabelled') return data.queries.filter((q) => !choices[q.id]);
-    return data.queries.filter((q) => choices[q.id] === filter);
-  }, [data, filter, choices]);
-  const short = data
-    ? data.labels.filter((l) => (counts[l.label] ?? 0) < MIN_PER_LABEL).map((l) => `${l.label} (${counts[l.label] ?? 0})`)
-    : [];
 
   const group = async () => {
     if (!data || !ready) return;
@@ -226,85 +196,6 @@ export default function SampleLabeller({ source, draftKey, existing, onClose, on
 
         {data && (
           <>
-            {/* progress + filter */}
-            <div className="px-5 sm:px-6 py-3 border-b border-fg/10 space-y-3">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <span className="text-sm font-semibold">
-                  Labelled {done} of {data.queries.length}
-                </span>
-                <button type="button" className="text-xs text-pink-brand hover:underline" onClick={() => setShowGuide((v) => !v)} aria-expanded={showGuide}>
-                  {showGuide ? 'Hide what each label means' : 'What each label means'}
-                </button>
-                <span className="flex-1" />
-                <button
-                  type="button"
-                  onClick={fillLabels}
-                  disabled={busy}
-                  className="px-3 py-1.5 rounded-lg border border-magenta-brand/50 text-fg hover:bg-purple-brand/10 text-sm font-medium disabled:opacity-40"
-                >
-                  Fill labels
-                </button>
-                {done > 0 && (
-                  <button
-                    type="button"
-                    onClick={clearLabels}
-                    disabled={busy}
-                    className="px-3 py-1.5 rounded-lg border border-magenta-brand/50 text-fg hover:bg-purple-brand/10 text-sm font-medium disabled:opacity-40"
-                  >
-                    Clear all
-                  </button>
-                )}
-                <label className="text-sm text-fg/70 inline-flex items-center gap-2">
-                  Show
-                  <select
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                    className="bg-canvas border border-magenta-brand/40 rounded px-2 py-1.5 text-sm text-fg focus:outline-none focus:border-pink-brand"
-                  >
-                    <option value="all">All queries</option>
-                    <option value="unlabelled">Unlabelled</option>
-                    {data.labels.map((l) => (
-                      <option key={l.label} value={l.label}>{l.label}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <div className="flex flex-wrap gap-2" aria-label="Examples per label">
-                {data.labels.map((l) => {
-                  const n = counts[l.label] ?? 0;
-                  const ok = n >= MIN_PER_LABEL;
-                  return (
-                    <button
-                      type="button"
-                      key={l.label}
-                      onClick={() => setFilter(filter === l.label ? 'all' : l.label)}
-                      title={`Show only ${l.label}`}
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                        ok ? 'border-[var(--success)] text-[var(--success)] bg-[var(--success)]/10' : 'border-fg/20 text-fg/80'
-                      } ${filter === l.label ? 'ring-2 ring-pink-brand/50' : ''}`}
-                    >
-                      {ok && (
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                      {l.label} <span className="tabular-nums">{n} / {MIN_PER_LABEL}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {showGuide && (
-                <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-xs bg-surface border border-fg/10 rounded-lg p-3">
-                  {data.labels.map((l) => (
-                    <div key={l.label}>
-                      <dt className="font-semibold text-fg">{l.label} <span className="font-normal text-fg/50">· {l.desk}</span></dt>
-                      <dd className="text-fg/70">{l.covers}</dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
-            </div>
-
             {/* table */}
             <div className="flex-1 overflow-y-auto">
               <table className="w-full text-sm border-collapse">
@@ -316,14 +207,7 @@ export default function SampleLabeller({ source, draftKey, existing, onClose, on
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="px-6 py-10 text-center text-fg/50">
-                        {filter === 'unlabelled' ? 'Every query has a label.' : 'No queries here yet.'}
-                      </td>
-                    </tr>
-                  )}
-                  {rows.map((q) => (
+                  {data.queries.map((q) => (
                     <tr key={q.id} className="align-top border-b border-fg/5">
                       <td className="px-5 sm:px-6 py-3 text-fg/50 tabular-nums">{q.id}</td>
                       <td className="px-3 py-3">
@@ -352,28 +236,40 @@ export default function SampleLabeller({ source, draftKey, existing, onClose, on
             </div>
 
             {/* footer */}
-            <div className="px-5 sm:px-6 py-4 border-t border-fg/10 flex flex-wrap items-center gap-3">
-              <span className="flex-1" />
-              <div className="flex flex-col items-end gap-1">
+            <div className="px-5 sm:px-6 py-4 border-t border-fg/10 space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="flex flex-nowrap items-center gap-1.5 flex-1 min-w-0 overflow-x-auto" aria-label="Examples per label">
+                  {data.labels.map((l) => {
+                    const n = counts[l.label] ?? 0;
+                    const ok = n >= MIN_PER_LABEL;
+                    return (
+                      <span
+                        key={l.label}
+                        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium whitespace-nowrap shrink-0 ${
+                          ok ? 'border-[var(--success)] text-[var(--success)] bg-[var(--success)]/10' : 'border-fg/20 text-fg/80'
+                        }`}
+                      >
+                        {ok && (
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                        {l.label} <span className="tabular-nums">{n} / {MIN_PER_LABEL}</span>
+                      </span>
+                    );
+                  })}
+                </div>
                 <button
                   type="button"
                   onClick={group}
                   disabled={!ready || busy}
-                  className="bg-purple-brand hover:bg-purple-brand/90 text-white px-5 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                  className="bg-purple-brand hover:bg-purple-brand/90 text-white px-5 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2 shrink-0"
                 >
-                  {busy ? 'Grouping…' : 'Group it'}
+                  {busy ? 'Finishing…' : 'Finish'}
                 </button>
-                {!ready && short.length > 0 && (
-                  <span className="text-xs text-fg/60 text-right">Needs {MIN_PER_LABEL} each: {short.join(', ')}</span>
-                )}
-                {ready && !busy && (
-                  <span className="text-xs text-fg/60 text-right">
-                    Each label becomes a box on the page with its queries inside. Unlabelled queries are left out.
-                  </span>
-                )}
               </div>
-              {notice && <p className="w-full text-sm text-fg/70" role="status">{notice}</p>}
-              {error && <p className="w-full text-sm text-pink-brand" role="alert">{error}</p>}
+              {notice && <p className="text-sm text-fg/70" role="status">{notice}</p>}
+              {error && <p className="text-sm text-pink-brand" role="alert">{error}</p>}
             </div>
           </>
         )}

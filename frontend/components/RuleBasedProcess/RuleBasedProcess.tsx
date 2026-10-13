@@ -32,6 +32,8 @@ type RuleBasedProcessProps = {
 export type MlOptions = {
   kind?: 'text' | 'image';
   trained: boolean;
+  /** The deployed model the "use deployed model" block connects to. */
+  model?: { name: string; type?: string; trainedAt?: string };
   labels: string[];
   recognise?: (text: string) => Promise<{ label: string; confidence: number }>;
   /** Image models: the host lets the learner pick an image; null when they cancel. */

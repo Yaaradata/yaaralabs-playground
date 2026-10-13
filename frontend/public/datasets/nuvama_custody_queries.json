@@ -1,21 +1,11 @@
 {
   "name": "Nuvama custody client queries",
-  "description": "Trainer-written custody client queries for the Day 1 text classification exercise. 6 labels, 6 queries per label (participants label at least 5 per label), plus 12 unseen test messages.",
+  "description": "Trainer-written custody client queries for the Day 1 text classification exercise. 4 labels, 5 queries per label (participants label all 5 per label), plus 10 unseen test messages.",
   "labels": [
-    {
-      "label": "Statement request",
-      "desk": "Client Reporting",
-      "covers": "Asks for a statement, report, contract note, NAV pack or other record of holdings and transactions."
-    },
     {
       "label": "Corporate action",
       "desk": "Corporate Actions",
       "covers": "Dividends, bonus, rights, splits, buybacks, mergers, record dates and entitlements, including tax on them."
-    },
-    {
-      "label": "Settlement status",
-      "desk": "Settlement",
-      "covers": "Trades, pay-in and pay-out, delivery, short delivery, auctions, cut-off times and settlement codes."
     },
     {
       "label": "Fees & billing",
@@ -36,251 +26,139 @@
   "queries": [
     {
       "id": 1,
-      "text": "Our auditor wants a balance confirmation of all securities held with you as of 31 March. Who do we write to?",
-      "label": "Statement request",
-      "difficulty": "Hard",
-      "note": "No 'statement' word; it is still a reporting request."
-    },
-    {
-      "id": 2,
-      "text": "Can you resend last week's contract notes? Our auditors are asking for them.",
-      "label": "Statement request",
-      "difficulty": "Easy",
-      "note": "'Contract notes' is a reporting term."
-    },
-    {
-      "id": 3,
       "text": "Your team missed our buyback tender. We want to speak to your head of operations.",
       "label": "Complaint / escalation",
       "difficulty": "Hard",
       "note": "'Buyback' pulls it to Corporate action, but the client wants a senior person."
     },
     {
-      "id": 4,
+      "id": 2,
       "text": "Any update on our FPI registration?",
       "label": "Onboarding & KYC",
       "difficulty": "Easy",
       "note": "Registration is onboarding."
     },
     {
-      "id": 5,
-      "text": "Please confirm the CP code mapping for trades placed through our new broker.",
-      "label": "Settlement status",
-      "difficulty": "Hard",
-      "note": "Jargon a newcomer may not know."
-    },
-    {
-      "id": 6,
+      "id": 3,
       "text": "When will the HDFC Bank dividend be credited to our account?",
       "label": "Corporate action",
       "difficulty": "Easy",
       "note": "'Dividend' is the clue."
     },
     {
-      "id": 7,
+      "id": 4,
       "text": "Our UBO details changed after the restructuring. How do we update them?",
       "label": "Onboarding & KYC",
       "difficulty": "Medium",
       "note": "UBO is KYC jargon."
     },
     {
-      "id": 8,
+      "id": 5,
       "text": "The TDS deducted on the interim dividend looks higher than the treaty rate. Can you check?",
       "label": "Corporate action",
       "difficulty": "Hard",
       "note": "Mentions tax, which can pull it towards billing."
     },
     {
-      "id": 9,
-      "text": "We need the transaction statement for Q2 in Excel, not PDF.",
-      "label": "Statement request",
-      "difficulty": "Easy",
-      "note": "Format request, still a statement."
-    },
-    {
-      "id": 10,
+      "id": 6,
       "text": "We've moved offices. Where do we send proof of the new registered address?",
       "label": "Onboarding & KYC",
       "difficulty": "Hard",
       "note": "No KYC word; an address change is a KYC update."
     },
     {
-      "id": 11,
-      "text": "The shares we bought on Monday still haven't reached our demat account. Why?",
-      "label": "Settlement status",
-      "difficulty": "Medium",
-      "note": "Sounds annoyed, but it is a status question, not a complaint yet."
-    },
-    {
-      "id": 12,
-      "text": "What is the cut-off time for T+0 trades today?",
-      "label": "Settlement status",
-      "difficulty": "Medium",
-      "note": "T+0 is settlement jargon."
-    },
-    {
-      "id": 13,
-      "text": "Kindly share the capital gains report for FY 2025-26 for the PMS book.",
-      "label": "Statement request",
-      "difficulty": "Medium",
-      "note": "Report, not a tax or billing query."
-    },
-    {
-      "id": 14,
-      "text": "Has yesterday's sale of 5,000 TCS shares settled?",
-      "label": "Settlement status",
-      "difficulty": "Easy",
-      "note": "'Settled' is the clue."
-    },
-    {
-      "id": 15,
+      "id": 7,
       "text": "We need to add a new authorised signatory to the account.",
       "label": "Onboarding & KYC",
       "difficulty": "Easy",
       "note": "Signatory change."
     },
     {
-      "id": 16,
+      "id": 8,
       "text": "Someone emailed asking us to change our bank account details. Was that really from you?",
       "label": "Complaint / escalation",
       "difficulty": "Hard",
       "note": "Possible fraud: must go to a person, not to KYC."
     },
     {
-      "id": 17,
-      "text": "Statement for quarter end, please.",
-      "label": "Statement request",
-      "difficulty": "Medium",
-      "note": "Short and informal; 'statement' still gives it away."
-    },
-    {
-      "id": 18,
+      "id": 9,
       "text": "When will the money come in? The dividend credit is still not showing.",
       "label": "Corporate action",
       "difficulty": "Hard",
       "note": "Informal; only 'dividend' helps."
     },
     {
-      "id": 19,
+      "id": 10,
       "text": "We were charged twice on the September invoice.",
       "label": "Fees & billing",
       "difficulty": "Easy",
       "note": "Invoice error, but no anger: billing, not complaint."
     },
     {
-      "id": 20,
-      "text": "The split shares from ITC are not reflecting in our demat yet.",
-      "label": "Corporate action",
-      "difficulty": "Medium",
-      "note": "Sounds like settlement ('demat'), but it is a corporate action."
-    },
-    {
-      "id": 21,
-      "text": "Please send the FATCA and CRS self-certification forms for the new feeder fund.",
-      "label": "Onboarding & KYC",
-      "difficulty": "Medium",
-      "note": "Forms, but for onboarding, not reporting."
-    },
-    {
-      "id": 22,
+      "id": 11,
       "text": "Fix this today or we move custodians.",
       "label": "Complaint / escalation",
       "difficulty": "Medium",
       "note": "No topic words at all, only the threat."
     },
     {
-      "id": 23,
+      "id": 12,
       "text": "Can you send a revised invoice with our GSTIN corrected?",
       "label": "Fees & billing",
       "difficulty": "Medium",
       "note": "GSTIN can look like KYC; it is an invoice fix."
     },
     {
-      "id": 24,
-      "text": "I want to make a statement: your team lost our rights entitlement.",
-      "label": "Complaint / escalation",
-      "difficulty": "Hard",
-      "note": "Trap: 'statement' and 'rights' point elsewhere."
-    },
-    {
-      "id": 25,
+      "id": 13,
       "text": "What is the record date for the Reliance bonus issue?",
       "label": "Corporate action",
       "difficulty": "Easy",
       "note": "Record date and bonus."
     },
     {
-      "id": 26,
+      "id": 14,
       "text": "Please share your fee schedule for fund accounting services.",
       "label": "Fees & billing",
       "difficulty": "Medium",
       "note": "Pricing question."
     },
     {
-      "id": 27,
-      "text": "Is there a charge for manual settlement instructions?",
-      "label": "Fees & billing",
-      "difficulty": "Medium",
-      "note": "Mentions settlement, but asks about a charge."
-    },
-    {
-      "id": 28,
-      "text": "How much do we need to fund for tomorrow's pay-in?",
-      "label": "Settlement status",
-      "difficulty": "Easy",
-      "note": "Pay-in is settlement."
-    },
-    {
-      "id": 29,
-      "text": "Please send the holding statement for our FPI account as on 30 September.",
-      "label": "Statement request",
-      "difficulty": "Easy",
-      "note": "Clear request with the word 'statement'."
-    },
-    {
-      "id": 30,
-      "text": "The broker delivered short. Is there an auction risk on our trade?",
-      "label": "Settlement status",
-      "difficulty": "Medium",
-      "note": "Short delivery and auction are settlement terms."
-    },
-    {
-      "id": 31,
+      "id": 15,
       "text": "Has the Infosys buyback tender been accepted for our holding?",
       "label": "Corporate action",
       "difficulty": "Easy",
       "note": "Buyback is a corporate action."
     },
     {
-      "id": 32,
+      "id": 16,
       "text": "What documents do you need for the KYC refresh?",
       "label": "Onboarding & KYC",
       "difficulty": "Easy",
       "note": "'KYC' is the clue."
     },
     {
-      "id": 33,
+      "id": 17,
       "text": "Why is the custody fee higher this month?",
       "label": "Fees & billing",
       "difficulty": "Easy",
       "note": "'Fee' is the clue."
     },
     {
-      "id": 34,
+      "id": 18,
       "text": "The fee you charged for the failed trade is unfair and we want it waived. Our board is reviewing the mandate.",
       "label": "Complaint / escalation",
       "difficulty": "Hard",
       "note": "Trap: 'fee' points to Billing, but the mandate is at risk."
     },
     {
-      "id": 35,
+      "id": 19,
       "text": "This is the third failed trade this month. This is unacceptable.",
       "label": "Complaint / escalation",
       "difficulty": "Easy",
       "note": "Clear frustration."
     },
     {
-      "id": 36,
+      "id": 20,
       "text": "The basis-point charge on our assets under custody doesn't match the agreement.",
       "label": "Fees & billing",
       "difficulty": "Hard",
@@ -290,72 +168,60 @@
   "test": [
     {
       "id": 1,
-      "text": "Could you mail me the holdings report for March?",
-      "expected": "Statement request",
-      "note": "New wording"
-    },
-    {
-      "id": 2,
       "text": "When do we get paid for the Carraro dividend?",
       "expected": "Corporate action",
       "note": "New wording"
     },
     {
-      "id": 3,
+      "id": 2,
       "text": "Has the bonus from L&T reached us?",
       "expected": "Corporate action",
       "note": "Short"
     },
     {
-      "id": 4,
-      "text": "Is our sell trade done and dusted?",
-      "expected": "Settlement status",
-      "note": "Slang"
-    },
-    {
-      "id": 5,
+      "id": 3,
       "text": "Why did my bill go up?",
       "expected": "Fees & billing",
       "note": "Short and informal"
     },
     {
-      "id": 6,
+      "id": 4,
       "text": "Please resend the August invoice to our finance team.",
       "expected": "Fees & billing",
       "note": "'Resend' sounds like a statement request"
     },
     {
-      "id": 7,
+      "id": 5,
       "text": "What else do you need to finish our account opening?",
       "expected": "Onboarding & KYC",
       "note": "New wording"
     },
     {
-      "id": 8,
+      "id": 6,
       "text": "You people lost money for our investors.",
       "expected": "Complaint / escalation",
       "note": "Angry, no topic words"
     },
     {
-      "id": 9,
+      "id": 7,
       "text": "I want to make a statement about the failed trade.",
       "expected": "Complaint / escalation",
       "note": "Trap word 'statement'"
     },
     {
-      "id": 10,
+      "id": 8,
       "text": "The statement is wrong and the dividend is missing.",
       "expected": "Complaint / escalation",
       "note": "Mixes two topics; a person should decide"
     },
     {
-      "id": 11,
+      "id": 9,
       "text": "What's the weather in Mumbai?",
       "expected": "None of these",
       "note": "Out of scope: confidence should be low"
     },
     {
-      "id": 12,
+      "id": 10,
       "text": "Hello",
       "expected": "None of these",
       "note": "Out of scope: confidence should be low"

@@ -33,6 +33,11 @@ export function mountRuleBasedProcess(root, options) {
     var mlReady = !!(ML && ML.trained && ML.labels && ML.labels.length &&
       typeof (mlImage ? ML.recogniseImage : ML.recognise) === "function");
     var mlLabels = mlReady ? ML.labels.map(String) : [];
+    var mlModel = (ML && ML.model) || {};
+    var mlModelName = String(mlModel.name || "My model");
+    if (ML) root.classList.add("rbp-ml");
+    // Saved workspaces from before the current ML starter open on the new starter once
+    var ML_STATE_TAG = mlImage ? "image-2" : "text-3";
     function hiddenCat(cat) {
       if (cat === "ml") return !mlReady;
       if (cat === "model") return !!ML;
@@ -192,6 +197,7 @@ export function mountRuleBasedProcess(root, options) {
         solution: function () {
           return [
             mk("when_flag"),
+            mk("ml_use_model", { f: { MODEL: mlModelName } }),
             mk("ml_recognise_image"),
             mk("set_var", { f: { VAR: "Label" }, i: { VAL: mk("ml_label") } }),
             mk("if_else", {
@@ -204,28 +210,38 @@ export function mountRuleBasedProcess(root, options) {
       });
       else PRESETS.unshift({
         id: "ml_text", title: "Text recognition",
-        vars: ["Message", "Label"],
+        vars: ["Answer"],
         answer: { type: "text" },
-        brief: "Use your trained model.\n\n" +
-               "Ask for a message, let the model recognise it, then say what it found.\n\n" +
-               "Your labels: " + mlLabels.join(", ") + "\n\n" +
-               "Try: if recognised label = " + mlLabels[0] + " then say something special.",
+        brief: "Ask for a message, recognise it with your model, then route it to the right team.",
         tests: [],
         solution: function () {
+          // one "if recognise text (answer) (label) = <label> then say ..." per label, inside forever
+          var routes = mlLabels.map(function (l) {
+            return mk("if_then", {
+              i: { COND: mk("op_eq", { i: {
+                A: mk("ml_text_label", { i: { TEXT: mk("answer") } }),
+                B: mk("ml_label_name", { f: { LABEL: l } }) } }) },
+              body: [mk("say", { i: { MSG: deskFor(l) } })],
+            });
+          });
           return [
             mk("when_flag"),
-            mk("ask", { i: { Q: "Type a message" } }),
-            mk("set_var", { f: { VAR: "Message" }, i: { VAL: mk("answer") } }),
-            mk("ml_recognise", { i: { TEXT: V("Message") } }),
-            mk("set_var", { f: { VAR: "Label" }, i: { VAL: mk("ml_label") } }),
-            mk("if_else", {
-              i: { COND: mk("op_eq", { i: { A: V("Label"), B: mk("ml_label_name", { f: { LABEL: mlLabels[0] } }) } }) },
-              body: [mk("say", { i: { MSG: mk("op_join", { i: { A: "This sounds like ", B: V("Label") } }) } })],
-              body2: [mk("say", { i: { MSG: mk("op_join", { i: { A: "I think this is ", B: V("Label") } }) } })],
-            }),
+            mk("ml_use_model", { f: { MODEL: mlModelName } }),
+            mk("forever", { body: [mk("ask", { i: { Q: "Type a client message" } })].concat(routes) }),
           ];
         },
       });
+    }
+
+    /** What Sparky says for each label in the text starter (the Nuvama sample desks, else generic). */
+    function deskFor(label) {
+      var desks = {
+        "corporate action": "Send this to the Corporate Actions desk.",
+        "fees and billing": "Send this to the Billing desk.",
+        "onboarding and kyc": "Send this to the Onboarding and KYC desk.",
+        "complaint or escalation": "Escalate this to a senior manager now.",
+      };
+      return desks[String(label).toLowerCase()] || ("This is about " + label + ".");
     }
 
     var BUILTIN_SOLUTIONS = {};
@@ -317,7 +333,7 @@ export function mountRuleBasedProcess(root, options) {
   
     function ctx(editable) {
       var vars = (concept && concept.vars) ? concept.vars.slice() : [];
-      return { vars: vars, labels: mlLabels, editable: editable !== false };
+      return { vars: vars, labels: mlLabels, models: mlReady ? [mlModelName] : [], editable: editable !== false };
     }
     function syncUndoBtn() {
       var btn = $("#undoBtn");
@@ -507,8 +523,11 @@ export function mountRuleBasedProcess(root, options) {
 
       // Machine Learning: one block per trained label, to compare with recognised label
       if (tab === "ml") {
-        list = list.filter(function (it) {
-          return !(it.kind === "op" && it.op === (mlImage ? "ml_recognise" : "ml_recognise_image"));
+        var notHere = mlImage ? ["ml_text_label", "ml_text_conf"] : ["ml_recognise_image", "ml_label", "ml_confidence"];
+        list = list.filter(function (it) { return !(it.kind === "op" && notHere.indexOf(it.op) > -1); });
+        // drop section headers left with nothing under them
+        list = list.filter(function (it, k) {
+          return it.kind !== "sec" || (list[k + 1] && list[k + 1].kind === "op");
         });
         var at = -1;
         for (var li = 0; li < list.length; li++) if (list[li].kind === "op" && list[li].op === "ml_label_name") at = li;
@@ -1118,7 +1137,7 @@ export function mountRuleBasedProcess(root, options) {
   
     // ------------------------------------------------------------------ runtime
     var R = { on: false, stop: false, fast: false, auto: false, stepMs: 0, queue: [], outs: [], vars: {}, vis: {},
-              answer: "", prediction: "", mlLabel: "", mlConf: 0, pending: null, keys: {}, t0: Date.now(), depth: 0,
+              answer: "", prediction: "", mlLabel: "", mlConf: 0, mlCache: {}, mlConnected: false, mlWarned: false, pending: null, keys: {}, t0: Date.now(), depth: 0,
               assigned: {}, warnedUnset: {} };
   
     function keyName(e) {
@@ -1175,7 +1194,7 @@ export function mountRuleBasedProcess(root, options) {
     function isNum(v) { return v !== "" && v !== null && !isNaN(parseFloat(v)) && isFinite(v); }
   
     function resetVars() {
-      R.vars = {}; R.vis = {}; R.answer = ""; R.prediction = ""; R.mlLabel = ""; R.mlConf = 0;
+      R.vars = {}; R.vis = {}; R.answer = ""; R.prediction = ""; R.mlLabel = ""; R.mlConf = 0; R.mlCache = {}; R.mlConnected = false; R.mlWarned = false;
       R.assigned = {}; R.warnedUnset = {};
       concept.vars.forEach(function (v) { R.vars[v] = 0; R.vis[v] = true; });
       drawWatchers();
@@ -1524,6 +1543,77 @@ export function mountRuleBasedProcess(root, options) {
       return new Promise(function (res) { R.pending = res; });
     }
 
+    function mlKey(text) { return String(text == null ? "" : text).trim(); }
+
+    /** "use deployed model": connect this run to the learner's trained model. */
+    async function connectModel() {
+      if (!mlReady) {
+        logLine("warn", "!", "No deployed model yet. Train your model first, then run again.");
+        return;
+      }
+      if (!R.fast) {
+        setBuddyMood("think", "Connecting to your deployed model…");
+        await sleep(450);
+      }
+      R.mlConnected = true;
+      if (!R.fast) {
+        var bits = [mlModel.type, mlModel.trainedAt ? "trained " + mlModel.trainedAt : ""].filter(Boolean).join(" · ");
+        logLine("out", "\u2713", "Connected to your deployed model \u201C" + mlModelName + "\u201D" + (bits ? " (" + bits + ")" : "") +
+          ". Labels: " + mlLabels.join(", ") + ".");
+      }
+    }
+
+    /** The recognise blocks only work after "use deployed model" in this run. */
+    function needModel() {
+      if (R.mlConnected) return true;
+      if (!R.mlWarned) {
+        R.mlWarned = true;
+        logLine("warn", "!", "Add \u201Cuse deployed model\u201D under Start so your blocks use the model you trained.");
+      }
+      return false;
+    }
+
+    /** Before a block runs: ask the model about every "recognise text ( ) (label / confidence)"
+     *  in its inputs (inner ones first), once per message per run. */
+    async function prefetchMl(b) {
+      if (!mlReady || mlImage || !b) return;
+      var hasMl = false;
+      (function scan(node) {
+        Object.keys(node.inputs || {}).forEach(function (k) {
+          var v = node.inputs[k];
+          if (v && typeof v === "object") {
+            if (v.op === "ml_text_label" || v.op === "ml_text_conf") hasMl = true;
+            scan(v);
+          }
+        });
+      })(b);
+      if (!hasMl || !needModel()) return;
+      var found = [];
+      (function walk(node) {
+        Object.keys(node.inputs || {}).forEach(function (k) {
+          var v = node.inputs[k];
+          if (v && typeof v === "object") {
+            walk(v);
+            if (v.op === "ml_text_label" || v.op === "ml_text_conf") found.push(v);
+          }
+        });
+      })(b);
+      for (var fi = 0; fi < found.length; fi++) {
+        var text = mlKey(evalIn(found[fi], "TEXT"));
+        if (!text || R.mlCache[text]) continue;
+        if (!R.fast) setBuddyMood("think", "Let me check with your model…");
+        try {
+          var res = await ML.recognise(text);
+          R.mlCache[text] = { label: String(res && res.label != null ? res.label : ""), confidence: Math.round(Number(res && res.confidence) || 0) };
+          if (!R.fast) logLine("think", "?", "recognise text: " + text + " \u2192 " + R.mlCache[text].label + " (" + R.mlCache[text].confidence + "%)");
+        } catch (err) {
+          R.mlCache[text] = { label: "", confidence: 0 };
+          logLine("warn", "!", (err && err.message) ? String(err.message) : "The model could not be reached.");
+        }
+        if (R.stop) return;
+      }
+    }
+
     /** Run the trained Text Recognition model; sets recognised label and confidence %. */
     async function recogniseText(text) {
       var t = String(text == null ? "" : text).trim();
@@ -1532,6 +1622,7 @@ export function mountRuleBasedProcess(root, options) {
         logLine("warn", "!", "Train your Text Recognition model first, then the Machine Learning blocks work.");
         return;
       }
+      if (!needModel()) return;
       if (!t) {
         logLine("warn", "!", "Nothing to recognise: the text is empty.");
         return;
@@ -1557,6 +1648,7 @@ export function mountRuleBasedProcess(root, options) {
         logLine("warn", "!", "Train your Image Recognition model first, then the ML Model blocks work.");
         return;
       }
+      if (!needModel()) return;
       if (!R.fast) {
         logLine("think", "?", "Choose an image for your model…");
         setBuddyMood("think", "Show me an image…");
@@ -1639,6 +1731,8 @@ export function mountRuleBasedProcess(root, options) {
         case "answer": return R.answer;
         case "answer_empty": return String(R.answer || "").trim() === "";
         case "prediction": return R.prediction;
+        case "ml_text_label": { var hl = R.mlCache[mlKey(evalIn(b, "TEXT"))]; return hl ? hl.label : ""; }
+        case "ml_text_conf": { var hc = R.mlCache[mlKey(evalIn(b, "TEXT"))]; return hc ? hc.confidence : 0; }
         case "ml_label": return R.mlLabel;
         case "ml_confidence": return R.mlConf;
         case "ml_label_name": return String(b.fields.LABEL || "");
@@ -1760,6 +1854,7 @@ export function mountRuleBasedProcess(root, options) {
     async function execBlock(b) {
       highlight(b, true);
       if (!R.fast) await sleep(step());
+      await prefetchMl(b);
       var res = null, n, i, lst, ix;
       switch (b.op) {
         case "set_var":
@@ -1824,6 +1919,12 @@ export function mountRuleBasedProcess(root, options) {
           if (R.stop) { highlight(b, false); return "stop"; }
           highlight(b, true);
           break;
+        case "ml_use_model":
+          highlight(b, false);
+          await connectModel();
+          if (R.stop) { highlight(b, false); return "stop"; }
+          highlight(b, true);
+          break;
         case "ml_recognise_image":
           highlight(b, false);
           await recogniseImage();
@@ -1869,6 +1970,7 @@ export function mountRuleBasedProcess(root, options) {
           while (!evalIn(b, "COND") && !R.stop) {
             if (++i > (R.fast ? 500 : GUARD)) throw new Error("loop");
             await sleep(R.fast ? 0 : 30);
+            await prefetchMl(b);
           }
           break;
         case "reset_timer": R.t0 = Date.now(); break;
@@ -1894,6 +1996,7 @@ export function mountRuleBasedProcess(root, options) {
             if (res === "break") { res = null; break; }
             if (res === "continue") { res = null; continue; }
             if (R.fast && i % 200 === 0) await sleep(0);
+            await prefetchMl(b);
           }
           break;
         case "forever":
@@ -2115,6 +2218,8 @@ export function mountRuleBasedProcess(root, options) {
         case "var_get": return ident(v.fields.VAR);
         case "answer": return "answer";
         case "prediction": return "prediction";
+        case "ml_text_label": return "model.recognise_text(" + px(v.inputs.TEXT) + ")[\"label\"]";
+        case "ml_text_conf": return "model.recognise_text(" + px(v.inputs.TEXT) + ")[\"confidence\"]";
         case "ml_label": return "label";
         case "ml_confidence": return "confidence";
         case "ml_label_name": return pyLit(v.fields.LABEL || "");
@@ -2191,10 +2296,13 @@ export function mountRuleBasedProcess(root, options) {
             out.push(pad + "prediction = ask_model(" + px(b.inputs.PROMPT) + ")");
             break;
           case "ml_recognise":
-            out.push(pad + "label, confidence = recognise_text(" + px(b.inputs.TEXT) + ")");
+            out.push(pad + "label, confidence = model.recognise_text(" + px(b.inputs.TEXT) + ")");
             break;
           case "ml_recognise_image":
-            out.push(pad + "label, confidence = recognise_image(choose_image())");
+            out.push(pad + "label, confidence = model.recognise_image(choose_image())");
+            break;
+          case "ml_use_model":
+            out.push(pad + "model = load_deployed_model(" + pyLit(b.fields.MODEL || "") + ")");
             break;
           case "say": out.push(pad + "print(" + px(b.inputs.MSG) + ")"); break;
           case "say_secs":
@@ -3379,7 +3487,7 @@ export function mountRuleBasedProcess(root, options) {
         stacks: JSON.parse(JSON.stringify(W.stacks)),
         empty_canvas: emptyCanvas && W.stacks.length === 0,
         // saved after the Machine Learning blocks were available (see the start-up check below)
-        ml_ready: mlReady || undefined,
+        ml_ready: mlReady ? ML_STATE_TAG : undefined,
       };
     }
 
@@ -3449,7 +3557,7 @@ export function mountRuleBasedProcess(root, options) {
 
     // A workspace saved before the model was trained has no Machine Learning blocks: the first
     // time the trained model is here, open on the Text recognition starter instead.
-    if (options.initialState && !(mlReady && !options.initialState.ml_ready)) {
+    if (options.initialState && !(mlReady && options.initialState.ml_ready !== ML_STATE_TAG)) {
       applyState(options.initialState);
     } else {
       fillPicker();

@@ -1467,7 +1467,7 @@ export default function LearnPage() {
                 What&apos;s next?
               </h2>
               <div className="text-fg space-y-3 text-sm">
-                <p>Train a model on your examples, then test it below.</p>
+                <p>Train a model on your examples.</p>
                 {!isTraining && !isInitializing && modelSelector}
               </div>
             </div>

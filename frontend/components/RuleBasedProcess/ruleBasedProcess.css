@@ -794,3 +794,6 @@
   }
   .rbp-root :focus-visible{outline:2px solid var(--purple);outline-offset:2px}
   @media(prefers-reduced-motion:reduce){.rbp-root,.rbp-root *{transition:none!important;animation:none!important}}
+
+/* Use the AI (ML mode): no task description, the right column is the stage / chat */
+.rbp-root.rbp-ml .side > section:first-child { display: none; }
