@@ -14,12 +14,14 @@ import {
   cellItems,
   defaultDesk,
   deskAtLean,
+  deskDots,
   examItems,
   grid,
   hiddenWeakDeskLine,
   mostMissesLine,
   offTopicLine,
   orderLabels,
+  perDesk,
   shortName,
   type EvalResponse,
 } from '../components/ProjectEvaluate/evaluate';
@@ -121,6 +123,23 @@ test('block 4: neutral line when the desk is not weaker than overall', () => {
   const r = deskAtLean(res.items, labels, 'Fees and billing', 0);
   assert.equal(r.recall, 100);
   assert.ok(!hiddenWeakDeskLine(accuracy(res.items), 'Fees and billing', r).includes('hide a weak desk'));
+});
+
+test('graph: right per desk', () => {
+  assert.deepEqual(
+    perDesk(res.items, labels).map((b) => [shortName(b.label), b.right, b.total, b.missed.length]),
+    [['Fees', 3, 3, 0], ['Corporate action', 3, 3, 0], ['KYC', 2, 3, 1], ['Complaint', 2, 3, 1]],
+  );
+});
+
+test('dots: Complaint recall row and precision row agree with the numbers', () => {
+  const { real, flagged } = deskDots(res.items, COMPLAINT);
+  const r = deskAtLean(res.items, labels, COMPLAINT, 0);
+  assert.equal(real.length, r.total);
+  assert.equal(real.filter((d) => d.ok).length, r.caught);
+  assert.equal(flagged.length, r.flagged);
+  assert.equal(flagged.filter((d) => !d.ok).length, r.falseAlarms);
+  assert.deepEqual(flagged.filter((d) => !d.ok).map((d) => d.item.text), ['Our authorised signatory has left the company. Please remove her.']);
 });
 
 test('practice 20 of 20', () => {

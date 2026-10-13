@@ -212,7 +212,7 @@ export default function LearnPage() {
   const isTextProject = !selectedProject?.type || selectedProject.type === 'text-recognition';
   const modelTypeLabel = (type: string | null) => {
     if (!type) return 'Unknown';
-    if (type === 'sentence_embed_lr') return 'Logistic Regression (with sentence meaning)';
+    if (type === 'sentence_embed_lr') return 'Logistic Regression';
     if (type === 'logistic_regression_ovr') return 'Logistic Regression (word matching)';
     if (type === 'distilbert') return 'DistilBERT';
     if (type === 'logistic_regression') return 'Logistic Regression (previous version)';
@@ -934,8 +934,8 @@ export default function LearnPage() {
   const [showTestData, setShowTestData] = useState(false);
 
   const textModels = [
-    { id: 'logistic_regression' as const, name: 'Logistic Regression', hint: 'Fast, understands meaning' },
-    { id: 'distilbert' as const, name: 'DistilBERT', hint: 'Slower, a bigger language model' },
+    { id: 'logistic_regression' as const, name: 'Logistic Regression', hint: 'Fast, reads meaning' },
+    { id: 'distilbert' as const, name: 'DistilBERT', hint: 'Slower, bigger model' },
   ];
   const modelSelector = isTextProject ? (
     <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Model to train">
@@ -1012,7 +1012,7 @@ export default function LearnPage() {
     }
     const t = window.setTimeout(() => setTrainPhase(trainPhase === 1 ? 2 : null), trainPhase === 1 ? STEP_MS : 1500);
     return () => window.clearTimeout(t);
-  }, [trainPhase, isTraining, trainedModel]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [trainPhase, isTraining, trainedModel]);
 
   const handleTestModel = async () => {
     if (!testText.trim() || !trainedModel || !actualSessionId || !actualProjectId) return;
@@ -1546,20 +1546,7 @@ export default function LearnPage() {
                           <span className="w-4 h-4 border-2 border-magenta-brand/20 border-t-pink-brand rounded-full animate-spin" aria-hidden="true" />
                           Training…{currentTrainingJob?.progress ? ` ${currentTrainingJob.progress}%` : ''}
                         </p>
-                      ) : trainedModel ? (
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--success)]" role="status">
-                            <span aria-hidden="true">✓</span>
-                            {trainedModel.status === 'available' ? 'Model trained' : `Model ${trainedModel.status}`}
-                          </p>
-                          <button
-                            onClick={() => startTextTraining(true)}
-                            className="border border-magenta-brand/50 text-fg hover:bg-purple-brand/10 px-4 py-2 rounded-lg text-sm font-medium"
-                          >
-                            Train again
-                          </button>
-                        </div>
-                      ) : (
+                      ) : trainedModel ? null : (
                         <button
                           onClick={() => startTextTraining(false)}
                           className="w-full bg-purple-brand hover:bg-purple-brand/90 text-white px-6 py-2.5 rounded-lg text-sm font-semibold"
@@ -1571,31 +1558,52 @@ export default function LearnPage() {
                     )
                   )}
 
-                  {trainedModel && !isTraining && trainPhase === null && (
-                    <div className="mt-4 pt-3 border-t border-fg/10 text-xs text-fg/60 space-y-1">
-                      <p className="flex items-center gap-1.5 text-sm text-fg font-medium">
-                        <span className={`w-2 h-2 rounded-full ${trainedModel.status === 'available' ? 'bg-[var(--success)]' : 'bg-pink-brand'}`} aria-hidden="true" />
-                        {trainedModel.status === 'available' ? 'Model ready' : `Model ${trainedModel.status}`}
-                        {trainedModelType && <span className="text-fg/60 font-normal">· {modelTypeLabel(trainedModelType)}</span>}
-                      </p>
-                      <p>Trained {trainedModel.startedAt.toLocaleString('en-US', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                      <p>Deleted after {trainedModel.expiresAt.toLocaleString('en-US', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                      <button
-                        onClick={handleDeleteModel}
-                        disabled={isDeletingModel}
-                        className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-lg border border-red-500/60 text-red-400 hover:bg-red-500/10 hover:text-red-300 px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50"
-                      >
-                        {isDeletingModel ? (
-                          <span className="w-4 h-4 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin" aria-hidden="true" />
-                        ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        )}
-                        {isDeletingModel ? 'Deleting…' : 'Delete this model'}
-                      </button>
-                    </div>
-                  )}
+                  {trainedModel && !isTraining && trainPhase === null && (() => {
+                    const ready = trainedModel.status === 'available';
+                    const time = (d: Date) => {
+                      const sameDay = d.toDateString() === new Date().toDateString();
+                      return d.toLocaleString('en-US', sameDay ? { hour: 'numeric', minute: '2-digit' } : { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+                    };
+                    return (
+                      <>
+                        <div
+                          className={`mt-4 rounded-xl border p-4 ${ready ? 'border-[var(--success)]/30 bg-[var(--success)]/10' : 'border-pink-brand/30 bg-pink-brand/10'}`}
+                          role="status"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="flex items-center gap-2 font-semibold text-fg">
+                              <span className={`w-2.5 h-2.5 rounded-full ${ready ? 'bg-[var(--success)]' : 'bg-pink-brand'}`} aria-hidden="true" />
+                              {ready ? 'Model ready' : `Model ${trainedModel.status}`}
+                            </p>
+                            <button
+                              onClick={() => startTextTraining(true)}
+                              className="shrink-0 border border-magenta-brand/50 bg-canvas text-fg hover:bg-purple-brand/10 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                            >
+                              Train again
+                            </button>
+                          </div>
+                          {trainedModelType && <p className="text-sm text-fg/80 mt-1.5">{modelTypeLabel(trainedModelType)}</p>}
+                          <p className="text-xs text-fg/60 mt-1">
+                            Trained {time(trainedModel.startedAt)} · Deleted after {time(trainedModel.expiresAt)}
+                          </p>
+                        </div>
+                        <button
+                          onClick={handleDeleteModel}
+                          disabled={isDeletingModel}
+                          className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-lg border border-red-500/40 text-red-500 hover:bg-red-500/10 px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
+                        >
+                          {isDeletingModel ? (
+                            <span className="w-4 h-4 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin" aria-hidden="true" />
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          )}
+                          {isDeletingModel ? 'Deleting…' : 'Delete this model'}
+                        </button>
+                      </>
+                    );
+                  })()}
                 </section>
               );
             })()
