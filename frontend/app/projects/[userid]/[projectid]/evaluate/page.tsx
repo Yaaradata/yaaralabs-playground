@@ -116,7 +116,7 @@ export default function EvaluatePage() {
 
         {state === 'ready' && project && (
           <>
-            <div className="max-w-5xl mx-auto flex items-center gap-3 mb-6">
+            <div className="max-w-7xl mx-auto flex items-center gap-3 mb-6">
               <Link
                 href={makeHref}
                 className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-lg border border-magenta-brand/30 text-fg/80 hover:bg-purple-brand/10"
@@ -140,7 +140,7 @@ export default function EvaluatePage() {
                 learnHref={`/projects/${urlUserId}/${urlProjectId}/learn`}
               />
             ) : (
-              <div className="max-w-5xl mx-auto bg-card border border-magenta-brand/20 rounded-2xl p-8 text-lg">
+              <div className="max-w-7xl mx-auto bg-card border border-magenta-brand/20 rounded-2xl p-8 text-lg">
                 <p>Evaluate is available for Text recognition projects.</p>
                 <Link href={`/projects/${urlUserId}/${urlProjectId}`} className="inline-block mt-4 text-pink-brand font-semibold underline">
                   Back to the project

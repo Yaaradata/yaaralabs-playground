@@ -38,7 +38,7 @@ interface Props {
 
 type Setup = { trained: boolean; labels: string[]; items: { text: string; expected: string }[] };
 
-const card = 'bg-card border border-magenta-brand/20 rounded-2xl p-6 md:p-8';
+const card = 'bg-card border border-magenta-brand/20 rounded-2xl p-5 md:p-6';
 const btn = 'inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-lg font-semibold transition-colors';
 
 export default function ProjectEvaluate({ sessionId, projectId, makeHref, learnHref }: Props) {
@@ -91,11 +91,11 @@ export default function ProjectEvaluate({ sessionId, projectId, makeHref, learnH
     }
   };
 
-  if (!setup) return <p className="max-w-5xl mx-auto text-xl text-fg/70">Loading…</p>;
+  if (!setup) return <p className="max-w-7xl mx-auto text-xl text-fg/70">Loading…</p>;
 
   if (!setup.trained) {
     return (
-      <div className={`max-w-5xl mx-auto ${card}`}>
+      <div className={`max-w-7xl mx-auto ${card}`}>
         <p className="text-2xl font-semibold">Train your bot first, then give it an exam.</p>
         <Link href={learnHref} className={`${btn} mt-6 bg-purple-brand hover:bg-purple-brand/90 text-white`}>
           Go to training
@@ -107,7 +107,7 @@ export default function ProjectEvaluate({ sessionId, projectId, makeHref, learnH
   if (!res) {
     const own = setup.items.length === 0;
     return (
-      <div className={`max-w-5xl mx-auto ${card}`}>
+      <div className={`max-w-7xl mx-auto ${card}`}>
         <p className="text-2xl md:text-3xl font-semibold leading-snug">
           {own
             ? 'Let’s give your bot an exam on your own examples.'
@@ -150,7 +150,9 @@ function Results({ res, makeHref, learnHref }: { res: EvalResponse; makeHref: st
   const live = deskAtLean(items, labels, desk, lean);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 text-lg">
+    <div className="max-w-7xl mx-auto text-lg">
+      <div className="grid gap-4 lg:grid-cols-2 items-start">
+      <div className="space-y-4 min-w-0">
       {/* 1. Overall score */}
       <section className={card} aria-labelledby="b1">
         <h2 id="b1" className="sr-only">Overall score</h2>
@@ -164,12 +166,13 @@ function Results({ res, makeHref, learnHref }: { res: EvalResponse; makeHref: st
       {/* 2. Where it got confused */}
       <Confusion items={items} labels={labels} />
 
-      {/* 3. What precision and recall mean */}
-      <Explain desk={desk} />
+      </div>
 
+      <div className="space-y-4 min-w-0">
       {/* 4. The desk that matters most */}
       <section className={card} aria-labelledby="b4">
         <h2 id="b4" className="text-2xl font-bold">The desk that matters most</h2>
+        <Explain desk={desk} />
         <div className="flex flex-wrap gap-2 mt-4" role="radiogroup" aria-label="Desk">
           {labels.map((l) => (
             <button
@@ -274,8 +277,11 @@ function Results({ res, makeHref, learnHref }: { res: EvalResponse; makeHref: st
         </p>
       </section>
 
+      </div>
+      </div>
+
       {/* Practice vs exam */}
-      <section className="px-1">
+      <section className="px-1 mt-4">
         <p className="text-xl">
           Practice score <b>{res.practice.correct} of {res.practice.total}</b> (messages it learned from) · Exam score{' '}
           <b>{acc.right} of {acc.total}</b> ({own ? 'each example hidden while tested' : 'messages it has never seen'}). Always judge a bot on messages it hasn’t seen.
@@ -329,7 +335,7 @@ function Confusion({ items, labels }: { items: EvalItem[]; labels: string[] }) {
             <tr>
               <th className="text-left text-base font-semibold text-fg/60 pr-3 align-bottom">Really was ↓</th>
               {labels.map((l) => (
-                <th key={l} className="px-2 pb-1 text-base font-semibold text-center min-w-[6.5rem]">
+                <th key={l} className="px-2 pb-1 text-base font-semibold text-center min-w-[5.5rem]">
                   {shortName(l)}
                 </th>
               ))}
@@ -350,7 +356,7 @@ function Confusion({ items, labels }: { items: EvalItem[]; labels: string[] }) {
                         onClick={() => setOpen(selected ? null : { r: ri, c: ci })}
                         disabled={n === 0}
                         aria-label={`Really ${shortName(r)}, bot said ${shortName(c)}: ${n}`}
-                        className={`w-full h-14 rounded-lg text-2xl font-bold tabular-nums transition-shadow ${
+                        className={`w-full h-11 rounded-lg text-xl font-bold tabular-nums transition-shadow ${
                           right
                             ? 'bg-[var(--success)]/20 text-[var(--success)]'
                             : n > 0
@@ -392,31 +398,24 @@ function Confusion({ items, labels }: { items: EvalItem[]; labels: string[] }) {
   );
 }
 
-/* ───────── block 3 ───────── */
+/* ───────── what precision and recall mean (inside the desk block) ───────── */
 
 function Explain({ desk }: { desk: string }) {
   const many = deskNoun(desk);
   return (
-    <section className={card} aria-labelledby="b3">
-      <h2 id="b3" className="text-2xl font-bold">What do precision and recall mean?</h2>
-      <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_16rem] items-center mt-4">
-        <div className="space-y-4">
-          <div>
-            <p className="text-xl font-bold">Recall: did we catch them?</p>
-            <p className="text-lg text-fg/80">Of all the real {many}, how many did the bot catch?</p>
-          </div>
-          <div>
-            <p className="text-xl font-bold">Precision: when it flags, is it right?</p>
-            <p className="text-lg text-fg/80">Of the messages the bot called {many}, how many really were?</p>
-          </div>
-          <div className="text-base text-fg/70 border-l-4 border-magenta-brand/40 pl-4 space-y-1">
-            <p><b>Recall:</b> how many of the fish in the pond did your net catch?</p>
-            <p><b>Precision:</b> how much of what’s in your net is actually fish?</p>
-          </div>
-        </div>
-        <FishingNet />
+    <div className="mt-3 flex items-center gap-4 rounded-xl bg-purple-brand/10 border border-magenta-brand/20 px-4 py-3" aria-label="What precision and recall mean">
+      <FishingNet />
+      <div className="text-base leading-snug space-y-1 min-w-0">
+        <p>
+          <b>Recall</b>: did we catch them? Of all the real {many}, how many did the bot catch?{' '}
+          <span className="text-fg/60">(How many fish in the pond did the net catch?)</span>
+        </p>
+        <p>
+          <b>Precision</b>: when it flags, is it right? Of the messages it called {many}, how many really were?{' '}
+          <span className="text-fg/60">(How much of the net is actually fish?)</span>
+        </p>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -433,7 +432,7 @@ function Fish({ x, y, flip = false }: { x: number; y: number; flip?: boolean }) 
 /** A net in a pond: fish caught, fish missed, and a boot and some weed in the net. */
 function FishingNet() {
   return (
-    <svg viewBox="0 0 240 190" className="w-full max-w-[16rem] mx-auto text-fg" role="img" aria-label="A fishing net holding three fish, a boot and some weed, with two fish still outside the net">
+    <svg viewBox="0 0 240 190" className="w-24 shrink-0 text-fg hidden sm:block" role="img" aria-label="A fishing net holding three fish, a boot and some weed, with two fish still outside the net">
       {/* pond */}
       <rect x="4" y="40" width="232" height="146" rx="18" className="text-purple-brand" fill="currentColor" opacity="0.12" />
       {/* handle and rim */}
