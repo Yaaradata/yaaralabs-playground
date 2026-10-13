@@ -149,6 +149,24 @@ function Results({ res, makeHref, learnHref }: { res: EvalResponse; makeHref: st
   const normal = deskAtLean(items, labels, desk, 0);
   const live = deskAtLean(items, labels, desk, lean);
 
+  const footer = (
+    <section className={card} aria-label="Practice score and exam score">
+      <p className="text-lg">
+        Practice score <b>{res.practice.correct} of {res.practice.total}</b> (messages it learned from) · Exam score{' '}
+        <b>{acc.right} of {acc.total}</b> ({own ? 'each example hidden while tested' : 'messages it has never seen'}).
+      </p>
+      <p className="text-lg font-semibold mt-1">Always judge a bot on messages it hasn’t seen.</p>
+      <div className="flex flex-wrap gap-3 mt-4">
+        <Link href={makeHref} className={`${btn} border-2 border-magenta-brand/40 hover:bg-purple-brand/10`}>
+          ← Back to Use the AI
+        </Link>
+        <Link href={learnHref} className={`${btn} bg-purple-brand hover:bg-purple-brand/90 text-white`}>
+          Add more examples
+        </Link>
+      </div>
+    </section>
+  );
+
   return (
     <div className="max-w-7xl mx-auto text-lg">
       <div className="grid gap-4 lg:grid-cols-2 items-start">
@@ -166,6 +184,7 @@ function Results({ res, makeHref, learnHref }: { res: EvalResponse; makeHref: st
       {/* 2. Where it got confused */}
       <Confusion items={items} labels={labels} />
 
+      <div className="hidden lg:block">{footer}</div>
       </div>
 
       <div className="space-y-4 min-w-0">
@@ -250,10 +269,10 @@ function Results({ res, makeHref, learnHref }: { res: EvalResponse; makeHref: st
           className="w-full mt-4 accent-pink-500 h-2"
           aria-valuetext={lean === 0 ? 'Normal' : lean < 0 ? 'Only when more sure' : 'Sooner'}
         />
-        <div className="relative flex justify-between text-base text-fg/70 mt-1">
+        <div className="relative flex justify-between text-base text-fg/70 mt-2">
           <span>Only when very sure</span>
-          <span className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center">
-            <span className="w-px h-2 bg-fg/40" aria-hidden="true" />
+          <span className="absolute left-1/2 -translate-x-1/2">
+            <span className="absolute left-1/2 -top-2 w-px h-2 bg-fg/40" aria-hidden="true" />
             Normal
           </span>
           <span>At the first hint</span>
@@ -280,33 +299,21 @@ function Results({ res, makeHref, learnHref }: { res: EvalResponse; makeHref: st
       </div>
       </div>
 
-      {/* Practice vs exam */}
-      <section className="px-1 mt-4">
-        <p className="text-xl">
-          Practice score <b>{res.practice.correct} of {res.practice.total}</b> (messages it learned from) · Exam score{' '}
-          <b>{acc.right} of {acc.total}</b> ({own ? 'each example hidden while tested' : 'messages it has never seen'}). Always judge a bot on messages it hasn’t seen.
-        </p>
-        <div className="flex flex-wrap gap-3 mt-5">
-          <Link href={makeHref} className={`${btn} border-2 border-magenta-brand/40 hover:bg-purple-brand/10`}>
-            ← Back to Use the AI
-          </Link>
-          <Link href={learnHref} className={`${btn} bg-purple-brand hover:bg-purple-brand/90 text-white`}>
-            Add more examples
-          </Link>
-        </div>
-      </section>
+      {/* Practice vs exam: under the grid on wide screens (evens out the two columns), last otherwise */}
+      <div className="lg:hidden mt-4">{footer}</div>
     </div>
   );
 }
 
 function Tile({ title, big, pct, sub, on }: { title: string; big: string; pct: string; sub: string; on: boolean }) {
   return (
-    <div className={`rounded-2xl border-2 p-5 transition-colors ${on ? 'border-pink-brand bg-purple-brand/15' : 'border-magenta-brand/25'}`}>
-      <p className="text-base font-bold uppercase tracking-wider text-fg/60">{title}</p>
-      <p className="text-3xl font-bold mt-2">
-        {big} <span className="text-pink-brand">({pct})</span>
-      </p>
-      <p className="text-lg text-fg/70 mt-1">{sub}</p>
+    <div className={`rounded-2xl border-2 px-5 py-4 transition-colors ${on ? 'border-pink-brand bg-purple-brand/15' : 'border-magenta-brand/25'}`}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-bold uppercase tracking-wider text-fg/60">{title}</p>
+        <span className="rounded-full bg-pink-brand/15 text-pink-brand px-2.5 py-0.5 text-base font-bold tabular-nums">{pct}</span>
+      </div>
+      <p className="text-2xl xl:text-3xl font-bold mt-1.5 whitespace-nowrap">{big}</p>
+      <p className="text-base text-fg/70 mt-0.5 leading-snug">{sub}</p>
     </div>
   );
 }
@@ -405,7 +412,7 @@ function Explain({ desk }: { desk: string }) {
   return (
     <div className="mt-3 flex items-center gap-4 rounded-xl bg-purple-brand/10 border border-magenta-brand/20 px-4 py-3" aria-label="What precision and recall mean">
       <FishingNet />
-      <div className="text-base leading-snug space-y-1 min-w-0">
+      <div className="text-sm leading-snug space-y-1 min-w-0">
         <p>
           <b>Recall</b>: did we catch them? Of all the real {many}, how many did the bot catch?{' '}
           <span className="text-fg/60">(How many fish in the pond did the net catch?)</span>
