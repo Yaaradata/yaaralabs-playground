@@ -16,6 +16,7 @@ import {
   isMaskedProjectId
 } from '../../../lib/session-utils';
 import { cleanupSessionWithReason, SessionCleanupReason, updateSessionActivity } from '../../../lib/session-cleanup';
+import { DAY2_OPTIONS, TYPE_STAGE, defaultStartFrom, startFromOptions, stageToType, isStage, type Stage } from '../../../components/AgentStudio/stages';
 
 /**
  * Projects Page with Hash-Based Navigation
@@ -61,6 +62,10 @@ interface Agent {
   created_at: string;
   updated_at: string;
   active: boolean;
+  /** Day 2 Agent Studio stage; missing on legacy agents */
+  stage?: Stage | null;
+  project_name?: string | null;
+  copied_from?: { agent_id: string; name: string; stage: string } | null;
 }
 
 interface GuestSessionResponse {
@@ -78,6 +83,7 @@ interface Project {
   maskedId?: string;
   teachable_machine_link?: string;  // Changed from teachable_link to teachable_machine_link to match backend
   agent_id?: string;  // For Custom AI Agent projects
+  stage?: Stage | null;  // Day 2 Agent Studio stage (agents only; missing on legacy agents)
   modelStatus?: 'available' | 'unavailable';  // Model training status
   rbpEditor?: 'blocks' | 'legacy' | 'scratch' | 'rules-bot' | null;  // Rule Based Process editor: see components/RuleBasedProcessProject/editors.ts
   scratchSavedAt?: string | null;  // Rule Based Process: when the Scratch project was last saved
@@ -101,7 +107,13 @@ function CreateProjectPage() {
   const [projectDay, setProjectDay] = useState<'' | 'day1' | 'day2'>('');
   const [teachableLink, setTeachableLink] = useState('');
   const [agentDescription, setAgentDescription] = useState('');
+  // Day 2 RAG Chatbot / AI Agent: the earlier agent this one starts from ('' = start fresh)
+  const [startFrom, setStartFrom] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
+  // This session's Day 2 agents, for "Start from"
+  const stagedAgents = projects
+    .filter((pr) => pr.agent_id && pr.stage)
+    .map((pr) => ({ agent_id: pr.agent_id as string, stage: pr.stage, name: pr.name, created_at: pr.createdAt }));
   const [currentSection, setCurrentSection] = useState<'projects-list' | 'new-project' | 'project-details' | 'edit-project'>('projects-list');
   const [selectedProject] = useState<Project | null>(null);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -278,14 +290,16 @@ function CreateProjectPage() {
             }
             return {
               id: agent.agent_id,
-              name: agent.name,
-              type: 'custom-ai-agent',
+              name: agent.project_name || agent.name,
+              // Day 2 stages show as their exercise's type; legacy agents (no stage) stay Custom AI Agents
+              type: stageToType(agent.stage),
               description: agent.description,
               status: agent.active ? 'draft' : 'failed',
               createdAt: agent.created_at,
               updatedAt: agent.updated_at,
               maskedId: maskedProjectId,
-              agent_id: agent.agent_id
+              agent_id: agent.agent_id,
+              stage: isStage(agent.stage) ? agent.stage : null,
             } as Project;
           });
           allProjects.push(...agentsAsProjects);
@@ -296,6 +310,11 @@ function CreateProjectPage() {
       const projectsWithStatus = await Promise.all(
         allProjects.map(async (project) => {
           // Fetch model status for types that show the Model Trained tag
+          if (project.agent_id) {
+            // Agents: legacy ones show no status; Day 2 stages are ready once the persona is saved
+            if (!project.stage) return project;
+            return { ...project, modelStatus: await getAgentStatus(project.agent_id) };
+          }
           if (
             project.type === 'text-recognition' ||
             project.type === 'image-recognition' ||
@@ -523,6 +542,19 @@ function CreateProjectPage() {
     }
   };
 
+  // Day 2 staged agent: ready once its persona has been saved at least once
+  const getAgentStatus = async (agentId: string): Promise<'available' | 'unavailable'> => {
+    try {
+      const res = await fetch(`${config.apiBaseUrl}${config.api.agents.persona.get(agentId)}`);
+      if (!res.ok) return 'unavailable';
+      const persona = await res.json();
+      const saved = new Date(persona.updated_at).getTime() - new Date(persona.created_at).getTime() > 1000;
+      return saved ? 'available' : 'unavailable';
+    } catch {
+      return 'unavailable';
+    }
+  };
+
   const getProjectModelStatus = async (
     projectId: string,
     projectType?: string
@@ -636,10 +668,11 @@ function CreateProjectPage() {
     if (projectName.trim() && projectType) {
       setIsCreatingProject(true);
       
-      // Validate agent description if Custom AI Agent
-      if (projectType === 'custom-ai-agent') {
+      // Day 2 agents: a description is needed unless the project starts from an earlier agent
+      const dayTwoStage = projectDay === 'day2' ? TYPE_STAGE[projectType] : undefined;
+      if (dayTwoStage && (dayTwoStage === 'assistant' || !startFrom)) {
         if (!agentDescription || !agentDescription.trim()) {
-          alert('Agent description is required for Custom AI Agent.');
+          alert('Describe your agent, or start from an earlier one.');
           setIsCreatingProject(false);
           return;
         }
@@ -679,8 +712,8 @@ function CreateProjectPage() {
       try {
         let newProject;
 
-        // Handle Custom AI Agent creation differently
-        if (projectType === 'custom-ai-agent') {
+        // Day 2 (Custom AI Agent, RAG Chatbot, AI Agent): all three are agents with a stage
+        if (dayTwoStage) {
           // Get session ID from localStorage
           const sessionId = localStorage.getItem('yaaralabs_playground_session_id');
           if (!sessionId) {
@@ -695,7 +728,11 @@ function CreateProjectPage() {
             },
             body: JSON.stringify({
               session_id: sessionId,
-              agent_description: agentDescription.trim()
+              stage: dayTwoStage,
+              project_name: projectName.trim(),
+              ...(dayTwoStage !== 'assistant' && startFrom
+                ? { copy_from_agent_id: startFrom }
+                : { agent_description: agentDescription.trim() }),
             }),
           });
           
@@ -716,14 +753,15 @@ function CreateProjectPage() {
           
           newProject = {
             id: agent.agent_id,
-            name: agent.name,
-            type: 'custom-ai-agent',
+            name: agent.project_name || agent.name,
+            type: stageToType(agent.stage),
             description: agent.description,
             status: 'draft',
             createdAt: agent.created_at,
             updatedAt: agent.updated_at,
             maskedId: maskedProjectId,
-            agent_id: agent.agent_id
+            agent_id: agent.agent_id,
+            stage: agent.stage,
           };
         } else {
           // Regular project creation
@@ -747,6 +785,7 @@ function CreateProjectPage() {
         setProjectName('');
         setProjectType('');
         setProjectDay('');
+        setStartFrom('');
         setTeachableLink('');
         
         // Reload projects to get updated list
@@ -818,6 +857,7 @@ function CreateProjectPage() {
         setProjectName('');
         setProjectType('');
         setProjectDay('');
+        setStartFrom('');
         setTeachableLink('');
         setEditingProject(null);
         
@@ -942,6 +982,7 @@ function CreateProjectPage() {
     setProjectName('');
     setProjectType('');
     setProjectDay('');
+    setStartFrom('');
     setTeachableLink('');
     setAgentDescription('');
     setEditingProject(null);
@@ -1324,7 +1365,7 @@ function CreateProjectPage() {
                      </div>
                      
                      {/* Model Status - text / image recognition and confusion matrix */}
-                     {(project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'confusion-matrix' || project.type === 'rag-chatbot' || project.type === 'ai-agent') && (
+                     {(project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'confusion-matrix' || project.type === 'rag-chatbot' || project.type === 'ai-agent' || (project.agent_id && project.stage)) && (
                        <div className="text-fg mb-4">
                          <span className="text-sm">Model Trained: </span>
                          <span className={`font-medium ${
@@ -1336,7 +1377,7 @@ function CreateProjectPage() {
                      )}
                      
                      {/* Spacer for custom-ai-agent to match Model Trained section height */}
-                     {project.type === 'custom-ai-agent' && (
+                     {project.type === 'custom-ai-agent' && !project.stage && (
                        <div className="mb-4 h-6"></div>
                      )}
                     
@@ -1457,7 +1498,12 @@ function CreateProjectPage() {
                   <select
                     id="projectType"
                     value={projectType}
-                    onChange={(e) => setProjectType(e.target.value)}
+                    onChange={(e) => {
+                      const type = e.target.value;
+                      setProjectType(type);
+                      const stage = projectDay === 'day2' ? TYPE_STAGE[type] : undefined;
+                      setStartFrom(stage ? defaultStartFrom(stagedAgents, stage) : '');
+                    }}
                     disabled={!projectDay}
                     className="w-full px-4 py-3 bg-canvas border border-magenta-brand/20 rounded-lg text-fg focus:outline-none focus:border-pink-brand focus:ring-1 focus:ring-pink-brand transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     required
@@ -1473,11 +1519,7 @@ function CreateProjectPage() {
                           ['live-object-detection', 'Live Object Detection'],
                         ]
                       : projectDay === 'day2'
-                        ? [
-                            ['custom-ai-agent', 'Custom AI Agent'],
-                            ['rag-chatbot', 'RAG Chatbot'],
-                            ['ai-agent', 'AI Agent'],
-                          ]
+                        ? DAY2_OPTIONS
                         : []
                     ).map(([value, label]) => (
                       <option key={value} value={value} className="bg-canvas text-fg">
@@ -1487,8 +1529,37 @@ function CreateProjectPage() {
                   </select>
                 </div>
 
-                {/* Agent Description Field - Only show for Custom AI Agent */}
-                {projectType === 'custom-ai-agent' && (
+                {/* Day 2 RAG Chatbot / AI Agent: start from the participant's earlier agent */}
+                {projectDay === 'day2' && (projectType === 'rag-chatbot' || projectType === 'ai-agent') && (
+                  <div>
+                    <label htmlFor="startFrom" className="block text-sm font-medium text-fg mb-2">
+                      Start from
+                    </label>
+                    <select
+                      id="startFrom"
+                      value={startFrom}
+                      onChange={(e) => setStartFrom(e.target.value)}
+                      className="w-full px-4 py-3 bg-canvas border border-magenta-brand/20 rounded-lg text-fg focus:outline-none focus:border-pink-brand focus:ring-1 focus:ring-pink-brand transition-all duration-300"
+                    >
+                      {startFromOptions(stagedAgents, TYPE_STAGE[projectType]).map((a) => (
+                        <option key={a.agent_id} value={a.agent_id} className="bg-canvas text-fg">
+                          {a.name} ({a.stage === 'assistant' ? 'Custom AI Agent' : a.stage === 'rag' ? 'RAG Chatbot' : 'AI Agent'})
+                        </option>
+                      ))}
+                      <option value="" className="bg-canvas text-fg">Start fresh</option>
+                    </select>
+                    <p className="text-xs text-fg/60 mt-1.5">
+                      {startFrom
+                        ? projectType === 'ai-agent'
+                          ? 'Copies the persona, rules, guardrails, actions and knowledge base'
+                          : 'Copies the persona, rules, guardrails and actions'
+                        : 'Starts with a new agent from your description'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Agent Description: Custom AI Agent, or a Day 2 agent that starts fresh */}
+                {(projectType === 'custom-ai-agent' || (projectDay === 'day2' && (projectType === 'rag-chatbot' || projectType === 'ai-agent') && !startFrom)) && (
                   <div>
                     <label htmlFor="agentDescription" className="block text-sm font-medium text-fg mb-2">
                       Agent Description

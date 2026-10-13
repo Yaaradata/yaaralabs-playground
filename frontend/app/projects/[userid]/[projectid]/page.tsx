@@ -23,6 +23,8 @@ import RuleBasedProcessProject, { resolveRbpEditor } from '../../../../component
 import ConfusionMatrixLab from '../../../../components/ConfusionMatrix'
 import RagChatbotLab from '../../../../components/RagChatbot'
 import AiAgentLab from '../../../../components/AiAgent'
+import AgentStudio from '../../../../components/AgentStudio'
+import { isStage, stageToType, type Stage } from '../../../../components/AgentStudio/stages'
 import LiveObjectDetectionProject from '../../../../components/VideoClassifier'
 import Exercises from '../../../../components/Exercises'
 
@@ -50,6 +52,8 @@ interface Project {
   status?: string;
   maskedId?: string;
   agent_id?: string;  // For Custom AI Agent projects
+  stage?: Stage | null;  // Day 2 Agent Studio stage; missing on legacy agents
+  copied_from?: { agent_id: string; name: string; stage: string } | null;
   rbpEditor?: 'blocks' | 'legacy' | 'scratch' | 'rules-bot' | null;  // Rule Based Process editor: see components/RuleBasedProcessProject/editors.ts
 }
 
@@ -147,6 +151,9 @@ interface Agent {
   created_at: string;
   updated_at: string;
   active: boolean;
+  stage?: string | null;
+  project_name?: string | null;
+  copied_from?: { agent_id: string; name: string; stage: string } | null;
 }
 
 // Knowledge chunk interface
@@ -289,7 +296,7 @@ export default function ProjectDetailsPage() {
 
   // Load chat history when project loads
   useEffect(() => {
-    if (selectedProject && selectedProject.type === 'custom-ai-agent' && selectedProject.agent_id && actualSessionId) {
+    if (selectedProject && selectedProject.type === 'custom-ai-agent' && selectedProject.agent_id && !selectedProject.stage && actualSessionId) {
       loadChatHistory(selectedProject.agent_id, actualSessionId);
     }
   }, [selectedProject, actualSessionId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -448,7 +455,7 @@ export default function ProjectDetailsPage() {
 
   // Load persona when project loads
   useEffect(() => {
-    if (selectedProject && selectedProject.type === 'custom-ai-agent' && selectedProject.agent_id) {
+    if (selectedProject && selectedProject.type === 'custom-ai-agent' && selectedProject.agent_id && !selectedProject.stage) {
       loadPersona(selectedProject.agent_id);
       loadSettings(selectedProject.agent_id);
     }
@@ -1621,13 +1628,16 @@ export default function ProjectDetailsPage() {
         if (agentsData && Array.isArray(agentsData) && agentsData.length > 0) {
           const agentsAsProjects = agentsData.map((agent: Agent) => ({
             id: agent.agent_id,
-            name: agent.name,
-            type: 'custom-ai-agent',
+            name: agent.project_name || agent.name,
+            // Day 2 stages show as their exercise's type; legacy agents (no stage) stay Custom AI Agents
+            type: stageToType(agent.stage),
             description: agent.description,
             status: agent.active ? 'draft' : 'failed',
             createdAt: agent.created_at,
             updatedAt: agent.updated_at,
-            agent_id: agent.agent_id
+            agent_id: agent.agent_id,
+            stage: isStage(agent.stage) ? agent.stage : null,
+            copied_from: agent.copied_from || null,
           } as Project));
           allProjects.push(...agentsAsProjects);
         }
@@ -1721,8 +1731,10 @@ export default function ProjectDetailsPage() {
   const isRbp = selectedProject.type === 'rule-based-process';
   const isExercises = selectedProject.type === 'exercises';
   const isConfusionMatrix = selectedProject.type === 'confusion-matrix';
-  const isRagChatbot = selectedProject.type === 'rag-chatbot';
-  const isAiAgent = selectedProject.type === 'ai-agent';
+  // Day 2 Agent Studio: agents with a stage. Guest projects of type rag-chatbot / ai-agent keep their old Labs.
+  const isAgentStudio = Boolean(selectedProject.agent_id && selectedProject.stage);
+  const isRagChatbot = selectedProject.type === 'rag-chatbot' && !selectedProject.agent_id;
+  const isAiAgent = selectedProject.type === 'ai-agent' && !selectedProject.agent_id;
   // 'live-video-classification' is the name this type had briefly; those projects open the same way
   const isLiveObjectDetection = selectedProject.type === 'live-object-detection' || selectedProject.type === 'live-video-classification';
   const studioHeader = isRbp || isExercises || isConfusionMatrix || isRagChatbot || isAiAgent || isLiveObjectDetection;
@@ -1774,8 +1786,17 @@ export default function ProjectDetailsPage() {
           studioHeader ? 'pt-0' : 'pt-20'
         }`}
       >
-          {/* Tabbed Interface for Custom AI Agent */}
-          {selectedProject.type === 'custom-ai-agent' ? (
+          {isAgentStudio && selectedProject.agent_id && selectedProject.stage ? (
+            <AgentStudio
+              agentId={selectedProject.agent_id}
+              sessionId={actualSessionId}
+              stage={selectedProject.stage}
+              projectName={selectedProject.name}
+              copiedFrom={selectedProject.copied_from || null}
+              backHref={`/projects/${urlUserId}`}
+            />
+          ) : /* Tabbed Interface for legacy Custom AI Agents (no stage) */
+          selectedProject.type === 'custom-ai-agent' ? (
             <div className="h-full flex flex-col min-h-0">
               {/* Top Navigation Bar with Back Button and Tabs */}
               <div className="bg-canvas py-4 flex-shrink-0 border-b border-magenta-brand/20">
@@ -3864,13 +3885,13 @@ export default function ProjectDetailsPage() {
               projectId={selectedProject.id}
               backHref={`/projects/${urlUserId}`}
             />
-          ) : selectedProject.type === 'ai-agent' ? (
+          ) : isAiAgent ? (
             <AiAgentLab
               projectName={selectedProject.name}
               sessionId={actualSessionId}
               projectId={selectedProject.id}
             />
-          ) : selectedProject.type === 'rag-chatbot' ? (
+          ) : isRagChatbot ? (
             <RagChatbotLab
               projectName={selectedProject.name}
               sessionId={actualSessionId}

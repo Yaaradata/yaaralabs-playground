@@ -9,9 +9,18 @@ from ..models import (
     AgentGuardrails, GuardrailsUpdateRequest,
 )
 from ..config import gcp_clients
+from . import agent_stages
 from .vertex_ai_service import VertexAIService
 
 logger = logging.getLogger(__name__)
+
+
+class AgentAccessError(PermissionError):
+    """The agent belongs to another session (403)."""
+
+
+class AgentRequestError(ValueError):
+    """A request the participant can fix (400)."""
 
 
 class AgentService:
@@ -88,12 +97,18 @@ class AgentService:
         return self._vertex_ai
     
     def create_agent(self, request: AgentCreateRequest) -> Agent:
-        """Create a new agent from description"""
+        """Create a new agent: from a description (Gemini drafts name, role and tone), or, for Day 2 stages,
+        starting from an earlier agent of the same session (persona, model, guardrails, actions, and for
+        AI Agent the knowledge base are copied)."""
+        if request.copy_from_agent_id:
+            return self._create_from(request)
+        if not (request.agent_description or "").strip():
+            raise AgentRequestError("Describe your agent, or start from an earlier one.")
         try:
             # Use session_id as user_id if user_id is not provided
             user_id = request.user_id if request.user_id else request.session_id
-            
-            logger.info(f"Creating agent for session: {request.session_id}")
+
+            logger.info(f"Creating agent for session: {request.session_id} (stage {request.stage})")
             
             # Generate agent specification using Vertex AI
             spec = self.vertex_ai.generate_agent_specification(request.agent_description)
@@ -113,7 +128,10 @@ class AgentService:
                 "description": request.agent_description,
                 "created_at": datetime.now(timezone.utc),
                 "updated_at": datetime.now(timezone.utc),
-                "active": True
+                "active": True,
+                "stage": request.stage,
+                "project_name": (request.project_name or "").strip() or None,
+                "copied_from": None,
             }
             
             # Save agent to Firestore
@@ -135,7 +153,14 @@ class AgentService:
             
             persona_ref = self.personas_collection.document(agent_id)
             persona_ref.set(persona_data)
-            
+
+            # The stage's default model (AI Agent starts on Flash: it calls tools more reliably)
+            now = datetime.now(timezone.utc)
+            self.settings_collection.document(agent_id).set({
+                "agent_id": agent_id, "model": agent_stages.DEFAULT_MODEL[request.stage],
+                "embedding_model": agent_stages.DEFAULT_EMBEDDING, "similarity": agent_stages.DEFAULT_SIMILARITY,
+                "created_at": now, "updated_at": now})
+
             logger.info(f"✅ Agent created: {agent_id}")
             
             return Agent(**agent_data)
@@ -144,6 +169,75 @@ class AgentService:
             logger.error(f"❌ Failed to create agent: {e}")
             raise Exception(f"Failed to create agent: {str(e)}")
     
+    def _create_from(self, request: AgentCreateRequest) -> Agent:
+        """A new staged agent that starts from an earlier agent of the same session."""
+        src = self.get_agent(request.copy_from_agent_id)
+        if not src:
+            raise AgentRequestError("The agent to start from no longer exists. Choose another or start fresh.")
+        if src.session_id != request.session_id:
+            raise AgentAccessError("That agent belongs to another session.")
+        db = self.firestore_client
+        src_id = src.agent_id
+        persona = self.personas_collection.document(src_id).get()
+        settings = self.settings_collection.document(src_id).get()
+        guard = self.guardrails_collection.document(src_id).get()
+        source = {
+            "agent": src.model_dump(),
+            "persona": persona.to_dict() if persona.exists else {"name": src.name, "role": src.role, "tone": src.tone,
+                                                                 "language": src.language, "response_length": "short",
+                                                                 "guidelines": ""},
+            "settings": settings.to_dict() if settings.exists else None,
+            "guardrails": guard.to_dict() if guard.exists else None,
+            "rules": [d.to_dict() for d in db.collection("rules").where("agent_id", "==", src_id).stream()],
+            "kb": None,
+        }
+        if request.stage == "agent":
+            kb_ref = db.collection("agent_kb").document(src_id)
+            kb_snap = kb_ref.get()
+            if kb_snap.exists:
+                source["kb"] = {"documents": (kb_snap.to_dict() or {}).get("documents") or [],
+                                "chunks": [{"id": c.id, **c.to_dict()} for c in kb_ref.collection("chunks").stream()]}
+
+        agent_id = f"AGENT_{uuid.uuid4().hex[:12].upper()}"
+        plan = agent_stages.plan_copy(source, agent_id, request.stage, lambda: f"RULE_{uuid.uuid4().hex[:12].upper()}")
+        now = datetime.now(timezone.utc)
+        p = plan["persona"]
+        agent_data = {
+            "agent_id": agent_id, "user_id": request.user_id or request.session_id, "session_id": request.session_id,
+            "name": p.get("name") or src.name, "role": p.get("role") or src.role, "tone": p.get("tone") or src.tone,
+            "language": p.get("language") or src.language, "description": src.description,
+            "created_at": now, "updated_at": now, "active": True, "stage": request.stage,
+            "project_name": (request.project_name or "").strip() or None, "copied_from": plan["copied_from"],
+        }
+        batch = db.batch()
+        batch.set(self.agents_collection.document(agent_id), agent_data)
+        batch.set(self.personas_collection.document(agent_id), plan["persona"])
+        batch.set(self.settings_collection.document(agent_id), plan["settings"])
+        if plan["guardrails"]:
+            batch.set(self.guardrails_collection.document(agent_id), plan["guardrails"])
+        for r in plan["rules"]:
+            batch.set(db.collection("rules").document(r["rule_id"]), r)
+        batch.commit()
+        if plan["kb_documents"]:
+            if plan["blob_copies"]:
+                bucket = gcp_clients.get_bucket()
+                for b in plan["blob_copies"]:
+                    bucket.copy_blob(bucket.blob(b["from"]), bucket, b["to"])
+            kb_ref = db.collection("agent_kb").document(agent_id)
+            batch, n = db.batch(), 0
+            for c in plan["kb_chunks"]:
+                cid = c.pop("id")
+                batch.set(kb_ref.collection("chunks").document(cid), c)
+                n += 1
+                if n % 300 == 0:
+                    batch.commit()
+                    batch = db.batch()
+            batch.commit()
+            kb_ref.set({"documents": plan["kb_documents"], "updated_at": now})
+        logger.info(f"✅ Agent {agent_id} ({request.stage}) created from {src_id}: {len(plan['rules'])} actions, "
+                    f"{len(plan['kb_documents'])} documents, {len(plan['kb_chunks'])} passages")
+        return Agent(**agent_data)
+
     def get_agent(self, agent_id: str) -> Optional[Agent]:
         """Get agent by ID"""
         try:
@@ -301,6 +395,20 @@ class AgentService:
             chat_refs = self.firestore_client.collection('chat_logs').where('agent_id', '==', agent_id).stream()
             for chat_ref in chat_refs:
                 chat_ref.reference.delete()
+
+            # Day 2 Agent Studio: settings, guardrails, tools, knowledge base (passages and uploaded PDFs)
+            db = self.firestore_client
+            for coll in ('agent_settings', 'agent_guardrails', 'agent_tools_state'):
+                db.collection(coll).document(agent_id).delete()
+            kb_ref = db.collection('agent_kb').document(agent_id)
+            for c in kb_ref.collection('chunks').list_documents():
+                c.delete()
+            kb_ref.delete()
+            try:
+                for blob in gcp_clients.get_bucket().list_blobs(prefix=f"agents/{agent_id}/"):
+                    blob.delete()
+            except Exception as e:
+                logger.warning(f"⚠️ Could not delete uploaded PDFs of {agent_id}: {e}")
             
             logger.info(f"✅ Agent deleted: {agent_id}")
             return True

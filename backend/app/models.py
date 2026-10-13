@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
-from typing import List, Optional, Union, Dict, Any, ClassVar
+from typing import List, Optional, Union, Dict, Any, ClassVar, Literal
 from datetime import datetime, timezone, timedelta
 from enum import Enum
 
@@ -466,6 +466,10 @@ class Agent(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     active: bool = Field(True, description="Whether agent is active")
+    # Day 2 Agent Studio. No stage = legacy agent (old inline UI and ChatService.chat)
+    stage: Optional[Literal["assistant", "rag", "agent"]] = Field(None, description="assistant (Ex 6), rag (Ex 7), agent (Ex 8)")
+    project_name: Optional[str] = Field(None, description="Name the participant gave the project")
+    copied_from: Optional[Dict[str, Any]] = Field(None, description="{agent_id, name, stage} this agent started from")
 
 class Persona(BaseModel):
     agent_id: str = Field(..., description="Agent ID this persona belongs to")
@@ -691,8 +695,11 @@ class ChatLog(BaseModel):
 # Request/Response Models
 class AgentCreateRequest(BaseModel):
     session_id: str = Field(..., description="Session ID")
-    agent_description: str = Field(..., description="Free-text description of the agent")
+    agent_description: Optional[str] = Field(None, description="Free-text description of the agent (needed unless copying)")
     user_id: Optional[str] = Field(None, description="User ID (optional, defaults to session_id if not provided)")
+    stage: Literal["assistant", "rag", "agent"] = Field("assistant", description="Day 2 stage")
+    copy_from_agent_id: Optional[str] = Field(None, description="Start from this agent of the same session")
+    project_name: Optional[str] = Field(None, max_length=120, description="Project name shown in the list")
 
 class AgentCreateResponse(BaseModel):
     success: bool = True

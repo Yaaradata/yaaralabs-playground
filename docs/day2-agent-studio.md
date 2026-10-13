@@ -19,3 +19,10 @@ Old `rag-chatbot` / `ai-agent` guest projects keep opening in `RagChatbotLab` / 
   in `ChatService.chat`) stays: legacy agents never have a guardrails document, so they behave as before.
 - `RulesService.evaluate_rules` now skips switched-off rules. Before, the on/off switch on an action only changed the
   list; the rule still fired. This affects legacy agents too, as a bug fix.
+- Copying into a new stage keeps the source's model only if the participant changed it; the earlier stage's default
+  (Flash-Lite) becomes the new stage's default (Flash for AI Agent), so Ex 8 starts on the model that calls tools well.
+- A copied knowledge base copies uploaded PDFs to the new agent's own GCS path, so removing a document in one agent
+  never breaks the other.
+- "Ready" on the projects list for a staged agent means its persona has been saved at least once (persona
+  `updated_at` later than `created_at`). Legacy agents still show no status.
+- Pseudo-project names use the project name the participant typed (`project_name`), falling back to the agent name.

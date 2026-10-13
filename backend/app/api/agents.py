@@ -7,7 +7,7 @@ from ..models import (
     SettingsUpdateRequest, SettingsUpdateResponse, AgentSettings,
     AgentGuardrails, GuardrailsUpdateRequest, GuardrailsUpdateResponse,
 )
-from ..services.agent_service import AgentService
+from ..services.agent_service import AgentService, AgentAccessError, AgentRequestError
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 
@@ -34,6 +34,10 @@ async def create_agent(
     try:
         agent = agent_service.create_agent(request)
         return AgentCreateResponse(data=agent)
+    except AgentAccessError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except AgentRequestError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
