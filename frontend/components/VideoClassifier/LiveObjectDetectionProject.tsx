@@ -36,6 +36,8 @@ interface Props {
   projectId: string;
   /** The projects list: the back button in this page's header (the page hides its own back bar). */
   backHref: string;
+  /** The project's Use the AI page (custom mode: Export, then "Use it in AI"). */
+  useHref?: string;
 }
 
 const storageKey = (projectId: string) => `lodMode:${projectId}`;
@@ -62,7 +64,7 @@ function Icon({ mode }: { mode: Mode }) {
   );
 }
 
-export default function LiveObjectDetectionProject({ projectName, sessionId, projectId, backHref }: Props) {
+export default function LiveObjectDetectionProject({ projectName, sessionId, projectId, backHref, useHref }: Props) {
   const [mode, setModeState] = useState<Mode | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -120,7 +122,7 @@ export default function LiveObjectDetectionProject({ projectName, sessionId, pro
 
       <div className="flex-1 min-h-0">
         {!ready ? null : mode === 'custom' ? (
-          <VideoClassifierLab sessionId={sessionId} projectId={projectId} />
+          <VideoClassifierLab sessionId={sessionId} projectId={projectId} useHref={useHref} />
         ) : mode === 'pretrained' ? (
           <div className="h-full overflow-auto">
             <LiveObjectDetection embedded captionOnVideo projectName={projectName} sessionId={sessionId ?? undefined} projectId={projectId} onClose={() => setMode(null)} />

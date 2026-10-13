@@ -20,9 +20,11 @@ interface Props {
   preview: PreviewModel | null;
   /** A class card's webcam is open: the preview camera waits (one camera at a time). */
   paused: boolean;
+  /** Shown once there is a trained model, like Teachable Machine: deploy it and show its URL. */
+  onExport?: () => void;
 }
 
-export const PreviewCard = forwardRef<HTMLDivElement, Props>(function PreviewCard({ preview, paused }, ref) {
+export const PreviewCard = forwardRef<HTMLDivElement, Props>(function PreviewCard({ preview, paused, onExport }, ref) {
   const [on, setOn] = useState(true);
   const [source, setSource] = useState<'file' | 'webcam'>('webcam');
   const [img, setImg] = useState<string | null>(null);
@@ -105,8 +107,20 @@ export const PreviewCard = forwardRef<HTMLDivElement, Props>(function PreviewCar
 
   return (
     <div ref={ref} className="vc-card rounded-xl border border-fg/10 bg-card shadow-sm" aria-label="Preview" role="region">
-      <div className="px-4 py-3 border-b border-fg/10">
+      <div className="px-4 py-3 border-b border-fg/10 flex items-center justify-between gap-3">
         <h3 className="font-semibold text-fg">Preview</h3>
+        {preview && onExport && (
+          <button
+            type="button"
+            onClick={onExport}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-purple-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-purple-brand/90"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0-12l-4 4m4-4l4 4" />
+            </svg>
+            Export Model
+          </button>
+        )}
       </div>
 
       {!preview ? (

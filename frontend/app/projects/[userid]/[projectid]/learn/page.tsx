@@ -18,6 +18,7 @@ import { cleanupSessionWithReason, SessionCleanupReason } from '../../../../../l
 import SampleTestMessages, { useSampleTestSet, type Prediction } from '../../../../../components/SampleLabelling/SampleTestMessages';
 import SampleImageTest, { type ImagePrediction } from '../../../../../components/SampleImages/SampleImageTest';
 import { labelNamesKey } from '../../../../../components/SampleImages/sampleImages';
+import ExportModelDialog from '../../../../../components/ProjectAI/ExportModelDialog';
 
 interface GuestSession {
   session_id: string;
@@ -948,6 +949,8 @@ export default function LearnPage() {
   // sample test messages ("Test data"), for projects built from the sample labels
   const sampleTestSet = useSampleTestSet(isTextProject ? trainingStats.labelBreakdown.map((l) => l.name) : []);
   const [showTestData, setShowTestData] = useState(false);
+  // Text / Image Recognition "Export": the trained model's deployed URL
+  const [showExport, setShowExport] = useState(false);
 
   const textModels = [
     { id: 'logistic_regression' as const, name: 'Logistic Regression', hint: 'Fast, reads meaning' },
@@ -1502,6 +1505,8 @@ export default function LearnPage() {
             {canUseAI ? (
             <Link
               href={`/projects/${urlUserId}/${urlProjectId}/make`}
+              // Text / Image Recognition: Use the AI opens in its own tab (it uses the deployed model URL)
+              {...(isCompact ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
               className="justify-self-end inline-flex items-center gap-2 bg-purple-brand hover:bg-purple-brand/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
             >
               Move to next - Use the AI
@@ -1595,16 +1600,29 @@ export default function LearnPage() {
                           role="status"
                         >
                           <div className="flex items-center justify-between gap-3">
-                            <p className="flex items-center gap-2 font-semibold text-fg">
+                            <p className="flex items-center gap-2 font-semibold text-fg whitespace-nowrap">
                               <span className={`w-2.5 h-2.5 rounded-full ${ready ? 'bg-[var(--success)]' : 'bg-pink-brand'}`} aria-hidden="true" />
                               {ready ? 'Model ready' : `Model ${trainedModel.status}`}
                             </p>
-                            <button
-                              onClick={() => startTextTraining(true)}
-                              className="shrink-0 border border-magenta-brand/50 bg-canvas text-fg hover:bg-purple-brand/10 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                            >
-                              Train again
-                            </button>
+                            <div className="flex shrink-0 items-center gap-2">
+                              {ready && isCompact && (
+                                <button
+                                  onClick={() => setShowExport(true)}
+                                  className="inline-flex items-center gap-1.5 bg-purple-brand hover:bg-purple-brand/90 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0-12l-4 4m4-4l4 4" />
+                                  </svg>
+                                  Export
+                                </button>
+                              )}
+                              <button
+                                onClick={() => startTextTraining(true)}
+                                className="border border-magenta-brand/50 bg-canvas text-fg hover:bg-purple-brand/10 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                              >
+                                Train again
+                              </button>
+                            </div>
                           </div>
                           {trainedModelType && <p className="text-sm text-fg/80 mt-1.5">{modelTypeLabel(trainedModelType)}</p>}
                           {(modelStats.seconds != null || modelStats.bytes != null) && (
@@ -1633,6 +1651,14 @@ export default function LearnPage() {
                           )}
                           {isDeletingModel ? 'Deleting…' : 'Delete this model'}
                         </button>
+                        {showExport && actualSessionId && (
+                          <ExportModelDialog
+                            sessionId={actualSessionId}
+                            projectId={actualProjectId}
+                            useHref={`/projects/${urlUserId}/${urlProjectId}/make`}
+                            onClose={() => setShowExport(false)}
+                          />
+                        )}
                       </>
                     );
                   })()}
@@ -2367,6 +2393,8 @@ export default function LearnPage() {
             <div className="flex justify-end mt-auto pt-4">
             <Link
               href={`/projects/${urlUserId}/${urlProjectId}/make`}
+              // Text / Image Recognition: Use the AI opens in its own tab (it uses the deployed model URL)
+              {...(isCompact ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
               className="inline-flex items-center gap-2 bg-purple-brand hover:bg-purple-brand/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
             >
               Move to next - Use the AI

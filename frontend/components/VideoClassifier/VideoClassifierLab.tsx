@@ -25,11 +25,14 @@ import {
   type TrainParams,
 } from './engine';
 import { openSavedModel, saveModel } from './api';
+import ExportModelDialog from '../ProjectAI/ExportModelDialog';
 import { dataUrlToBytes, makeZip, saveBlob } from './zip';
 import { PALETTE, newId, type ClassData, type SamplesManifest } from './types';
 import './videoClassifier.css';
 
 interface Props {
+  /** The project's Use the AI page ("Use it in AI" in the Export dialog). */
+  useHref?: string;
   sessionId: string | null;
   projectId: string;
 }
@@ -51,7 +54,7 @@ function blankClass(i: number): ClassData {
   return { id: newId(), name: `Class ${i + 1}`, color: PALETTE[i % PALETTE.length], samples: [], disabled: false };
 }
 
-export default function VideoClassifierLab({ sessionId, projectId }: Props) {
+export default function VideoClassifierLab({ sessionId, projectId, useHref }: Props) {
   const [classes, setClasses] = useState<ClassData[]>(() => [blankClass(0), blankClass(1)]);
   const [version, setVersion] = useState(0);
   const [busy, setBusy] = useState<Record<string, string>>({});
@@ -65,6 +68,7 @@ export default function VideoClassifierLab({ sessionId, projectId }: Props) {
   const [advanced, setAdvanced] = useState(false);
   const [trainError, setTrainError] = useState<string | null>(null);
   const [activeCam, setActiveCam] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const modelRef = useRef<Model | null>(null);
   modelRef.current = model;
@@ -449,9 +453,24 @@ export default function VideoClassifierLab({ sessionId, projectId }: Props) {
 
         {/* preview */}
         <div className="vc-col">
-          <PreviewCard ref={previewRef} preview={preview} paused={activeCam !== null} />
+          <PreviewCard
+            ref={previewRef}
+            preview={preview}
+            paused={activeCam !== null}
+            // like Teachable Machine: Export as soon as there is a trained model (the dialog waits for the save)
+            onExport={model && phase === 'idle' && sessionId ? () => setExporting(true) : undefined}
+          />
         </div>
       </div>
+      {exporting && sessionId && projectId && (
+        <ExportModelDialog
+          sessionId={sessionId}
+          projectId={projectId}
+          useHref={useHref}
+          saving={save === 'saving' || save === 'error' ? save : null}
+          onClose={() => setExporting(false)}
+        />
+      )}
     </div>
   );
 }

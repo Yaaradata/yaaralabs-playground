@@ -3,9 +3,11 @@
 /**
  * "3. Use the AI" for Text and Image Recognition projects: the block editor from Exercise 1 (Rule
  * Based Classifier), with an "ML Model" block category that appears once the project's model is
- * trained. The blocks call the same prediction endpoints as the training page.
- *   text   recognise text [ ] and wait
- *   image  recognise an image and wait  (opens a picker: Upload / Webcam / workshop test images)
+ * trained. The page uses the model the way any other app would: through its deployed URL (the one
+ * Export shows on the training page, backend api/deployed.py).
+ *   text   recognise text ( ) (label)   POST {url}/predict {"text": ...}
+ *   image  recognise an image and wait  (a picker: Upload / Webcam / workshop test images), then
+ *          POST {url}/predict with the image as a "file" upload
  */
 
 import Link from 'next/link';
@@ -35,6 +37,8 @@ interface MlState {
   /** Shown by the "use deployed model" block. */
   modelType?: string;
   trainedAt?: string;
+  /** Text: the deployed model URL (the one Export shows); every recognise call goes through it. */
+  url?: string;
 }
 
 const MODEL_TYPES: Record<string, string> = {
@@ -47,6 +51,17 @@ const MODEL_TYPES: Record<string, string> = {
 };
 
 type Result = { label: string; confidence: number; name?: string };
+
+const shortDate = (iso: string) =>
+  new Date(iso).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+/** Error text from a deployed-model call, in the learner's words. */
+async function deployedError(r: Response) {
+  const body = await r.json().catch(() => ({}));
+  if (r.status === 404) return 'Your deployed model was not found. Train it again on the Train the AI page.';
+  if (r.status === 409) return typeof body?.detail === 'string' ? body.detail : 'The model is being trained again. Try again soon.';
+  return 'The deployed model could not be reached. Try again.';
+}
 
 export default function ProjectAI({ kind, projectName, sessionId, projectId, backHref, trainHref, nextHref, nextLabel }: Props) {
   const [ml, setMl] = useState<MlState | null>(null);
@@ -64,6 +79,7 @@ export default function ProjectAI({ kind, projectName, sessionId, projectId, bac
       let labels: string[] = [];
       let modelType: string | undefined;
       let trainedAt: string | undefined;
+      let url: string | undefined;
       try {
         const status = await fetch(`${config.apiBaseUrl}${config.api.guests.trainingStatus(sessionId, projectId)}`).then((r) => r.json());
         trained = status?.projectStatus === 'trained';
@@ -80,44 +96,57 @@ export default function ProjectAI({ kind, projectName, sessionId, projectId, bac
         if (d.model?.trainedAt) {
           trainedAt = new Date(d.model.trainedAt).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
         }
+        // Use the model the way any app would, through its deployed URL (the one Export shows).
+        // The labels, type and training time come from that URL.
+        if (trained) {
+          const dep = await fetch(`${config.apiBaseUrl}${config.api.guests.deploy(sessionId, projectId)}`, { method: 'POST' }).then((r) => r.json());
+          if (!dep?.path) throw new Error('not deployed');
+          url = `${config.apiBaseUrl}${dep.path}`;
+          const info = await fetch(url).then((r) => r.json());
+          if (Array.isArray(info?.labels) && info.labels.length) labels = info.labels.map(String);
+          if (info?.modelType) modelType = MODEL_TYPES[info.modelType] ?? String(info.modelType);
+          if (info?.trainedAt) trainedAt = shortDate(info.trainedAt);
+        }
       } catch {
         /* treated as not trained */
+        trained = false;
       }
-      if (alive) setMl({ trained: trained && labels.length > 0, labels, modelType, trainedAt });
+      if (alive) setMl({ trained: trained && labels.length > 0, labels, modelType, trainedAt, url });
     })();
     return () => {
       alive = false;
     };
-  }, [sessionId, projectId, base]);
+  }, [kind, sessionId, projectId, base]);
 
-  const predictText = useCallback(
-    async (text: string) => {
-      const r = await fetch(`${base}/predict`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      });
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok || !data?.success) {
-        throw new Error(r.status === 404 ? 'Your model was not found. Train it again on the training page.' : 'The model could not recognise that. Try again.');
+  /** POST {url}/predict on the deployed model: JSON for text, a "file" upload for images. */
+  const deployedUrl = ml?.url;
+  const callDeployed = useCallback(
+    async (body: FormData | { text: string }) => {
+      if (!deployedUrl) throw new Error('Your model is not deployed yet. Train it on the Train the AI page.');
+      let r: Response;
+      try {
+        r = await fetch(`${deployedUrl}/predict`, body instanceof FormData
+          ? { method: 'POST', body }
+          : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      } catch {
+        throw new Error('The deployed model could not be reached. Try again.');
       }
+      if (!r.ok) throw new Error(await deployedError(r));
+      const data = await r.json();
       return { label: String(data.label), confidence: Number(data.confidence) || 0 };
     },
-    [base],
+    [deployedUrl],
   );
 
-  /** Same two calls as the training page: upload for prediction only, then predict. */
+  const predictDeployed = useCallback((text: string) => callDeployed({ text }), [callDeployed]);
+
   const predictImage = useCallback(
-    async (file: File) => {
+    (file: File) => {
       const form = new FormData();
-      form.append('files', file);
-      const up = await fetch(`${base}/predict-image`, { method: 'POST', body: form });
-      if (!up.ok) throw new Error('Could not send the image to your model.');
-      const { imageUrl } = await up.json();
-      if (!imageUrl) throw new Error('Could not send the image to your model.');
-      return predictText(imageUrl);
+      form.append('file', file);
+      return callDeployed(form);
     },
-    [base, predictText],
+    [callDeployed],
   );
 
   // the image block asks for an image: open the picker and wait for the learner
@@ -150,11 +179,11 @@ export default function ProjectAI({ kind, projectName, sessionId, projectId, bac
     }
   };
 
-  const model = ml ? { name: projectName, type: ml.modelType, trainedAt: ml.trainedAt } : undefined;
+  const model = ml ? { name: projectName, type: ml.modelType, trainedAt: ml.trainedAt, url: ml.url } : undefined;
   const mlOptions: MlOptions | undefined = ml
     ? kind === 'image'
       ? { kind: 'image', trained: ml.trained, labels: ml.labels, model, recogniseImage }
-      : { kind: 'text', trained: ml.trained, labels: ml.labels, model, recognise: predictText }
+      : { kind: 'text', trained: ml.trained, labels: ml.labels, model, recognise: predictDeployed }
     : undefined;
 
   // Only a hint while there is no trained model; once it is ready the header shows just the title

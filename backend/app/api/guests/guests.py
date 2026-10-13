@@ -4,6 +4,7 @@ import json
 import logging
 import asyncio
 from datetime import datetime, timezone
+import secrets
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
@@ -1543,7 +1544,20 @@ async def predict_guest_text(
         # Verify the project belongs to this session
         if guest_project.get('createdBy') != f"guest:{session_id}":
             raise HTTPException(status_code=404, detail="Project not found in this session")
-        
+
+        return await predict_with_project(guest_project, prediction_request.text)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def predict_with_project(guest_project: dict, text: str) -> PredictionResponse:
+    """Run a project's trained model on one input (text, or a gs:// image URL for image models).
+    Shared by the session route above and the deployed-model URL (api/deployed.py)."""
+    prediction_request = PredictionRequest(text=text)
+    try:
         if guest_project.get('status') != 'trained':
             raise HTTPException(
                 status_code=400, 
@@ -1665,6 +1679,68 @@ async def predict_guest_text(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# DEPLOY (Text / Image Recognition, custom Live Object Detection): a URL for the trained model, see api/deployed.py
+# ============================================================================
+
+# project type -> deploy id prefix (txt-/img-/vid-), so a URL says what kind of model it serves
+DEPLOYABLE_TYPES = {"text-recognition": "txt", "image-recognition": "img",
+                    "live-object-detection": "vid", "live-video-classification": "vid"}
+# Live Object Detection trains in the browser: its model is the files saved by image_model_service
+BROWSER_MODEL_TYPES = ("live-object-detection", "live-video-classification")
+
+
+def browser_model_ready(owner_id: str, project_id: str) -> Optional[dict]:
+    """The saved Live Object Detection model record when its files are complete, else None."""
+    record = ImageModelService()._own(owner_id, project_id)
+    return record if record and record.get("status") == "ready" else None
+
+
+def _ensure_deployment(guest_service: GuestService, project_id: str, prefix: str) -> dict:
+    """The project's deployment, made in a transaction so two calls at once (two tabs) agree on one id."""
+    from google.cloud import firestore
+
+    ref = guest_service.projects_collection.document(project_id)
+
+    @firestore.transactional
+    def run(tx):
+        current = (ref.get(transaction=tx).to_dict() or {}).get('deployment') or {}
+        if current.get('id'):
+            return current
+        made = {'id': f"{prefix}-{secrets.token_hex(8)}", 'createdAt': datetime.now(timezone.utc).isoformat()}
+        tx.update(ref, {'deployment': made})
+        return made
+
+    return run(guest_service.db.transaction())
+
+
+@router.post("/session/{session_id}/projects/{project_id}/deploy", response_model=dict)
+async def deploy_guest_model(
+    session_id: str,
+    project_id: str,
+    session: dict = Depends(validate_session_dependency),
+    guest_service: GuestService = Depends(get_guest_service)
+):
+    """Give the trained model a deployed URL (/api/deployed/{id}). The id is made once and kept, so
+    the URL stays the same after retraining and always runs the latest model; deleting the project
+    removes it. Returns the path; the browser adds its API host."""
+    guest_project = await guest_service.get_guest_project_by_id(project_id)
+    if not guest_project or guest_project.get('createdBy') != f"guest:{session_id}":
+        raise HTTPException(status_code=404, detail="Project not found in this session")
+    if guest_project.get('type') not in DEPLOYABLE_TYPES:
+        raise HTTPException(status_code=400, detail="Only Text / Image Recognition and Live Object Detection models can be deployed.")
+    if guest_project['type'] in BROWSER_MODEL_TYPES:
+        trained = await asyncio.to_thread(browser_model_ready, session_id, project_id) is not None
+    else:
+        trained = guest_project.get('status') == 'trained'
+    if not trained:
+        raise HTTPException(status_code=400, detail="Train the model first, then export it.")
+    deployment = guest_project.get('deployment') or {}
+    if not deployment.get('id'):
+        deployment = await asyncio.to_thread(_ensure_deployment, guest_service, project_id, DEPLOYABLE_TYPES[guest_project['type']])
+    return {"success": True, "deployId": deployment['id'], "path": f"/api/deployed/{deployment['id']}"}
 
 
 # ============================================================================

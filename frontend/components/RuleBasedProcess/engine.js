@@ -30,8 +30,10 @@ export function mountRuleBasedProcess(root, options) {
     // tab are left out because this page has no language model behind it.
     var ML = options.ml || null;
     var mlImage = !!(ML && ML.kind === "image");
+    // Live Object Detection: the host shows the webcam and runs the model (ML.connect / video / say / stop)
+    var mlVideo = !!(ML && ML.kind === "video");
     var mlReady = !!(ML && ML.trained && ML.labels && ML.labels.length &&
-      typeof (mlImage ? ML.recogniseImage : ML.recognise) === "function");
+      typeof (mlImage ? ML.recogniseImage : mlVideo ? ML.connect : ML.recognise) === "function");
     var mlLabels = mlReady ? ML.labels.map(String) : [];
     var mlModel = (ML && ML.model) || {};
     var mlModelName = String(mlModel.name || "My model");
@@ -41,7 +43,7 @@ export function mountRuleBasedProcess(root, options) {
     var CHAT_VIEW = !!ML || options.starter === "desk-routing";
     if (CHAT_VIEW) root.classList.add("rbp-ml");
     // Saved workspaces from before the current ML starter open on the new starter once
-    var ML_STATE_TAG = mlImage ? "image-2" : "text-3";
+    var ML_STATE_TAG = mlImage ? "image-2" : mlVideo ? "video-1" : "text-5";
     function hiddenCat(cat) {
       if (cat === "ml") return !mlReady;
       if (cat === "model") return !!ML;
@@ -187,7 +189,30 @@ export function mountRuleBasedProcess(root, options) {
     if (ML) {
       PRESETS = PRESETS.filter(function (p) { return p.id !== "model"; });
     }
-    if (mlReady) {
+    if (mlReady && mlVideo) PRESETS.unshift({
+      id: "ml_video", title: "Live object detection",
+      vars: ["Answer"],
+      answer: { type: "text" },
+      brief: "Show things to the camera. When your model detects one of its labels, its script runs.",
+      tests: [],
+      solution: function () {
+        // Start script, then one "when model detects [label]" script per label, two per row
+        var stacks = [{ x: 30, y: 20, blocks: [
+          mk("when_flag"),
+          mk("ml_video_transp", { i: { T: "50" } }),
+          mk("ml_video_turn", { f: { STATE: "on" } }),
+          mk("ml_use_model_url", { i: { URL: String(mlModel.url || "") } }),
+        ] }];
+        mlLabels.forEach(function (l, i) {
+          stacks.push({ x: 30 + (i % 2) * 340, y: 250 + Math.floor(i / 2) * 150, blocks: [
+            mk("ml_when_detects", { f: { LABEL: l } }),
+            mk("say_secs", { i: { MSG: l, SECS: "2" } }),
+          ] });
+        });
+        return { stacks: stacks };
+      },
+    });
+    else if (mlReady) {
       if (mlImage) PRESETS.unshift({
         id: "ml_image", title: "Image recognition",
         vars: ["Label"],
@@ -598,8 +623,11 @@ export function mountRuleBasedProcess(root, options) {
 
       // Machine Learning: one block per trained label, to compare with recognised label
       if (tab === "ml") {
-        var notHere = mlImage ? ["ml_text_label", "ml_text_conf"] : ["ml_recognise_image", "ml_label", "ml_confidence"];
-        list = list.filter(function (it) { return !(it.kind === "op" && notHere.indexOf(it.op) > -1); });
+        var onlyHere = mlVideo
+          ? ["ml_video_transp", "ml_video_turn", "ml_use_model_url", "ml_when_detects", "ml_detected", "ml_detected_conf", "ml_label_name"]
+          : mlImage ? ["ml_use_model", "ml_recognise_image", "ml_label", "ml_confidence", "ml_label_name"]
+            : ["ml_use_model", "ml_text_label", "ml_text_conf", "ml_label_name"];
+        list = list.filter(function (it) { return !(it.kind === "op" && onlyHere.indexOf(it.op) < 0); });
         // drop section headers left with nothing under them
         list = list.filter(function (it, k) {
           return it.kind !== "sec" || (list[k + 1] && list[k + 1].kind === "op");
@@ -1269,7 +1297,7 @@ export function mountRuleBasedProcess(root, options) {
     function isNum(v) { return v !== "" && v !== null && !isNaN(parseFloat(v)) && isFinite(v); }
   
     function resetVars() {
-      R.vars = {}; R.vis = {}; R.answer = ""; R.prediction = ""; R.mlLabel = ""; R.mlConf = 0; R.mlCache = {}; R.mlConnected = false; R.mlWarned = false;
+      R.vars = {}; R.vis = {}; R.answer = ""; R.prediction = ""; R.mlLabel = ""; R.mlConf = 0; R.mlCache = {}; R.mlConnected = false; R.mlWarned = false; R.vidTop = ""; R.hatBusy = {};
       R.assigned = {}; R.warnedUnset = {};
       concept.vars.forEach(function (v) { R.vars[v] = 0; R.vis[v] = true; });
       drawWatchers();
@@ -1580,9 +1608,10 @@ export function mountRuleBasedProcess(root, options) {
       }
       setBuddyMood("idle", "Hi! Press Run and I\u2019ll act out your script.", { force: true });
     }
-    function say(msg) {
+    function say(msg, secs) {
       R.outs.push(String(msg));
       logLine("out", "\u203A", msg);
+      if (mlVideo && typeof ML.say === "function" && !R.fast) ML.say(String(msg), secs == null ? null : num(secs));
     }
 
 
@@ -1703,8 +1732,47 @@ export function mountRuleBasedProcess(root, options) {
       if (!R.fast) {
         var bits = [mlModel.type, mlModel.trainedAt ? "trained " + mlModel.trainedAt : ""].filter(Boolean).join(" · ");
         logLine("out", "\u2713", "Connected to your deployed model \u201C" + mlModelName + "\u201D" + (bits ? " (" + bits + ")" : "") +
-          ". Labels: " + mlLabels.join(", ") + ".");
+          ". Labels: " + mlLabels.join(", ") + "." + (mlModel.url ? " URL: " + mlModel.url : ""));
       }
+    }
+
+    /** Live Object Detection, "use model [URL]": the host loads the model from its deployed URL and
+     *  then reports every webcam prediction to onVideoPrediction. */
+    async function connectVideoModel(raw) {
+      var url = String(raw == null ? "" : raw).trim();
+      if (!url) {
+        logLine("warn", "!", "Put your model\u2019s URL in \u201Cuse model\u201D (Export on the project page).");
+        return;
+      }
+      try {
+        var info = await ML.connect(url, onVideoPrediction);
+        R.mlConnected = true;
+        logLine("out", "\u2713", "Connected to your deployed model \u201C" + ((info && info.name) || mlModelName) + "\u201D. URL: " + url);
+      } catch (err) {
+        logLine("warn", "!", (err && err.message) ? String(err.message) : "Could not load a model from that URL.");
+      }
+    }
+
+    /** A detection counts once the model is this sure (percent). */
+    var DETECT_MIN = 60;
+
+    /** Every webcam frame: the model's best label. "when model detects [label]" runs when the best
+     *  label changes to that label (and is not still running from last time), like Scratch hats. */
+    function onVideoPrediction(label, confidence) {
+      if (!R.on || R.stop || R.fast) return;
+      var conf = Math.round(Number(confidence) || 0);
+      var top = conf >= DETECT_MIN ? String(label || "") : "";
+      R.mlLabel = top;
+      R.mlConf = top ? conf : 0;
+      if (top === R.vidTop) return;
+      R.vidTop = top;
+      if (!top) return;
+      W.stacks.forEach(function (st) {
+        var h = st.blocks[0];
+        if (!h || h.op !== "ml_when_detects" || norm(h.fields.LABEL) !== norm(top) || R.hatBusy[st.id]) return;
+        R.hatBusy[st.id] = true;
+        execList(st.blocks.slice(1)).catch(function () {}).then(function () { delete R.hatBusy[st.id]; });
+      });
     }
 
     /** The recognise blocks only work after "use deployed model" in this run. */
@@ -1872,6 +1940,8 @@ export function mountRuleBasedProcess(root, options) {
         case "answer": return R.answer;
         case "answer_empty": return String(R.answer || "").trim() === "";
         case "prediction": return R.prediction;
+        case "ml_detected": return R.mlLabel;
+        case "ml_detected_conf": return R.mlConf;
         case "ml_text_label": { var hl = R.mlCache[mlKey(evalIn(b, "TEXT"))]; return hl ? hl.label : ""; }
         case "ml_text_conf": { var hc = R.mlCache[mlKey(evalIn(b, "TEXT"))]; return hc ? hc.confidence : 0; }
         case "ml_label": return R.mlLabel;
@@ -2064,6 +2134,18 @@ export function mountRuleBasedProcess(root, options) {
           if (R.stop) { highlight(b, false); return "stop"; }
           highlight(b, true);
           break;
+        case "ml_video_transp":
+          if (mlVideo && ML.video) ML.video.transparency(Math.min(100, Math.max(0, num(evalIn(b, "T")))));
+          break;
+        case "ml_video_turn":
+          if (mlVideo && ML.video) ML.video.turn(String(b.fields.STATE || "on"));
+          break;
+        case "ml_use_model_url":
+          highlight(b, false);
+          await connectVideoModel(evalIn(b, "URL"));
+          if (R.stop) { highlight(b, false); return "stop"; }
+          highlight(b, true);
+          break;
         case "ml_use_model":
           highlight(b, false);
           await connectModel();
@@ -2084,8 +2166,8 @@ export function mountRuleBasedProcess(root, options) {
           break;
         case "say": say(evalIn(b, "MSG")); break;
         case "say_secs":
-          say(evalIn(b, "MSG"));
-          if (!R.fast) await sleep(sayPauseMs(evalIn(b, "SECS")));
+          say(evalIn(b, "MSG"), evalIn(b, "SECS"));
+          if (!R.fast) await sleep(mlVideo ? Math.min(10, Math.max(0, num(evalIn(b, "SECS")))) * 1000 : sayPauseMs(evalIn(b, "SECS")));
           break;
         case "think":
           logLine("think", "\u2026", evalIn(b, "MSG"));
@@ -2338,6 +2420,12 @@ export function mountRuleBasedProcess(root, options) {
       R._turn = 0;
       setBuddyMood("speak", "Okay \u2014 let\u2019s go.", { force: true });
       var r = await runScript({ fast: false });
+      // Live Object Detection: the video and the "when model detects" scripts keep going until Stop
+      if (mlVideo && r.ok && !stoppedRun && !R.stop) {
+        setBuddyMood("listen", "Watching the camera\u2026");
+        await new Promise(function (res) { R.idle = res; });
+      }
+      if (mlVideo && typeof ML.stop === "function") ML.stop();
       armAnswerBox(false);
       if (r.reason === "loop") {
         logLine("sys", "\u2014", "stopped: that loop never ended \u2014 check your repeat until condition");
@@ -2361,6 +2449,7 @@ export function mountRuleBasedProcess(root, options) {
     $("#stop").onclick = function () {
       stoppedRun = true;
       R.stop = true;
+      if (R.idle) { var wake = R.idle; R.idle = null; wake(); }
       R._again = false;
       if (R.pending) { var p = R.pending; R.pending = null; p(""); }
       armAnswerBox(false);
@@ -2478,6 +2567,15 @@ export function mountRuleBasedProcess(root, options) {
           case "ml_use_model":
             out.push(pad + "model = load_deployed_model(" + pyLit(b.fields.MODEL || "") + ")");
             break;
+          case "ml_use_model_url":
+            out.push(pad + "model = load_deployed_model(" + px(b.inputs.URL) + ")");
+            break;
+          case "ml_video_transp":
+            out.push(pad + "video.transparency = " + px(b.inputs.T));
+            break;
+          case "ml_video_turn":
+            out.push(pad + "video.turn(" + pyLit(b.fields.STATE || "on") + ")");
+            break;
           case "say": out.push(pad + "print(" + px(b.inputs.MSG) + ")"); break;
           case "say_secs":
             PYNEED.time = 1;
@@ -2574,16 +2672,18 @@ export function mountRuleBasedProcess(root, options) {
         var h = st.blocks[0];
         if (!h) return;
         if (h.op === "when_flag") hats.push(st);
-        else if (h.op === "when_recv" || h.op === "when_key") defs.push(st);
+        else if (h.op === "when_recv" || h.op === "when_key" || h.op === "ml_when_detects") defs.push(st);
       });
   
       var vars = concept.vars.map(ident);
       defs.forEach(function (st) {
         var h = st.blocks[0];
-        var name = h.op === "when_recv" ? ident(evalStatic(h.inputs.MSG)) : ident("on_" + h.fields.KEY);
+        var name = h.op === "when_recv" ? ident(evalStatic(h.inputs.MSG))
+          : h.op === "ml_when_detects" ? ident("when_model_detects_" + h.fields.LABEL) : ident("on_" + h.fields.KEY);
         var head = h.op === "when_recv"
           ? '# runs when "' + evalStatic(h.inputs.MSG) + '" is broadcast'
-          : "# runs when the " + h.fields.KEY + " key is pressed";
+          : h.op === "ml_when_detects" ? '# runs when the model detects "' + h.fields.LABEL + '"'
+            : "# runs when the " + h.fields.KEY + " key is pressed";
         defs_out.push(head);
         defs_out.push("def " + name + "():");
         if (vars.length) defs_out.push("    global " + vars.join(", "));
@@ -3393,7 +3493,10 @@ export function mountRuleBasedProcess(root, options) {
       if (!keepWork) select(null);
       if (!keepWork) {
         emptyCanvas = false;
-        W = c.solution ? { stacks: [{ id: sid(), x: 30, y: 20, blocks: c.solution() }] } : { stacks: [] };
+        var sol = c.solution ? c.solution() : null;
+        W = !sol ? { stacks: [] }
+          : Array.isArray(sol) ? { stacks: [{ id: sid(), x: 30, y: 20, blocks: sol }] }
+            : { stacks: sol.stacks.map(function (s) { return { id: sid(), x: s.x, y: s.y, blocks: s.blocks }; }) };
         pan.x = 40; pan.y = 30;
       }
       undo.length = 0;

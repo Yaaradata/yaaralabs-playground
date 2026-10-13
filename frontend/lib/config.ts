@@ -22,6 +22,8 @@ export const config = {
       trainModel: (sessionId: string, projectId: string) => `/api/guests/session/${sessionId}/projects/${projectId}/train`,
       trainingStatus: (sessionId: string, projectId: string) => `/api/guests/session/${sessionId}/projects/${projectId}/train`,
       predict: (sessionId: string, projectId: string) => `/api/guests/session/${sessionId}/projects/${projectId}/predict`,
+      // Text Recognition "Export": the trained model's deployed URL (backend api/deployed.py)
+      deploy: (sessionId: string, projectId: string) => `/api/guests/session/${sessionId}/projects/${projectId}/deploy`,
       deleteModel: (projectId: string) => `/api/guests/projects/${projectId}/model`,
       deleteExamplesByLabel: (sessionId: string, projectId: string, label: string) => `/api/guests/projects/${projectId}/examples/${label}`,
       deleteSpecificExample: (sessionId: string, projectId: string, label: string, exampleIndex: number) => `/api/guests/projects/${projectId}/examples/${label}/${exampleIndex}`,

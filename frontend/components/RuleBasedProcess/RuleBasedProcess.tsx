@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
-import { mountRuleBasedProcess } from './engine.js';
+import { mountRuleBasedProcess, type MlOptions } from './engine.js';
 import MARKUP from './markup.js';
 import config from '@/lib/config';
 import { bindExerciseTheme } from '../Exercises/theme';
@@ -29,18 +29,11 @@ type RuleBasedProcessProps = {
   ml?: MlOptions;
   /** "desk-routing": open on the keyword-rules starter (Rule Based Process projects). */
   starter?: 'desk-routing';
+  /** Replaces Sparky's stage on the right (Live Object Detection: the webcam). */
+  stage?: ReactNode;
 };
 
-export type MlOptions = {
-  kind?: 'text' | 'image';
-  trained: boolean;
-  /** The deployed model the "use deployed model" block connects to. */
-  model?: { name: string; type?: string; trainedAt?: string };
-  labels: string[];
-  recognise?: (text: string) => Promise<{ label: string; confidence: number }>;
-  /** Image models: the host lets the learner pick an image; null when they cancel. */
-  recogniseImage?: () => Promise<{ label: string; confidence: number; name?: string } | null>;
-};
+export type { MlOptions };
 
 type RbpApi = {
   cleanup: () => void;
@@ -59,6 +52,7 @@ export default function RuleBasedProcess({
   toolbarHostRef,
   ml,
   starter,
+  stage,
 }: RuleBasedProcessProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<RbpApi | null>(null);
@@ -69,6 +63,9 @@ export default function RuleBasedProcess({
   mlRef.current = ml;
   const toolbarHostRefStable = useRef(toolbarHostRef);
   toolbarHostRefStable.current = toolbarHostRef;
+  const hasStageRef = useRef(Boolean(stage));
+  hasStageRef.current = Boolean(stage);
+  const [stageHost, setStageHost] = useState<HTMLElement | null>(null);
   const extraSlotsRef = useRef(Boolean(extraTabs || extraPanel));
   extraSlotsRef.current = Boolean(extraTabs || extraPanel);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -248,6 +245,15 @@ export default function RuleBasedProcess({
           }
         }
       }
+      // the host's stage takes Sparky's place in the Stage pane
+      const out = root.querySelector('#p-out');
+      if (hasStageRef.current && out) {
+        root.classList.add('rbp-video');
+        const host = document.createElement('div');
+        host.className = 'ml-stage-host';
+        out.appendChild(host);
+        if (!cancelled) setStageHost(host);
+      }
       api = mountRuleBasedProcess(root, {
         initialState,
         toolbarHost,
@@ -340,6 +346,7 @@ export default function RuleBasedProcess({
       }
       setExtraHost(null);
       setPanelHost(null);
+      setStageHost(null);
       if (root) root.innerHTML = '';
     };
   }, [sessionId, projectId, localStorageKey]);
@@ -362,6 +369,7 @@ export default function RuleBasedProcess({
       <div ref={rootRef} className="rbp-root flex-1 min-h-0" />
       {extraHost && extraTabs ? createPortal(extraTabs, extraHost) : null}
       {panelHost && extraPanel ? createPortal(extraPanel, panelHost) : null}
+      {stageHost && stage ? createPortal(stage, stageHost) : null}
     </div>
   );
 }

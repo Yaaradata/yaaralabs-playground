@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 import time
 import logging
 import os
@@ -28,6 +28,7 @@ from .api import (
     ai_agent,
     image_models,
     live_object_detection,
+    deployed,
     exercises,
 )
 from .api.guests import router as guests_router
@@ -83,6 +84,25 @@ app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["*"],
 )
+
+# --------------------------------------------------
+# Deployed models (api/deployed.py) can be called from any website
+# --------------------------------------------------
+# The CORS middleware above only allows our own sites. A deployed model URL is meant to be pasted
+# into any app, so its routes answer every origin (no cookies are involved). Added after the CORS
+# middleware, so it runs first and answers the preflight itself.
+@app.middleware("http")
+async def open_cors_for_deployed_models(request: Request, call_next):
+    if not request.url.path.startswith("/api/deployed/"):
+        return await call_next(request)
+    response = Response(status_code=204) if request.method == "OPTIONS" else await call_next(request)
+    if "access-control-allow-credentials" in response.headers:
+        del response.headers["access-control-allow-credentials"]
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Max-Age"] = "600"
+    return response
 
 # --------------------------------------------------
 # Request Timing Middleware
@@ -162,6 +182,7 @@ app.include_router(rag_chatbot.router)
 app.include_router(ai_agent.router)
 app.include_router(image_models.router)
 app.include_router(live_object_detection.router)
+app.include_router(deployed.router)
 app.include_router(exercises.router)
 
 # Agent / Chat APIs - with error handling to catch registration failures

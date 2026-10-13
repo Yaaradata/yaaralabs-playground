@@ -51,6 +51,14 @@ var CAT = {
     ml_label:      { cat: "ml", shape: "rep", parts: [L("recognised label")] },
     ml_confidence: { cat: "ml", shape: "rep", parts: [L("confidence %")] },
     ml_label_name: { cat: "ml", shape: "rep", parts: [{ t: "fld", n: "LABEL", src: "labels" }] },
+    // Live Object Detection (custom model, Teachable Machine style): the webcam on the stage, the
+    // model from its deployed URL, and a hat that runs when the model sees one of its labels
+    ml_video_transp:  { cat: "ml", shape: "stack", parts: [L("set video transparency to"), N("T", 50)] },
+    ml_video_turn:    { cat: "ml", shape: "stack", parts: [L("turn video"), { t: "fld", n: "STATE", opts: ["on", "off", "on flipped"] }] },
+    ml_use_model_url: { cat: "ml", shape: "stack", parts: [L("use model"), T("URL", "")] },
+    ml_when_detects:  { cat: "ml", shape: "hat", parts: [L("when model detects"), { t: "fld", n: "LABEL", src: "labels" }] },
+    ml_detected:      { cat: "ml", shape: "rep", parts: [L("detected object")] },
+    ml_detected_conf: { cat: "ml", shape: "rep", parts: [L("detection confidence %")] },
 
     ask:        { cat: "sensing", shape: "stack", parts: [L("ask"), T("Q", "What is your name?"), L("and wait")] },
     answer:     { cat: "sensing", shape: "rep", parts: [L("answer")] },
@@ -146,9 +154,11 @@ var CAT = {
   var PALETTE = {
     // Machine Learning first when it is available (the engine hides it otherwise)
     ml: [
-      "#Model", "ml_use_model",
+      "#Video", "ml_video_transp", "ml_video_turn",
+      "#Model", "ml_use_model", "ml_use_model_url",
+      "#When", "ml_when_detects",
       "#Recognise", "ml_text_label", "ml_text_conf", "ml_recognise_image",
-      "#Result", "ml_label", "ml_confidence",
+      "#Result", "ml_label", "ml_confidence", "ml_detected", "ml_detected_conf",
       "#Your labels", "ml_label_name",
     ],
     // Model first — ask an LLM and read its prediction

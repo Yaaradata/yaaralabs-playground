@@ -3863,6 +3863,7 @@ export default function ProjectDetailsPage() {
               sessionId={actualSessionId}
               projectId={selectedProject.id}
               backHref={`/projects/${urlUserId}`}
+              useHref={`/projects/${urlUserId}/${urlProjectId}/make`}
             />
           ) : selectedProject.type === 'ai-agent' ? (
             <AiAgentLab
@@ -3981,10 +3982,9 @@ export default function ProjectDetailsPage() {
                 <p className="text-fg mb-8 text-sm md:text-base leading-relaxed flex-grow">
                   Put your trained model to work in a prototype built with blocks
                 </p>
+                {/* Opens in a new tab, like a separate app that uses the deployed model */}
                 <button
-                  onClick={() => {
-                    window.location.href = `/projects/${urlUserId}/${urlProjectId}/make`;
-                  }}
+                  onClick={() => window.open(`/projects/${urlUserId}/${urlProjectId}/make`, '_blank', 'noopener')}
                   className="w-full bg-purple-brand hover:bg-purple-brand/90 text-white py-3 px-6 rounded-lg font-medium transition-all duration-300"
                 >
                   Use the AI

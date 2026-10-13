@@ -16,6 +16,7 @@ import {
 import { cleanupSessionWithReason, SessionCleanupReason } from '../../../../../lib/session-cleanup';
 import { SCRATCH_EDITOR_URL } from '@/config/scratch-editor';
 import ProjectAI from '../../../../../components/ProjectAI';
+import VideoAI from '../../../../../components/ProjectAI/VideoAI';
 
 interface GuestSession {
   session_id: string;
@@ -485,6 +486,23 @@ export default function MakePage() {
             trainHref={`/projects/${urlUserId}/${urlProjectId}/learn`}
             nextHref={`/projects/${urlUserId}/${urlProjectId}/evaluate`}
             nextLabel="Move to next - Evaluate"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Live Object Detection (custom model): video blocks and a live webcam stage
+  if (selectedProject.type === 'live-object-detection' || selectedProject.type === 'live-video-classification') {
+    return (
+      <div className="h-screen overflow-hidden flex flex-col bg-canvas text-fg">
+        <Header fixed={false} showMobileMenu={false} className="flex-shrink-0" />
+        <div className="flex-1 min-h-0">
+          <VideoAI
+            projectName={selectedProject.name}
+            sessionId={actualSessionId}
+            projectId={actualProjectId}
+            backHref={`/projects/${urlUserId}/${urlProjectId}`}
           />
         </div>
       </div>
