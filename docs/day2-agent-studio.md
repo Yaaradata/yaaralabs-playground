@@ -34,3 +34,9 @@ Old `rag-chatbot` / `ai-agent` guest projects keep opening in `RagChatbotLab` / 
   show with this engine; the deterministic guardrail is the better place to show that contrast.
 - Staged agents skip condition detection (intent, sentiment) when no action is switched on, since nothing could
   fire; that saves two model calls per message.
+- AI Agent: the search_knowledge_base tool result carries a one-line "cite a passage by its number, like [2]" note, so
+  answers link back to passages and the PDF (the system rule keeps the spec's wording). Passages are numbered across
+  the whole turn.
+- p10 (approve an SSI change) with "Block bank and settlement changes" on is stopped by the guardrail pre-check
+  before the agent loop, so request_ssi_change is never even offered to the model. With the switch off, the tool
+  runs (sandbox) and the card shows it.

@@ -461,7 +461,8 @@ class AgentStudioService:
                     for h in hits:
                         h["n"] = len(passages) + 1
                         passages.append(h)
-                    result = {"passages": agent_kb_format(hits) or "No passage matched."}
+                    result = {"passages": agent_kb_format(hits) or "No passage matched.",
+                              "how_to_cite": "Cite a passage you use by its number in square brackets, like [2]."}
                     step.update(group="lookup", passages=[h["n"] for h in hits], query=str(args.get("query") or ""))
                 elif name == "web_search":
                     result = self._web(str(args.get("query") or message))
