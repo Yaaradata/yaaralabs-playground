@@ -11,6 +11,7 @@ the model learns to recognise what kind of document a client has sent.
 | `invoice/` | 5 | Business invoices, each from a different layout template |
 | `cheque/` | 5 | Indian-style **specimen** cheques, synthetic, each from a different fictional bank |
 | `test/` | 12 | 3 per class, from documents not used in training; 1 clean + 2 degraded each; shuffled |
+| `test/deep test/` | 20 | 5 per class, from documents used nowhere else; handwriting + 4 or more defects each (see below) |
 
 Also here:
 - `test_key.csv`: `file, true_label, source, condition` for every test image
@@ -89,6 +90,25 @@ Degradations differ by class, and each is recorded in `test_key.csv`:
 | cheque | Monsoon Trust | phone-photo look: skew 9 deg, rotation 4 deg, shadow, dark desk | partial crop: right 22% cut off |
 
 The 12 were shuffled with a fixed seed, so `test_01`...`test_12` do not follow class order.
+
+## Deep test (`test/deep test/`)
+A harder test set for uploading by hand: 5 images per class, in class folders (`KYC/`, `corporate_action/`,
+`invoice/`, `cheque/`), each with handwriting and at least four defects at once. `deep_test_key.csv` lists the
+true label, source, licence and the exact defects of every image; `contact_sheet.png` shows them all.
+
+| Class | Documents (none used in training or `test/`) | Handwriting / markings |
+|---|---|---|
+| KYC | Aditya Birla Sun Life MF KYC form p1 and p2, CDSL Annexure 2.1 p1 and p2, HSBC MF CKYC form p2 | form filled in by hand next to its own labels (name, PAN, DOB, mobile, email, address, city, PIN), ticked boxes, signature scrawl |
+| Corporate action | Aaron Industries, Bajaj Consumer Care, Bharat Rasayan, Dhampur Bio Organics, Tega Industries notices (cropped above the sign-off) | margin notes, record date circled, highlighter, tick |
+| Invoice | FATURA templates 19, 22, 25, 31, 34 | PAID / RECEIVED stamps, handwritten approval and notes, total circled, amount struck through and corrected |
+| Cheque | new fictional banks (Banyan Bay, Cardamom Ridge, Pearl Lagoon, Teakwood Harbour, Jasmine Delta) | handwritten date and signature, "A/c payee" |
+
+Defects mixed across the set: phone photo (perspective skew, rotation, shadow, dark desk), coffee stain, fold
+crease, punch holes, thumb over the edge, photocopy (grey, speckle, fading toner), yellowed paper, low light,
+blur, motion blur, rotation, partial crop, sensor noise, heavy JPEG compression (quality 20-30).
+
+All handwritten personal details are invented (example.com emails, sample PAN numbers, 90000 mobile numbers).
+Rebuild with `python raw/_scripts/make_deep_test.py .` (needs `pymupdf`, `pillow`, `imagehash`, `numpy`).
 
 ## Checks run
 - Counts: 5 / 5 / 5 / 5 / 12. All JPG, RGB, 1024 px long side, under 2 MB.

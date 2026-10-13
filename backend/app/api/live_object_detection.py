@@ -63,15 +63,17 @@ async def _assert_lod_project(session_id: str, project_id: str, project_service:
         raise HTTPException(status_code=404, detail="Project not found")
     if project.student_id != session_id:
         raise HTTPException(status_code=403, detail="Project not accessible for this session")
-    # Exercise 4.5 (exercises workspace) is the supported Live Object Detection surface.
+    # Standalone LOD projects and Exercise 4.5 (exercises workspace) both use these routes.
     allowed = {
+        ProjectType.LIVE_OBJECT_DETECTION,
         ProjectType.EXERCISES,
+        "live-object-detection",
         "exercises",
     }
     if project.type not in allowed and str(project.type) not in allowed:
         raise HTTPException(
             status_code=400,
-            detail="Live object detection is available from Exercise 4.5 in an Exercises project",
+            detail="Live object detection is only available for Live Object Detection or Exercises projects",
         )
     return project
 
