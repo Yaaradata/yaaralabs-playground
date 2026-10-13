@@ -1,0 +1,171 @@
+{
+  "success": true,
+  "source": "test-set",
+  "modelType": "sentence_embed_lr",
+  "labels": [
+    "Complaint or escalation",
+    "Corporate action",
+    "Fees and billing",
+    "Onboarding and KYC"
+  ],
+  "items": [
+    {
+      "text": "Can you send me a copy of this month's custody invoice?",
+      "expected": "Fees and billing",
+      "predicted": "Fees and billing",
+      "scores": {
+        "Complaint or escalation": 0.0665,
+        "Corporate action": 0.0593,
+        "Fees and billing": 0.7579,
+        "Onboarding and KYC": 0.1163
+      }
+    },
+    {
+      "text": "Why have we been charged a transaction fee on every trade?",
+      "expected": "Fees and billing",
+      "predicted": "Fees and billing",
+      "scores": {
+        "Complaint or escalation": 0.3289,
+        "Corporate action": 0.0679,
+        "Fees and billing": 0.5807,
+        "Onboarding and KYC": 0.0225
+      }
+    },
+    {
+      "text": "The GST on the June invoice is calculated on the wrong amount.",
+      "expected": "Fees and billing",
+      "predicted": "Fees and billing",
+      "scores": {
+        "Complaint or escalation": 0.0607,
+        "Corporate action": 0.0935,
+        "Fees and billing": 0.8312,
+        "Onboarding and KYC": 0.0146
+      }
+    },
+    {
+      "text": "When will the TCS dividend be paid to our account?",
+      "expected": "Corporate action",
+      "predicted": "Corporate action",
+      "scores": {
+        "Complaint or escalation": 0.0235,
+        "Corporate action": 0.9232,
+        "Fees and billing": 0.0386,
+        "Onboarding and KYC": 0.0147
+      }
+    },
+    {
+      "text": "Please confirm how many bonus shares we will receive from the Wipro issue.",
+      "expected": "Corporate action",
+      "predicted": "Corporate action",
+      "scores": {
+        "Complaint or escalation": 0.1044,
+        "Corporate action": 0.7276,
+        "Fees and billing": 0.0937,
+        "Onboarding and KYC": 0.0743
+      }
+    },
+    {
+      "text": "Is the record date for the ITC split before our purchase settles?",
+      "expected": "Corporate action",
+      "predicted": "Corporate action",
+      "scores": {
+        "Complaint or escalation": 0.0592,
+        "Corporate action": 0.8697,
+        "Fees and billing": 0.0336,
+        "Onboarding and KYC": 0.0374
+      }
+    },
+    {
+      "text": "What documents do you need to open a custody account for our new fund?",
+      "expected": "Onboarding and KYC",
+      "predicted": "Onboarding and KYC",
+      "scores": {
+        "Complaint or escalation": 0.0232,
+        "Corporate action": 0.0337,
+        "Fees and billing": 0.1599,
+        "Onboarding and KYC": 0.7831
+      }
+    },
+    {
+      "text": "Our authorised signatory has left the company. Please remove her.",
+      "expected": "Onboarding and KYC",
+      "predicted": "Complaint or escalation",
+      "scores": {
+        "Complaint or escalation": 0.6614,
+        "Corporate action": 0.0299,
+        "Fees and billing": 0.04,
+        "Onboarding and KYC": 0.2687
+      }
+    },
+    {
+      "text": "Our FATCA self-certification is due. Where do we submit it?",
+      "expected": "Onboarding and KYC",
+      "predicted": "Onboarding and KYC",
+      "scores": {
+        "Complaint or escalation": 0.0378,
+        "Corporate action": 0.111,
+        "Fees and billing": 0.0795,
+        "Onboarding and KYC": 0.7717
+      }
+    },
+    {
+      "text": "This is the second time the dividend was credited late. I want to speak to your manager.",
+      "expected": "Complaint or escalation",
+      "predicted": "Complaint or escalation",
+      "scores": {
+        "Complaint or escalation": 0.5062,
+        "Corporate action": 0.3961,
+        "Fees and billing": 0.066,
+        "Onboarding and KYC": 0.0317
+      }
+    },
+    {
+      "text": "We are not happy with your service and are reviewing whether to stay with you.",
+      "expected": "Complaint or escalation",
+      "predicted": "Complaint or escalation",
+      "scores": {
+        "Complaint or escalation": 0.6239,
+        "Corporate action": 0.0161,
+        "Fees and billing": 0.1248,
+        "Onboarding and KYC": 0.0203
+      }
+    },
+    {
+      "text": "You charged us twice and nobody has fixed it in a month. Escalate this now.",
+      "expected": "Complaint or escalation",
+      "predicted": "Fees and billing",
+      "scores": {
+        "Complaint or escalation": 0.3383,
+        "Corporate action": 0.031,
+        "Fees and billing": 0.6022,
+        "Onboarding and KYC": 0.0284
+      }
+    },
+    {
+      "text": "What's the weather in Mumbai?",
+      "expected": "None of these",
+      "predicted": "Complaint or escalation",
+      "scores": {
+        "Complaint or escalation": 0.0,
+        "Corporate action": 0.0,
+        "Fees and billing": 0.0,
+        "Onboarding and KYC": 0.0
+      }
+    },
+    {
+      "text": "Hello",
+      "expected": "None of these",
+      "predicted": "Complaint or escalation",
+      "scores": {
+        "Complaint or escalation": 0.0,
+        "Corporate action": 0.0,
+        "Fees and billing": 0.0,
+        "Onboarding and KYC": 0.0
+      }
+    }
+  ],
+  "practice": {
+    "correct": 20,
+    "total": 20
+  }
+}

@@ -8,7 +8,8 @@
     "start": "next start -p 3000",
     "lint": "next lint",
     "test:exercises": "npx tsx scripts/run-exercise-scenarios.ts",
-    "test:sample-labelling": "npx tsx scripts/test-sample-labelling.ts"
+    "test:sample-labelling": "npx tsx scripts/test-sample-labelling.ts",
+    "test:evaluate": "npx tsx scripts/test-evaluate.ts"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",

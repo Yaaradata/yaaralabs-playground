@@ -485,7 +485,7 @@ export default function MakePage() {
             trainHref={`/projects/${urlUserId}/${urlProjectId}/learn`}
             {...(selectedProject.type === 'image-recognition'
               ? {}
-              : { nextHref: `/projects/${urlUserId}/${urlProjectId}/learn#evaluate`, nextLabel: 'Move to next - Evaluate' })}
+              : { nextHref: `/projects/${urlUserId}/${urlProjectId}/evaluate`, nextLabel: 'Move to next - Evaluate' })}
           />
         </div>
       </div>

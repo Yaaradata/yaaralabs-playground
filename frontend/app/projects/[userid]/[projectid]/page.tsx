@@ -4000,7 +4000,7 @@ export default function ProjectDetailsPage() {
                 </p>
                 <button
                   onClick={() => {
-                    window.location.href = `/projects/${urlUserId}/${urlProjectId}/learn#evaluate`;
+                    window.location.href = `/projects/${urlUserId}/${urlProjectId}/evaluate`;
                   }}
                   className="w-full bg-purple-brand hover:bg-purple-brand/90 text-white py-3 px-6 rounded-lg font-medium transition-all duration-300"
                 >
