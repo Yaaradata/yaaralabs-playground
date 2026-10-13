@@ -116,19 +116,21 @@ export default function EvaluatePage() {
 
         {state === 'ready' && project && (
           <>
-            <div className="max-w-7xl mx-auto mb-6">
+            {/* Back link and title on one line (same as the training page) */}
+            <div className="max-w-7xl mx-auto mb-6 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
               <Link
                 href={makeHref}
-                className="inline-flex items-center gap-2 text-fg/70 hover:text-fg transition-colors whitespace-nowrap text-sm"
+                className="justify-self-start inline-flex items-center gap-2 text-fg/70 hover:text-fg transition-colors whitespace-nowrap text-sm"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
                 <span>Back to Use the AI</span>
               </Link>
-              <h1 className="text-2xl md:text-3xl font-bold truncate mt-3">
+              <h1 className="text-2xl md:text-3xl font-bold truncate text-center">
                 Evaluate <span className="text-fg/40">:</span> {project.name}
               </h1>
+              <span />
             </div>
 
             {project.type === 'text-recognition' ? (

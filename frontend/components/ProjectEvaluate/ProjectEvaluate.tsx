@@ -17,6 +17,7 @@ import {
   cellItems,
   defaultDesk,
   deskAtLean,
+  deskDots,
   deskNoun,
   examItems,
   grid,
@@ -24,7 +25,10 @@ import {
   mostMissesLine,
   offTopicLine,
   orderLabels,
+  perDesk,
   shortName,
+  type DeskBar,
+  type DeskResult,
   type EvalItem,
   type EvalResponse,
 } from './evaluate';
@@ -143,155 +147,186 @@ function Results({ res }: { res: EvalResponse }) {
   const what = own ? 'of your examples' : 'desk messages';
   const acc = accuracy(items);
   const [desk, setDesk] = useState(() => defaultDesk(labels));
-  const [worse, setWorse] = useState<'miss' | 'alarm' | null>(null);
-  const [lean, setLean] = useState(0);
   const normal = deskAtLean(items, labels, desk, 0);
-  const live = deskAtLean(items, labels, desk, lean);
 
   return (
     <div className="max-w-7xl mx-auto text-lg">
       <div className="grid gap-4 lg:grid-cols-2">
-      <div className="flex flex-col gap-4 min-w-0">
-      {/* 1. Overall score */}
-      <section className={card} aria-labelledby="b1">
-        <h2 id="b1" className="sr-only">Overall score</h2>
-        <p className="text-3xl md:text-4xl font-bold leading-tight">
-          Your bot got <span className="text-pink-brand">{acc.right} of {acc.total}</span> {what} right
-        </p>
-        <p className="text-xl text-fg/70 mt-2">That’s its accuracy: {acc.pct}%.</p>
-        {own && <p className="text-base text-fg/60 mt-2">Each example was hidden from the bot while it was tested.</p>}
-      </section>
+        <div className="flex flex-col gap-4 min-w-0">
+          {/* 1. Overall score */}
+          <section className={card} aria-labelledby="b1">
+            <h2 id="b1" className="sr-only">Overall score</h2>
+            <p className="text-3xl md:text-4xl font-bold leading-tight">
+              Your bot got <span className="text-pink-brand">{acc.right} of {acc.total}</span> {what} right
+            </p>
+            <p className="text-xl text-fg/70 mt-2">That’s its accuracy: {acc.pct}%.</p>
+            {own && <p className="text-base text-fg/60 mt-2">Each example was hidden from the bot while it was tested.</p>}
+          </section>
 
-      {/* 2. Where it got confused */}
-      <Confusion items={items} labels={labels} className="flex-1" />
+          {/* 2. Where it got confused */}
+          <Confusion items={items} labels={labels} className="flex-1" />
+        </div>
 
+        <div className="flex flex-col gap-4 min-w-0">
+          {/* 3. Graph: right per desk */}
+          <PerDeskChart items={items} labels={labels} />
+
+          {/* 4. The desk that matters most, as dots */}
+          <section className={`${card} flex-1`} aria-labelledby="b4">
+            <h2 id="b4" className="text-2xl font-bold">The desk that matters most</h2>
+            <div className="flex flex-wrap gap-2 mt-3" role="radiogroup" aria-label="Desk">
+              {labels.map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  role="radio"
+                  aria-checked={desk === l}
+                  onClick={() => setDesk(l)}
+                  className={`rounded-full border-2 px-4 py-1.5 text-base font-semibold transition-colors ${
+                    desk === l ? 'border-pink-brand bg-purple-brand/20 text-fg' : 'border-magenta-brand/25 text-fg/70 hover:border-magenta-brand/50'
+                  }`}
+                >
+                  {shortName(l)}
+                </button>
+              ))}
+            </div>
+            <DeskDots items={items} desk={desk} result={normal} />
+            <p className="mt-4 text-lg">{hiddenWeakDeskLine(acc, desk, normal)}</p>
+          </section>
+        </div>
       </div>
-
-      <div className="flex flex-col gap-4 min-w-0">
-      {/* 4. The desk that matters most */}
-      <section className={card} aria-labelledby="b4">
-        <h2 id="b4" className="text-2xl font-bold">The desk that matters most</h2>
-        <Explain desk={desk} />
-        <div className="flex flex-wrap gap-2 mt-4" role="radiogroup" aria-label="Desk">
-          {labels.map((l) => (
-            <button
-              key={l}
-              type="button"
-              role="radio"
-              aria-checked={desk === l}
-              onClick={() => {
-                setDesk(l);
-                setLean(0);
-              }}
-              className={`rounded-full border-2 px-4 py-2 text-base font-semibold transition-colors ${
-                desk === l ? 'border-pink-brand bg-purple-brand/20 text-fg' : 'border-magenta-brand/25 text-fg/70 hover:border-magenta-brand/50'
-              }`}
-            >
-              {shortName(l)}
-            </button>
-          ))}
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 mt-5">
-          <Tile
-            title="Recall"
-            big={`Caught ${normal.caught} of ${normal.total}`}
-            pct={normal.total ? `${normal.recall}%` : '—'}
-            sub={`real ${deskNoun(desk)} the bot found`}
-            on={worse === 'miss'}
-          />
-          <Tile
-            title="Precision"
-            big={normal.flagged ? `${normal.caught} of ${normal.flagged} right` : 'Nothing flagged'}
-            pct={normal.flagged ? `${normal.precision}%` : '—'}
-            sub={`messages it called ${deskNoun(desk)} that really were`}
-            on={worse === 'alarm'}
-          />
-        </div>
-        <p className="mt-5 text-xl">{hiddenWeakDeskLine(acc, desk, normal)}</p>
-      </section>
-
-      {/* 5. Pick the right metric */}
-      <section className={`${card} flex-1`} aria-labelledby="b5">
-        <h2 id="b5" className="text-2xl font-bold">Which is worse for us?</h2>
-        <div className="flex flex-wrap gap-3 mt-4">
-          {([
-            ['miss', `Missing a real ${deskNoun(desk, 1)}`],
-            ['alarm', 'Raising a false alarm'],
-          ] as const).map(([k, text]) => (
-            <button
-              key={k}
-              type="button"
-              aria-pressed={worse === k}
-              onClick={() => setWorse(k)}
-              className={`${btn} border-2 ${worse === k ? 'border-pink-brand bg-purple-brand/20' : 'border-magenta-brand/30 hover:bg-purple-brand/10'}`}
-            >
-              {text}
-            </button>
-          ))}
-        </div>
-        {worse && (
-          <p className="mt-3 text-xl font-semibold text-pink-brand">
-            {worse === 'miss' ? 'Watch recall. Slide right to catch more.' : 'Watch precision. Slide left for fewer false alarms.'}
-          </p>
-        )}
-
-        <label htmlFor="lean" className="block mt-6 text-xl font-semibold">
-          How quickly should the bot say ‘{shortName(desk)}’?
-        </label>
-        <input
-          id="lean"
-          type="range"
-          min={-50}
-          max={50}
-          step={5}
-          value={lean}
-          onChange={(e) => setLean(Number(e.target.value))}
-          className="w-full mt-4 accent-pink-500 h-2"
-          aria-valuetext={lean === 0 ? 'Normal' : lean < 0 ? 'Only when more sure' : 'Sooner'}
-        />
-        <div className="relative flex justify-between text-base text-fg/70 mt-2">
-          <span>Only when very sure</span>
-          <span className="absolute left-1/2 -translate-x-1/2">
-            <span className="absolute left-1/2 -top-2 w-px h-2 bg-fg/40" aria-hidden="true" />
-            Normal
-          </span>
-          <span>At the first hint</span>
-        </div>
-
-        <div className="mt-6 rounded-xl bg-purple-brand/10 border border-magenta-brand/20 px-5 py-4" aria-live="polite">
-          <p className="text-2xl font-bold">
-            Caught {live.caught} of {live.total} {deskNoun(desk, live.total)} · {live.falseAlarms} false {live.falseAlarms === 1 ? 'alarm' : 'alarms'}
-          </p>
-          <p className="text-lg mt-1">
-            <span className={worse === 'miss' ? 'font-bold text-pink-brand' : ''}>Recall {live.total ? `${live.recall}%` : '—'}</span>
-            <span className="text-fg/40"> · </span>
-            <span className={worse === 'alarm' ? 'font-bold text-pink-brand' : ''}>Precision {live.flagged ? `${live.precision}%` : '—'}</span>
-          </p>
-          <p className="text-base text-fg/50 mt-1">
-            Normal: caught {normal.caught} of {normal.total} · {normal.falseAlarms} false {normal.falseAlarms === 1 ? 'alarm' : 'alarms'}
-          </p>
-        </div>
-        <p className="mt-4 text-xl">
-          The model didn’t change. Only the rule changed, and the right setting depends on what a mistake costs you.
-        </p>
-      </section>
-
-      </div>
-      </div>
-
     </div>
   );
 }
 
-function Tile({ title, big, pct, sub, on }: { title: string; big: string; pct: string; sub: string; on: boolean }) {
+/* ───────── graph: right per desk ───────── */
+
+function PerDeskChart({ items, labels }: { items: EvalItem[]; labels: string[] }) {
+  const bars = perDesk(items, labels);
+  const max = Math.max(1, ...bars.map((b) => b.total));
+  const tip = (b: DeskBar) =>
+    b.missed.length
+      ? `${shortName(b.label)} missed: ${b.missed.map((i) => `“${i.text}” (bot said ${shortName(i.predicted)})`).join('; ')}`
+      : `${shortName(b.label)}: every message went to the right desk`;
+
   return (
-    <div className={`rounded-2xl border-2 px-5 py-4 transition-colors ${on ? 'border-pink-brand bg-purple-brand/15' : 'border-magenta-brand/25'}`}>
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-bold uppercase tracking-wider text-fg/60">{title}</p>
-        <span className="rounded-full bg-pink-brand/15 text-pink-brand px-2.5 py-0.5 text-base font-bold tabular-nums">{pct}</span>
+    <section className={card} aria-labelledby="b3">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 id="b3" className="text-2xl font-bold">Right per desk</h2>
+        <div className="flex items-center gap-4 text-sm text-fg/70" aria-hidden="true">
+          <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[var(--success)]" />Right</span>
+          <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-500/70" />Sent to another desk</span>
+        </div>
       </div>
-      <p className="text-2xl xl:text-3xl font-bold mt-1.5 whitespace-nowrap">{big}</p>
-      <p className="text-base text-fg/70 mt-0.5 leading-snug">{sub}</p>
+      <ul className="mt-4 space-y-3">
+        {bars.map((b) => (
+          <li
+            key={b.label}
+            className="grid grid-cols-[9.5rem_minmax(0,1fr)_4.5rem] items-center gap-3"
+            title={tip(b)}
+            aria-label={`${shortName(b.label)}: ${b.right} of ${b.total} right${b.missed.length ? `, ${b.missed.length} sent to another desk` : ''}`}
+          >
+            <span className="text-base font-semibold truncate">{shortName(b.label)}</span>
+            <span className="h-6 flex rounded-md bg-fg/5 overflow-hidden" aria-hidden="true">
+              {b.right > 0 && (
+                <span className="h-full bg-[var(--success)] rounded-l-md" style={{ width: `${(b.right / max) * 100}%` }} />
+              )}
+              {b.missed.length > 0 && (
+                <span
+                  className={`h-full bg-red-500/70 ${b.right > 0 ? 'ml-0.5' : 'rounded-l-md'} rounded-r-md`}
+                  style={{ width: `${(b.missed.length / max) * 100}%` }}
+                />
+              )}
+            </span>
+            <span className="text-base tabular-nums text-fg/80 text-right whitespace-nowrap">
+              {b.right} of {b.total}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/* ───────── the desk that matters most, as dots ───────── */
+
+function Dot({ ok, kind, text }: { ok: boolean; kind: 'real' | 'flagged'; text: string }) {
+  // real:    filled green = caught, hollow red = missed
+  // flagged: filled green = really this desk, red ✕ = false alarm
+  const base = 'w-9 h-9 rounded-full inline-flex items-center justify-center text-base font-bold cursor-default';
+  const look = ok
+    ? 'bg-[var(--success)] text-white'
+    : kind === 'real'
+      ? 'border-[3px] border-red-500 bg-transparent'
+      : 'bg-red-500/15 text-red-500 border-2 border-red-500';
+  return (
+    <span className={`${base} ${look}`} title={text} role="img" aria-label={text}>
+      {ok ? '✓' : kind === 'flagged' ? '✕' : ''}
+    </span>
+  );
+}
+
+function DeskDots({ items, desk, result }: { items: EvalItem[]; desk: string; result: DeskResult }) {
+  const { real, flagged } = deskDots(items, desk);
+  const many = deskNoun(desk);
+
+  const row = (
+    title: string,
+    question: string,
+    pct: string,
+    summary: string,
+    dots: { item: EvalItem; ok: boolean }[],
+    kind: 'real' | 'flagged',
+    empty: string,
+  ) => (
+    <div className="rounded-xl border border-magenta-brand/20 px-4 py-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-base">
+          <b>{title}</b> <span className="text-fg/60">· {question}</span>
+        </p>
+        <span className="rounded-full bg-pink-brand/15 text-pink-brand px-2.5 py-0.5 text-base font-bold tabular-nums shrink-0">{pct}</span>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 mt-2.5">
+        {dots.length ? (
+          dots.map((d) => (
+            <Dot
+              key={d.item.text}
+              ok={d.ok}
+              kind={kind}
+              text={kind === 'real'
+                ? `“${d.item.text}” ${d.ok ? '(caught)' : `(missed: bot said ${shortName(d.item.predicted)})`}`
+                : `“${d.item.text}” ${d.ok ? '(really was)' : `(false alarm: really ${shortName(d.item.expected)})`}`}
+            />
+          ))
+        ) : (
+          <span className="text-base text-fg/60">{empty}</span>
+        )}
+        <span className="ml-1 text-xl font-bold">{summary}</span>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="mt-4 space-y-3">
+      {row(
+        'Recall',
+        `of all the real ${many}, how many did it catch?`,
+        result.total ? `${result.recall}%` : '—',
+        `Caught ${result.caught} of ${result.total}`,
+        real,
+        'real',
+        `No ${many} in this exam.`,
+      )}
+      {row(
+        'Precision',
+        `when it said ${shortName(desk)}, was it right?`,
+        result.flagged ? `${result.precision}%` : '—',
+        result.flagged ? `${result.caught} of ${result.flagged} right` : 'Nothing flagged',
+        flagged,
+        'flagged',
+        `It never said ${shortName(desk)}.`,
+      )}
+      <p className="text-sm text-fg/60">Each dot is one message: ✓ right, ○ missed, ✕ false alarm.</p>
     </div>
   );
 }
@@ -382,65 +417,3 @@ function Confusion({ items, labels, className = '' }: { items: EvalItem[]; label
     </section>
   );
 }
-
-/* ───────── what precision and recall mean (inside the desk block) ───────── */
-
-function Explain({ desk }: { desk: string }) {
-  const many = deskNoun(desk);
-  return (
-    <div className="mt-3 flex items-center gap-4 rounded-xl bg-purple-brand/10 border border-magenta-brand/20 px-4 py-3" aria-label="What precision and recall mean">
-      <FishingNet />
-      <div className="text-sm leading-snug space-y-1 min-w-0">
-        <p>
-          <b>Recall</b>: did we catch them? Of all the real {many}, how many did the bot catch?{' '}
-          <span className="text-fg/60">(How many fish in the pond did the net catch?)</span>
-        </p>
-        <p>
-          <b>Precision</b>: when it flags, is it right? Of the messages it called {many}, how many really were?{' '}
-          <span className="text-fg/60">(How much of the net is actually fish?)</span>
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function Fish({ x, y, flip = false }: { x: number; y: number; flip?: boolean }) {
-  return (
-    <g transform={`translate(${x} ${y}) scale(${flip ? -1 : 1} 1)`} className="text-pink-brand">
-      <ellipse cx="0" cy="0" rx="13" ry="7" fill="currentColor" />
-      <path d="M11 0 L21 -7 L21 7 Z" fill="currentColor" />
-      <circle cx="-6" cy="-2" r="1.6" className="text-canvas" fill="currentColor" />
-    </g>
-  );
-}
-
-/** A net in a pond: fish caught, fish missed, and a boot and some weed in the net. */
-function FishingNet() {
-  return (
-    <svg viewBox="0 0 240 190" className="w-24 shrink-0 text-fg hidden sm:block" role="img" aria-label="A fishing net holding three fish, a boot and some weed, with two fish still outside the net">
-      {/* pond */}
-      <rect x="4" y="40" width="232" height="146" rx="18" className="text-purple-brand" fill="currentColor" opacity="0.12" />
-      {/* handle and rim */}
-      <line x1="120" y1="8" x2="120" y2="52" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.7" />
-      <ellipse cx="120" cy="58" rx="62" ry="10" fill="none" stroke="currentColor" strokeWidth="3" opacity="0.8" />
-      {/* net bag with mesh */}
-      <path d="M58 58 Q70 150 120 160 Q170 150 182 58" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.7" />
-      {[78, 98, 120, 142, 162].map((x) => (
-        <path key={x} d={`M${x} 64 Q${x + (120 - x) * 0.35} 120 120 158`} fill="none" stroke="currentColor" strokeWidth="1" opacity="0.35" />
-      ))}
-      {[82, 104, 126].map((y) => (
-        <path key={y} d={`M${62 + (y - 64) * 0.18} ${y} Q120 ${y + 12} ${178 - (y - 64) * 0.18} ${y}`} fill="none" stroke="currentColor" strokeWidth="1" opacity="0.35" />
-      ))}
-      {/* in the net: three fish, a boot, weed */}
-      <Fish x={98} y={96} />
-      <Fish x={140} y={110} flip />
-      <Fish x={112} y={132} />
-      <path d="M140 80 h12 v14 h10 v8 h-22 Z" className="text-fg" fill="currentColor" opacity="0.55" />
-      <path d="M86 128 q-6 -10 2 -18 M90 130 q4 -12 -2 -20" fill="none" className="text-[var(--success)]" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-      {/* missed: two fish outside */}
-      <Fish x={30} y={150} />
-      <Fish x={212} y={168} flip />
-    </svg>
-  );
-}
-

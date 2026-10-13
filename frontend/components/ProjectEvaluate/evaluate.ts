@@ -175,3 +175,35 @@ export function hiddenWeakDeskLine(acc: { pct: number }, desk: string, r: DeskRe
   }
   return `Overall it scores ${acc.pct}%, and it caught ${r.caught} of ${r.total} ${deskNoun(desk, r.total)}.`;
 }
+
+/* ───────── graph: right per desk ───────── */
+
+export interface DeskBar {
+  label: string;
+  total: number; // real messages for this desk
+  right: number; // the bot sent them to this desk
+  missed: EvalItem[]; // sent to another desk
+}
+
+/** One bar per desk, in `labels` order. Desk messages only. */
+export function perDesk(items: EvalItem[], labels: string[]): DeskBar[] {
+  return labels.map((label) => {
+    const mine = deskItems(items).filter((i) => i.expected === label);
+    return { label, total: mine.length, right: mine.filter((i) => i.predicted === label).length, missed: mine.filter((i) => i.predicted !== label) };
+  });
+}
+
+/* ───────── one desk as dots (recall and precision) ───────── */
+
+/**
+ * Recall row: every real message for the desk (caught or missed).
+ * Precision row: every message the bot called this desk (really the desk, or a false alarm).
+ * Desk messages only, the same as deskAtLean(items, labels, desk, 0).
+ */
+export function deskDots(items: EvalItem[], desk: string) {
+  const desks = deskItems(items);
+  return {
+    real: desks.filter((i) => i.expected === desk).map((item) => ({ item, ok: item.predicted === desk })),
+    flagged: desks.filter((i) => i.predicted === desk).map((item) => ({ item, ok: item.expected === desk })),
+  };
+}
