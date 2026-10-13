@@ -758,7 +758,7 @@ html.lod-fs-open .lod-right {
   transform: translateX(-50%);
   z-index: 4;
   width: max-content;
-  max-width: calc(100% - 220px); /* clear of the Rec chip on the left */
+  max-width: calc(100% - 48px);
   margin: 0;
   padding: 8px 16px;
   border-radius: 10px;
@@ -783,7 +783,6 @@ html.lod-fs-open .lod-right {
     display: none;
   }
   .lod-live-caption {
-    bottom: 52px; /* above the Rec chip */
     max-width: calc(100% - 24px);
     font-size: 14px;
   }

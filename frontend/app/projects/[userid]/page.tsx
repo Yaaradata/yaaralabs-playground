@@ -1431,27 +1431,29 @@ function CreateProjectPage() {
                   <label htmlFor="projectType" className="block text-sm font-medium text-fg mb-2">
                     Project Type
                   </label>
-                  <select
-                    id="projectDay"
-                    value={projectDay}
-                    onChange={(e) => {
-                      setProjectDay(e.target.value as 'day1' | 'day2');
-                      setProjectType('');
-                    }}
-                    aria-label="Day"
-                    className="w-full mb-3 px-4 py-3 bg-canvas border border-magenta-brand/20 rounded-lg text-fg focus:outline-none focus:border-pink-brand focus:ring-1 focus:ring-pink-brand transition-all duration-300"
-                    required
-                  >
-                    <option value="" disabled className="bg-canvas text-fg/60">
-                      Select Day
-                    </option>
-                    <option value="day1" className="bg-canvas text-fg">
-                      Day 1
-                    </option>
-                    <option value="day2" className="bg-canvas text-fg">
-                      Day 2
-                    </option>
-                  </select>
+                  {/* Day: two buttons; the type list below follows the chosen day */}
+                  <div role="radiogroup" aria-label="Day" className="grid grid-cols-2 gap-3 mb-3">
+                    {([['day1', 'Day 1'], ['day2', 'Day 2']] as const).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        role="radio"
+                        aria-checked={projectDay === value}
+                        onClick={() => {
+                          if (projectDay === value) return;
+                          setProjectDay(value);
+                          setProjectType('');
+                        }}
+                        className={`px-4 py-3 rounded-lg border font-semibold transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-brand ${
+                          projectDay === value
+                            ? 'bg-purple-brand border-purple-brand text-white'
+                            : 'bg-canvas border-magenta-brand/20 text-fg hover:border-pink-brand'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                   <select
                     id="projectType"
                     value={projectType}

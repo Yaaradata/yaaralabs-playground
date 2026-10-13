@@ -60,7 +60,7 @@ type LiveObjectDetectionProps = {
   /**
    * Show only the camera, with the latest caption written along the bottom of the video
    * ("A person is sitting in front of a webcam."). Leaves out the AI Insights and Captured Data
-   * panels; captions are still made every 10 seconds, the same way.
+   * panels, the Export button and the Rec / Stopped chip; captions are still made every 10 seconds.
    */
   captionOnVideo?: boolean;
 };
@@ -1140,6 +1140,7 @@ export default function LiveObjectDetection({
                 >
                   {isFullscreen ? <CompressIcon /> : <ExpandIcon />}
                 </button>
+                {!captionOnVideo && (
                 <button
                   type="button"
                   className="lod-btn export icon compact"
@@ -1150,6 +1151,7 @@ export default function LiveObjectDetection({
                 >
                   <DownloadIcon />
                 </button>
+                )}
                 <button
                   type="button"
                   className="lod-btn start icon compact"
@@ -1180,7 +1182,7 @@ export default function LiveObjectDetection({
                   <CloseIcon />
                 </button>
               </div>
-              {status === 'active' ? (
+              {captionOnVideo ? null : status === 'active' ? (
                 <div className="lod-rec">
                   <span className="lod-rec-dot" />
                   Rec
