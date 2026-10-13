@@ -57,6 +57,12 @@ type LiveObjectDetectionProps = {
   onClose?: () => void;
   /** Inside a project page (not Exercise 4.5): no exercise title bar. */
   embedded?: boolean;
+  /**
+   * Show only the camera, with the latest caption written along the bottom of the video
+   * ("A person is sitting in front of a webcam."). Leaves out the AI Insights and Captured Data
+   * panels; captions are still made every 10 seconds, the same way.
+   */
+  captionOnVideo?: boolean;
 };
 
 type LodUndoSnapshot = {
@@ -224,6 +230,7 @@ export default function LiveObjectDetection({
   projectId,
   onClose,
   embedded = false,
+  captionOnVideo = false,
 }: LiveObjectDetectionProps) {
   const [theme] = useAppTheme();
   const stageRef = useRef<HTMLDivElement>(null);
@@ -993,6 +1000,9 @@ export default function LiveObjectDetection({
     });
   }, [actionsOnly, captures, query, timeWindow]);
 
+  // newest caption first; shown on the video only while detection runs
+  const liveCaption = captionOnVideo && status === 'active' ? captures[0]?.caption ?? '' : '';
+
   const cameraLabel = (() => {
     switch (status) {
       case 'idle':
@@ -1060,7 +1070,7 @@ export default function LiveObjectDetection({
   };
 
   return (
-    <div className="lod-studio" data-theme={theme}>
+    <div className={`lod-studio${captionOnVideo ? ' lod-caption-view' : ''}`} data-theme={theme}>
       {!embedded && (
         <header className="lod-ex-head">
           <div className="ex-lab-brand">
@@ -1181,6 +1191,11 @@ export default function LiveObjectDetection({
                   {cameraLabel}
                 </div>
               )}
+              {liveCaption ? (
+                <p className="lod-live-caption" aria-live="polite">
+                  {liveCaption}
+                </p>
+              ) : null}
               {error && status === 'active' ? (
                 <div className="lod-banner" role="status">
                   {error}
@@ -1201,6 +1216,7 @@ export default function LiveObjectDetection({
           </section>
         </div>
 
+        {!captionOnVideo && (
         <div className="lod-right">
           <section className="lod-card lod-insights">
             <h2>AI Insights</h2>
@@ -1331,6 +1347,7 @@ export default function LiveObjectDetection({
             </div>
           </section>
         </div>
+        )}
       </div>
     </div>
   );

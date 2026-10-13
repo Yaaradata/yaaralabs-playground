@@ -1726,8 +1726,8 @@ export default function ProjectDetailsPage() {
   // 'live-video-classification' is the name this type had briefly; those projects open the same way
   const isLiveObjectDetection = selectedProject.type === 'live-object-detection' || selectedProject.type === 'live-video-classification';
   const studioHeader = isRbp || isExercises || isConfusionMatrix || isRagChatbot || isAiAgent || isLiveObjectDetection;
-  // The Rule Based Process block editor has its own back button in its header (like "Use the AI")
-  const ownBackButton = isRbp && resolveRbpEditor(selectedProject.rbpEditor) === 'blocks';
+  // These have their own back button in their header row (like "Use the AI"), so no back bar here
+  const ownBackButton = (isRbp && resolveRbpEditor(selectedProject.rbpEditor) === 'blocks') || isLiveObjectDetection;
 
   return (
     <div className="h-screen overflow-hidden flex flex-col bg-canvas text-fg">
@@ -3862,6 +3862,7 @@ export default function ProjectDetailsPage() {
               projectName={selectedProject.name}
               sessionId={actualSessionId}
               projectId={selectedProject.id}
+              backHref={`/projects/${urlUserId}`}
             />
           ) : selectedProject.type === 'ai-agent' ? (
             <AiAgentLab

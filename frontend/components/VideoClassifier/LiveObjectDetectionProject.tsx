@@ -8,6 +8,7 @@
  * top switches between them. The choice is remembered per project in this browser.
  */
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import LiveObjectDetection from '../LiveObjectDetection';
 import VideoClassifierLab from './VideoClassifierLab';
@@ -33,6 +34,8 @@ interface Props {
   projectName: string;
   sessionId: string | null;
   projectId: string;
+  /** The projects list: the back button in this page's header (the page hides its own back bar). */
+  backHref: string;
 }
 
 const storageKey = (projectId: string) => `lodMode:${projectId}`;
@@ -59,7 +62,7 @@ function Icon({ mode }: { mode: Mode }) {
   );
 }
 
-export default function LiveObjectDetectionProject({ projectName, sessionId, projectId }: Props) {
+export default function LiveObjectDetectionProject({ projectName, sessionId, projectId, backHref }: Props) {
   const [mode, setModeState] = useState<Mode | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -80,18 +83,31 @@ export default function LiveObjectDetectionProject({ projectName, sessionId, pro
 
   return (
     <div className="h-full flex flex-col bg-canvas text-fg">
-      <div className="flex-shrink-0 flex flex-wrap items-center gap-3 px-4 sm:px-6 py-3 border-b border-fg/10">
-        <div className="min-w-[12rem] flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-pink-brand">Live Object Detection</p>
-          <h1 className="text-lg font-semibold truncate">{projectName}</h1>
-        </div>
+      {/* One row: back, project title, mode switch */}
+      <div className="flex-shrink-0 flex items-center gap-3 px-4 sm:px-6 py-2 border-b border-fg/10">
+        <Link
+          href={backHref}
+          aria-label="Back to Projects"
+          title="Back to Projects"
+          className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg border border-fg/15 text-fg/75 hover:text-fg hover:border-pink-brand transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </Link>
+        <h1 className="min-w-0 flex-1 truncate text-base sm:text-lg font-semibold">
+          {/* phones: just the project name */}
+          <span className="hidden sm:inline text-pink-brand">Live Object Detection</span>
+          <span className="hidden sm:inline text-fg/40 mx-2" aria-hidden="true">:</span>
+          {projectName}
+        </h1>
         {mode && (
-          <label className="inline-flex items-center gap-2 text-sm text-fg/75">
-            Mode
+          <label className="shrink-0 inline-flex items-center gap-2 text-sm text-fg/75">
+            <span className="hidden sm:inline">Mode</span>
             <select
               value={mode}
               onChange={(e) => setMode(e.target.value as Mode)}
-              className="bg-card border border-fg/20 rounded-lg px-3 py-2 text-sm font-medium text-fg focus:outline-none focus:border-pink-brand"
+              className="max-w-[11.5rem] sm:max-w-none bg-card border border-fg/20 rounded-lg px-3 py-2 text-sm font-medium text-fg focus:outline-none focus:border-pink-brand"
               aria-label="Detection mode"
             >
               {MODES.map((m) => (
@@ -107,7 +123,7 @@ export default function LiveObjectDetectionProject({ projectName, sessionId, pro
           <VideoClassifierLab sessionId={sessionId} projectId={projectId} />
         ) : mode === 'pretrained' ? (
           <div className="h-full overflow-auto">
-            <LiveObjectDetection embedded projectName={projectName} sessionId={sessionId ?? undefined} projectId={projectId} onClose={() => setMode(null)} />
+            <LiveObjectDetection embedded captionOnVideo projectName={projectName} sessionId={sessionId ?? undefined} projectId={projectId} onClose={() => setMode(null)} />
           </div>
         ) : (
           <div className="h-full overflow-auto px-4 sm:px-6 py-10">

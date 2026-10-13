@@ -736,3 +736,55 @@ html.lod-fs-open .lod-right {
     min-height: 280px;
   }
 }
+
+/* Project view (captionOnVideo): the camera fills the page, the latest caption sits on the video */
+.lod-caption-view .lod-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* ...the time / FPS chips sit on the video (as in full screen) instead of a label row above it */
+.lod-caption-view .lod-camera-label {
+  display: none;
+}
+
+.lod-caption-view .lod-stage-meta {
+  display: flex;
+}
+
+.lod-live-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 4;
+  width: max-content;
+  max-width: calc(100% - 220px); /* clear of the Rec chip on the left */
+  margin: 0;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: rgba(1, 1, 1, 0.72);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.lod-camera-stage.is-fullscreen .lod-live-caption,
+.lod-camera-stage:fullscreen .lod-live-caption {
+  bottom: 28px;
+  font-size: 22px;
+}
+
+@media (max-width: 640px) {
+  /* the camera buttons fill the top of the video on phones */
+  .lod-caption-view .lod-camera-stage:not(.is-fullscreen) .lod-stage-meta {
+    display: none;
+  }
+  .lod-live-caption {
+    bottom: 52px; /* above the Rec chip */
+    max-width: calc(100% - 24px);
+    font-size: 14px;
+  }
+}
