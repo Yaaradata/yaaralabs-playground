@@ -97,6 +97,8 @@ const opensInScratch = (project: Project) =>
 function CreateProjectPage() {
   const [projectName, setProjectName] = useState('');
   const [projectType, setProjectType] = useState('');
+  // Create form: the workshop day decides which exercises are offered
+  const [projectDay, setProjectDay] = useState<'' | 'day1' | 'day2'>('');
   const [teachableLink, setTeachableLink] = useState('');
   const [agentDescription, setAgentDescription] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
@@ -744,6 +746,7 @@ function CreateProjectPage() {
         // Reset form
         setProjectName('');
         setProjectType('');
+        setProjectDay('');
         setTeachableLink('');
         
         // Reload projects to get updated list
@@ -814,6 +817,7 @@ function CreateProjectPage() {
         // Reset form
         setProjectName('');
         setProjectType('');
+        setProjectDay('');
         setTeachableLink('');
         setEditingProject(null);
         
@@ -937,6 +941,7 @@ function CreateProjectPage() {
     setCurrentSection('projects-list');
     setProjectName('');
     setProjectType('');
+    setProjectDay('');
     setTeachableLink('');
     setAgentDescription('');
     setEditingProject(null);
@@ -1427,48 +1432,56 @@ function CreateProjectPage() {
                     Project Type
                   </label>
                   <select
-                    id="projectType"
-                    value={projectType}
-                    onChange={(e) => setProjectType(e.target.value)}
-                    className="w-full px-4 py-3 bg-canvas border border-magenta-brand/20 rounded-lg text-fg focus:outline-none focus:border-pink-brand focus:ring-1 focus:ring-pink-brand transition-all duration-300"
+                    id="projectDay"
+                    value={projectDay}
+                    onChange={(e) => {
+                      setProjectDay(e.target.value as 'day1' | 'day2');
+                      setProjectType('');
+                    }}
+                    aria-label="Day"
+                    className="w-full mb-3 px-4 py-3 bg-canvas border border-magenta-brand/20 rounded-lg text-fg focus:outline-none focus:border-pink-brand focus:ring-1 focus:ring-pink-brand transition-all duration-300"
                     required
                   >
                     <option value="" disabled className="bg-canvas text-fg/60">
-                      Select Type
+                      Select Day
                     </option>
-                    <option value="rule-based-process" className="bg-canvas text-fg">
-                      Rule Based Process
+                    <option value="day1" className="bg-canvas text-fg">
+                      Day 1
                     </option>
-                    <option value="text-recognition" className="bg-canvas text-fg">
-                      Text Recognition
+                    <option value="day2" className="bg-canvas text-fg">
+                      Day 2
                     </option>
-                    <option value="confusion-matrix" className="bg-canvas text-fg">
-                      Confusion Matrix
+                  </select>
+                  <select
+                    id="projectType"
+                    value={projectType}
+                    onChange={(e) => setProjectType(e.target.value)}
+                    disabled={!projectDay}
+                    className="w-full px-4 py-3 bg-canvas border border-magenta-brand/20 rounded-lg text-fg focus:outline-none focus:border-pink-brand focus:ring-1 focus:ring-pink-brand transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    required
+                  >
+                    <option value="" disabled className="bg-canvas text-fg/60">
+                      {projectDay ? 'Select Type' : 'Select a day first'}
                     </option>
-                    <option value="rag-chatbot" className="bg-canvas text-fg">
-                      RAG Chatbot
-                    </option>
-                    <option value="ai-agent" className="bg-canvas text-fg">
-                      AI Agent
-                    </option>
-                    <option value="live-object-detection" className="bg-canvas text-fg">
-                      Live Object Detection
-                    </option>
-                    <option value="image-recognition" className="bg-canvas text-fg">
-                      Image Recognition
-                    </option>
-                    <option value="image-recognition-teachable-machine" className="bg-canvas text-fg">
-                      Image Recognition - Teachable Machine
-                    </option>
-                    <option value="pose-recognition-teachable-machine" className="bg-canvas text-fg">
-                      Pose Recognition - Teachable Machine
-                    </option>
-                    <option value="custom-ai-agent" className="bg-canvas text-fg">
-                      Custom AI Agent
-                    </option>
-                    <option value="exercises" className="bg-canvas text-fg">
-                      Exercises
-                    </option>
+                    {(projectDay === 'day1'
+                      ? [
+                          ['rule-based-process', 'Rule Based Process'],
+                          ['text-recognition', 'Text Recognition'],
+                          ['image-recognition', 'Image Recognition'],
+                          ['live-object-detection', 'Live Object Detection'],
+                        ]
+                      : projectDay === 'day2'
+                        ? [
+                            ['custom-ai-agent', 'Custom AI Agent'],
+                            ['rag-chatbot', 'RAG Chatbot'],
+                            ['ai-agent', 'AI Agent'],
+                          ]
+                        : []
+                    ).map(([value, label]) => (
+                      <option key={value} value={value} className="bg-canvas text-fg">
+                        {label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
