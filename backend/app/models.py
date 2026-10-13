@@ -543,6 +543,60 @@ class SettingsUpdateResponse(BaseModel):
     settings: AgentSettings
     message: str = "Settings updated successfully"
 
+GUARDRAIL_NEVER_RULES_MAX = 10
+GUARDRAIL_NEVER_RULE_CHARS = 200
+GUARDRAIL_HANDOFF_CHARS = 300
+
+
+def _check_never_rules(v):
+    if v is None:
+        return v
+    v = [r.strip() for r in v if r and r.strip()]
+    if len(v) > GUARDRAIL_NEVER_RULES_MAX:
+        raise ValueError(f"At most {GUARDRAIL_NEVER_RULES_MAX} 'Also never' lines")
+    for r in v:
+        if len(r) > GUARDRAIL_NEVER_RULE_CHARS:
+            raise ValueError(f"Each 'Also never' line can be at most {GUARDRAIL_NEVER_RULE_CHARS} characters")
+    return v
+
+
+class AgentGuardrails(BaseModel):
+    """Custom AI Agent guardrails: what the agent must never do. All off by default."""
+    agent_id: str = Field(..., description="Agent ID these guardrails belong to")
+    stay_on_topic: bool = False
+    no_made_up_facts: bool = False
+    protect_client_data: bool = False
+    block_instruction_changes: bool = False
+    never_rules: List[str] = Field(default_factory=list)
+    handoff_message: str = Field("", max_length=GUARDRAIL_HANDOFF_CHARS)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @field_validator('never_rules')
+    @classmethod
+    def validate_never_rules(cls, v):
+        return _check_never_rules(v)
+
+
+class GuardrailsUpdateRequest(BaseModel):
+    stay_on_topic: Optional[bool] = None
+    no_made_up_facts: Optional[bool] = None
+    protect_client_data: Optional[bool] = None
+    block_instruction_changes: Optional[bool] = None
+    never_rules: Optional[List[str]] = None
+    handoff_message: Optional[str] = Field(None, max_length=GUARDRAIL_HANDOFF_CHARS)
+
+    @field_validator('never_rules')
+    @classmethod
+    def validate_never_rules(cls, v):
+        return _check_never_rules(v)
+
+
+class GuardrailsUpdateResponse(BaseModel):
+    success: bool = True
+    guardrails: AgentGuardrails
+    message: str = "Guardrails updated successfully"
+
+
 class KnowledgeType(str, Enum):
     TEXT = "text"
     FILE = "file"

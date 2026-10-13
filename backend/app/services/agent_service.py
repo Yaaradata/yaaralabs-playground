@@ -4,7 +4,10 @@ from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from google.cloud import firestore
 
-from ..models import Agent, Persona, AgentCreateRequest, PersonaUpdateRequest, AgentSettings, SettingsUpdateRequest
+from ..models import (
+    Agent, Persona, AgentCreateRequest, PersonaUpdateRequest, AgentSettings, SettingsUpdateRequest,
+    AgentGuardrails, GuardrailsUpdateRequest,
+)
 from ..config import gcp_clients
 from .vertex_ai_service import VertexAIService
 
@@ -20,6 +23,7 @@ class AgentService:
         self._agents_collection = None
         self._personas_collection = None
         self._settings_collection = None
+        self._guardrails_collection = None
         self._vertex_ai = None
         self._initialized = False
     
@@ -36,6 +40,7 @@ class AgentService:
             self._agents_collection = self._firestore_client.collection('agents')
             self._personas_collection = self._firestore_client.collection('personas')
             self._settings_collection = self._firestore_client.collection('agent_settings')
+            self._guardrails_collection = self._firestore_client.collection('agent_guardrails')
             
             # Initialize Vertex AI service
             self._vertex_ai = VertexAIService(self._project_id)
@@ -72,6 +77,11 @@ class AgentService:
         self._ensure_initialized()
         return self._settings_collection
     
+    @property
+    def guardrails_collection(self):
+        self._ensure_initialized()
+        return self._guardrails_collection
+
     @property
     def vertex_ai(self):
         self._ensure_initialized()
@@ -396,3 +406,30 @@ class AgentService:
             logger.error(f"❌ Failed to update settings: {e}")
             raise Exception(f"Failed to update settings: {str(e)}")
 
+    def get_guardrails(self, agent_id: str) -> Optional[AgentGuardrails]:
+        """Saved guardrails, or None when the agent has never saved any (chat then behaves as before)."""
+        try:
+            doc = self.guardrails_collection.document(agent_id).get()
+            if not doc.exists:
+                return None
+            return AgentGuardrails(**{**doc.to_dict(), "agent_id": agent_id})
+        except Exception as e:
+            logger.error(f"❌ Failed to get guardrails: {e}")
+            raise Exception(f"Failed to get guardrails: {str(e)}")
+
+    def update_guardrails(self, agent_id: str, request: GuardrailsUpdateRequest) -> AgentGuardrails:
+        """Save guardrails; fields left out keep their saved (or default) value."""
+        try:
+            current = self.get_guardrails(agent_id) or AgentGuardrails(agent_id=agent_id)
+            data = current.model_dump()
+            data.update(request.model_dump(exclude_none=True))
+            data["agent_id"] = agent_id
+            data["updated_at"] = datetime.now(timezone.utc)
+            guardrails = AgentGuardrails(**data)
+            self.guardrails_collection.document(agent_id).set(guardrails.model_dump())
+            logger.info(f"✅ Guardrails updated for agent: {agent_id} (on: "
+                        f"{[k for k in ('stay_on_topic', 'no_made_up_facts', 'protect_client_data', 'block_instruction_changes') if data.get(k)]})")
+            return guardrails
+        except Exception as e:
+            logger.error(f"❌ Failed to update guardrails: {e}")
+            raise Exception(f"Failed to update guardrails: {str(e)}")

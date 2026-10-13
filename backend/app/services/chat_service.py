@@ -11,6 +11,7 @@ from .knowledge_service import KnowledgeService
 from .rules_service import RulesService
 from .vertex_ai_service import VertexAIService
 from .image_search_service import get_image_search_service
+from . import agent_guardrails
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +115,8 @@ class ChatService:
                 "response": "",
                 "images": []  # Relevant images for the response
             }
+            # Set by the LLM step; stays empty when the LLM is skipped (rule exact response, guardrail block)
+            image_info: Dict[str, Any] = {}
             
             # Load agent and persona
             agent = self.agent_service.get_agent(request.agent_id)
@@ -128,6 +131,24 @@ class ChatService:
             settings = self.agent_service.get_settings(request.agent_id)
             model_name = settings.model if settings else None
             logger.info(f"📋 Using model from settings: {model_name}")
+            
+            # Guardrails (None when the agent never saved any: chat behaves exactly as before)
+            try:
+                guardrails = self.agent_service.get_guardrails(request.agent_id)
+            except Exception as e:
+                logger.warning(f"⚠️ Could not load guardrails, continuing without them: {e}")
+                guardrails = None
+            trace["guardrails_on"] = agent_guardrails.active_switches(guardrails)
+            
+            # Step 0: deterministic guardrail pre-check - refused before rules and before any model call
+            blocked_reply = agent_guardrails.check_blocked_request(guardrails, request.message)
+            if blocked_reply:
+                logger.info("🛡️ Guardrail blocked the request: block_instruction_changes (LLM skipped)")
+                trace["guardrail_blocked"] = "block_instruction_changes"
+                trace["llm_used"] = False
+                trace["response"] = blocked_reply
+                chat_log = self._log_chat(request, blocked_reply, trace)
+                return {"response": blocked_reply, "trace": trace, "chat_id": chat_log.chat_id, "images": []}
             
             # Step 1: Detect conditions and build context
             conditions = self._detect_conditions(request.message, model_name)
@@ -251,6 +272,9 @@ class ChatService:
                 # If a rule matched, disable web search - rules should provide the response
                 rule_matched = matched_rule is not None
                 enable_web_search = len(knowledge_items) == 0 and not force_kb and not rule_matched
+                if enable_web_search and "no_made_up_facts" in trace["guardrails_on"]:
+                    enable_web_search = False
+                    logger.info("🛡️ Guardrail 'Don't make things up' on - web search disabled")
                 if enable_web_search:
                     logger.info("🌐 No KB matches found - enabling Google Search Grounding for web search")
                 elif rule_matched:
@@ -263,7 +287,8 @@ class ChatService:
                     knowledge_items,
                     conversation_history,
                     enable_web_search=enable_web_search,
-                    rule_constraints=rule_action_results  # Pass rule action results as constraints
+                    rule_constraints=rule_action_results,  # Pass rule action results as constraints
+                    guardrails=guardrails
                 )
                 
                 # Generate response using Vertex AI (with optional web search)
@@ -284,7 +309,9 @@ class ChatService:
                     trace["web_search_used"] = False
                 
                 # Parse confidence and response (with follow-up questions and image requirements)
-                response, confidence, follow_up_questions, image_info = self._parse_confidence_response_v2(raw_response, persona)
+                response, confidence, follow_up_questions, image_info = self._parse_confidence_response_v2(
+                    raw_response, persona, keep_short_answer=bool(trace["guardrails_on"])
+                )
                 trace["confidence"] = confidence
                 trace["follow_up_questions"] = follow_up_questions
                 trace["image_info"] = image_info
@@ -309,6 +336,13 @@ class ChatService:
                 logger.info(f"📊 Response confidence: {confidence}%")
                 if follow_up_questions:
                     logger.info(f"❓ Follow-up questions requested: {len(follow_up_questions)}")
+            
+            # Guardrail: hide PAN, Aadhaar, account and demat numbers in the final reply
+            if "protect_client_data" in trace["guardrails_on"]:
+                response, masked = agent_guardrails.mask_client_data(response)
+                if masked:
+                    trace["guardrail_masked"] = masked
+                    logger.info(f"🛡️ Guardrail hid {masked} client detail(s)")
             
             trace["llm_used"] = llm_used
             trace["response"] = response
@@ -581,7 +615,7 @@ Remember:
         # Don't append sources as text - frontend handles display via web_sources in trace
         return response
     
-    def _build_prompt_with_confidence(self, persona: Persona, message: str, knowledge_items: List[Knowledge], conversation_history: List[Dict[str, str]] = None, enable_web_search: bool = False, rule_constraints: Dict[str, Any] = None) -> str:
+    def _build_prompt_with_confidence(self, persona: Persona, message: str, knowledge_items: List[Knowledge], conversation_history: List[Dict[str, str]] = None, enable_web_search: bool = False, rule_constraints: Dict[str, Any] = None, guardrails: Any = None) -> str:
         """Build prompt that asks LLM to provide confidence score with response and follow-up questions"""
         
         # Map response_length to actual instructions
@@ -620,6 +654,9 @@ LANGUAGE: {persona.language}
 === CUSTOM GUIDELINES ===
 {guidelines}
 """
+        
+        # Guardrails: what the agent must never do ("" when none are set)
+        prompt += agent_guardrails.build_guardrail_prompt(guardrails, persona)
         
         # Add rule-based constraints if any
         if rule_constraints:
@@ -823,7 +860,7 @@ Return ONLY the JSON object, no other text.
             # This ensures the system still works even if JSON parsing fails
             return (raw_response, -1)
     
-    def _parse_confidence_response_v2(self, raw_response: str, persona: Persona, confidence_threshold: int = 70) -> tuple:
+    def _parse_confidence_response_v2(self, raw_response: str, persona: Persona, confidence_threshold: int = 70, keep_short_answer: bool = False) -> tuple:
         """
         Parse the LLM response to extract answer, confidence, follow-up questions, and image requirements.
         Returns (answer, confidence, follow_up_questions, image_info) tuple.
@@ -923,7 +960,8 @@ Return ONLY the JSON object, no other text.
                     
                     logger.info(f"📝 Enhanced answer with {len(questions_needed)} follow-up questions")
                     return (enhanced_answer.strip(), confidence, questions_needed, image_info)
-                elif answer and len(answer) > 50:
+                elif answer and (len(answer) > 50 or keep_short_answer):
+                    # With guardrails on, a short honest "I don't know" or refusal must not be replaced
                     # LLM provided a substantial answer even with low confidence - use it
                     # The answer might already contain the follow-up questions in natural language
                     logger.info(f"📝 Low confidence ({confidence}%) but LLM provided detailed answer - using it")

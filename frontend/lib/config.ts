@@ -121,6 +121,10 @@ export const config = {
         get: (agentId: string) => `/agent/${agentId}/settings`,
         update: (agentId: string) => `/agent/${agentId}/settings`,
       },
+      guardrails: {
+        get: (agentId: string) => `/agent/${agentId}/guardrails`,
+        update: (agentId: string) => `/agent/${agentId}/guardrails`,
+      },
       knowledge: {
         text: '/kb/text',
         file: '/kb/file',
