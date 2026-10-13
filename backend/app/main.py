@@ -16,6 +16,7 @@ from .api import (
     demo_projects,
     scratch_services,
     agents,
+    agent_kb,
     knowledge,
     rules,
     chat,
@@ -172,6 +173,7 @@ logger.info("🔍 Attempting to register agent routers...")
 # Services are only initialized when endpoints are called (via Depends)
 routers_to_register = [
     ("agents", agents.router, "/agent"),
+    ("agent_kb", agent_kb.router, "/agent"),
     ("knowledge", knowledge.router, "/kb"),
     ("rules", rules.router, "/rules"),
     ("chat", chat.router, "/chat"),
