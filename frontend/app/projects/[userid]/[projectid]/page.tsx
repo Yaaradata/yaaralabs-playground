@@ -18,7 +18,7 @@ import { cleanupSessionWithReason, SessionCleanupReason } from '../../../../lib/
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { AgentGuardrails, CUSTODY_EXAMPLE, EMPTY_GUARDRAILS, GUARDRAIL_LABELS, type Guardrails } from '../../../../components/AgentGuardrails'
+import { TeachYourAgent } from '../../../../components/TeachYourAgent'
 import RuleBasedProcessProject, { resolveRbpEditor } from '../../../../components/RuleBasedProcessProject'
 import ConfusionMatrixLab from '../../../../components/ConfusionMatrix'
 import RagChatbotLab from '../../../../components/RagChatbot'
@@ -79,11 +79,6 @@ interface ChatMessage {
   webSearchUsed?: boolean;
   webSources?: WebSource[];
   images?: ImageResult[];
-  /** From the chat trace, shown as chips under the reply (not kept on history reload) */
-  guardrailBlocked?: string;
-  guardrailMasked?: number;
-  ruleMatched?: string;
-  kbUsed?: boolean;
 }
 
 // Rule condition interface for WHEN dropdown
@@ -186,18 +181,15 @@ export default function ProjectDetailsPage() {
   const exerciseBackRef = useRef<(() => void) | null>(null);
   const [showPreview, setShowPreview] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [trainSection, setTrainSection] = useState<'persona' | 'guardrails' | 'knowledge' | 'actions' | 'tools' | 'forms'>('persona');
+  const [trainSection, setTrainSection] = useState<'settings' | 'persona' | 'knowledge' | 'actions' | 'tools' | 'forms' | 'teach'>('settings');
   const contentAreaRef = useRef<HTMLDivElement>(null);
   
-  // Model settings: the model is chosen on AI PERSONA; embedding model and similarity are sent back as saved
+  // Project Settings state
   const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-flash-lite');
   const [selectedEmbeddingModel, setSelectedEmbeddingModel] = useState<string>('text-embedding-005');
   const [selectedSimilarity, setSelectedSimilarity] = useState<string>('Cosine similarity');
-
-  // RULES & GUARDRAILS (instructions live in persona.guidelines)
-  const [guardrails, setGuardrails] = useState<Guardrails>(EMPTY_GUARDRAILS);
-  const [isSavingGuardrails, setIsSavingGuardrails] = useState(false);
-  const [guardrailsSaveMessage, setGuardrailsSaveMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [settingsSaveMessage, setSettingsSaveMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   
   // Chat state for USE AI tab
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -459,23 +451,22 @@ export default function ProjectDetailsPage() {
     if (selectedProject && selectedProject.type === 'custom-ai-agent' && selectedProject.agent_id) {
       loadPersona(selectedProject.agent_id);
       loadSettings(selectedProject.agent_id);
-      loadGuardrails(selectedProject.agent_id);
     }
   }, [selectedProject]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Refresh persona when switching to persona section (ensures data is fresh after edits elsewhere)
+  // Refresh persona when switching to persona section (ensures data is fresh after Teach Your Agent changes)
   useEffect(() => {
     if (trainSection === 'persona' && selectedProject?.agent_id && activeTab === 'train') {
       loadPersona(selectedProject.agent_id);
     }
   }, [trainSection, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // USE AI: rule names for the "Action: ..." chip under replies
+  // Load settings when switching to settings section
   useEffect(() => {
-    if (activeTab === 'publish' && selectedProject?.agent_id && selectedProject.type === 'custom-ai-agent') {
-      loadRules();
+    if (trainSection === 'settings' && selectedProject?.agent_id && activeTab === 'train') {
+      loadSettings(selectedProject.agent_id);
     }
-  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [trainSection, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load persona from API
   const loadPersona = async (agentId: string) => {
@@ -510,75 +501,66 @@ export default function ProjectDetailsPage() {
     }
   };
 
-  // Save the model chosen on AI PERSONA (embedding model and similarity unchanged)
-  const saveModel = async (agentId: string) => {
-    const response = await fetch(`${config.apiBaseUrl}${config.api.agents.settings.update(agentId)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+  // Save persona to API
+  // Save project settings
+  const saveSettings = async () => {
+    if (!selectedProject?.agent_id) {
+      console.warn('Cannot save settings: No agent_id found for project');
+      setSettingsSaveMessage({ type: 'error', text: 'Cannot save settings: Project not found' });
+      return;
+    }
+
+    setIsSavingSettings(true);
+    setSettingsSaveMessage(null);
+
+    try {
+      // Log project settings to console/terminal
+      const settingsData = {
+        agent_id: selectedProject.agent_id,
+        project_name: selectedProject.name,
         model: selectedModel,
         embedding_model: selectedEmbeddingModel,
         similarity: selectedSimilarity,
-      }),
-    });
-    if (!response.ok) throw new Error('Failed to save model');
-  };
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log('=== PROJECT SETTINGS SAVE ===');
+      console.log('Agent ID:', settingsData.agent_id);
+      console.log('Project Name:', settingsData.project_name);
+      console.log('Model:', settingsData.model);
+      console.log('Embedding Model:', settingsData.embedding_model);
+      console.log('Similarity:', settingsData.similarity);
+      console.log('Timestamp:', settingsData.timestamp);
+      console.log('Full Settings Object:', JSON.stringify(settingsData, null, 2));
+      console.log('============================');
+      
+      // Call the actual API endpoint
+      const response = await fetch(`${config.apiBaseUrl}${config.api.agents.settings.update(selectedProject.agent_id)}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: selectedModel,
+          embedding_model: selectedEmbeddingModel,
+          similarity: selectedSimilarity,
+        }),
+      });
 
-  // Load guardrails from API (all off when never saved)
-  const loadGuardrails = async (agentId: string) => {
-    try {
-      const response = await fetch(`${config.apiBaseUrl}${config.api.agents.guardrails.get(agentId)}`);
       if (response.ok) {
-        const g = await response.json();
-        setGuardrails({
-          stay_on_topic: Boolean(g.stay_on_topic),
-          no_made_up_facts: Boolean(g.no_made_up_facts),
-          protect_client_data: Boolean(g.protect_client_data),
-          block_instruction_changes: Boolean(g.block_instruction_changes),
-          never_rules: Array.isArray(g.never_rules) ? g.never_rules : [],
-          handoff_message: g.handoff_message || '',
-        });
+        const data = await response.json();
+        console.log('✅ Settings saved to backend:', data);
+        setSettingsSaveMessage({ type: 'success', text: 'Settings saved successfully!' });
+        setTimeout(() => setSettingsSaveMessage(null), 3000);
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: 'Failed to save settings' }));
+        throw new Error(errorData.detail || 'Failed to save settings');
       }
     } catch (error) {
-      console.error('Error loading guardrails:', error);
-    }
-  };
-
-  // Save RULES & GUARDRAILS: instructions go to persona.guidelines, the rest to /guardrails, in one click
-  const saveGuardrails = async () => {
-    if (!selectedProject?.agent_id) return;
-    const agentId = selectedProject.agent_id;
-    setIsSavingGuardrails(true);
-    setGuardrailsSaveMessage(null);
-    const instructions = personaGuidelines.split('\n').map(l => l.trim()).filter(Boolean).join('\n');
-    const body = {
-      ...guardrails,
-      never_rules: guardrails.never_rules.map(l => l.trim()).filter(Boolean),
-      handoff_message: guardrails.handoff_message.trim(),
-    };
-    try {
-      const [personaRes, guardRes] = await Promise.all([
-        fetch(`${config.apiBaseUrl}${config.api.agents.persona.update(agentId)}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ guidelines: instructions }),
-        }),
-        fetch(`${config.apiBaseUrl}${config.api.agents.guardrails.update(agentId)}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        }),
-      ]);
-      if (!personaRes.ok || !guardRes.ok) throw new Error('Failed to save rules and guardrails');
-      setPersonaGuidelines(instructions);
-      setGuardrails(body);
-      setGuardrailsSaveMessage({ type: 'success', text: 'Rules and guardrails saved. The agent uses them from the next message.' });
-      setTimeout(() => setGuardrailsSaveMessage(null), 4000);
-    } catch (error) {
-      console.error('Error saving guardrails:', error);
-      setGuardrailsSaveMessage({ type: 'error', text: 'Could not save. Please try again.' });
+      console.error('Error saving settings:', error);
+      setSettingsSaveMessage({ type: 'error', text: 'Failed to save settings. Please try again.' });
     } finally {
-      setIsSavingGuardrails(false);
+      setIsSavingSettings(false);
     }
   };
 
@@ -599,11 +581,11 @@ export default function ProjectDetailsPage() {
           role: personaRole,
           tone: personaTone,
           response_length: personaResponseLength,
+          guidelines: personaGuidelines,
         }),
       });
 
       if (response.ok) {
-        await saveModel(selectedProject.agent_id);
         setPersonaSaveMessage({ type: 'success', text: 'Persona saved successfully!' });
         // Update the project name in state if it changed
         if (selectedProject && personaName !== selectedProject.name) {
@@ -1329,11 +1311,7 @@ export default function ProjectDetailsPage() {
         timestamp: new Date(),
         webSearchUsed,
         webSources,
-        images,
-        guardrailBlocked: data.trace?.guardrail_blocked || undefined,
-        guardrailMasked: data.trace?.guardrail_masked || undefined,
-        ruleMatched: data.trace?.rule_matched || undefined,
-        kbUsed: Array.isArray(data.trace?.kb_used) && data.trace.kb_used.length > 0,
+        images
       };
 
       setChatMessages(prev => [...prev, assistantMessage]);
@@ -1826,7 +1804,7 @@ export default function ProjectDetailsPage() {
                     <button
                       onClick={() => {
                         setActiveTab('train');
-                        setTrainSection('persona');
+                        setTrainSection('settings');
                       }}
                       className={`px-6 py-2.5 font-semibold text-sm transition-all duration-200 rounded-md ${
                         activeTab === 'train'
@@ -1943,33 +1921,6 @@ export default function ProjectDetailsPage() {
                                     : <ReactMarkdown remarkPlugins={[remarkGfm]}>{addInlineCitations(message.content, [])}</ReactMarkdown>
                                   }
                                 </div>
-
-                                {/* What happened: guardrails, actions and knowledge base (from the trace) */}
-                                {(message.guardrailBlocked || message.guardrailMasked || message.ruleMatched || message.kbUsed) && (
-                                  <div className="flex flex-wrap gap-1.5 mt-3">
-                                    {message.guardrailBlocked && (
-                                      <span className="text-xs text-fg/70 bg-raised/60 rounded-full px-2.5 py-0.5">
-                                        🛡 Blocked by guardrail: {GUARDRAIL_LABELS[message.guardrailBlocked] || message.guardrailBlocked}
-                                      </span>
-                                    )}
-                                    {message.guardrailMasked ? (
-                                      <span className="text-xs text-fg/70 bg-raised/60 rounded-full px-2.5 py-0.5">
-                                        🛡 Hid {message.guardrailMasked} client {message.guardrailMasked === 1 ? 'detail' : 'details'}
-                                      </span>
-                                    ) : null}
-                                    {message.ruleMatched && (
-                                      <span className="text-xs text-fg/70 bg-raised/60 rounded-full px-2.5 py-0.5">
-                                        {(() => {
-                                          const rule = savedRules.find(r => r.rule_id === message.ruleMatched);
-                                          return rule ? `Action: ${rule.name}` : 'Action fired';
-                                        })()}
-                                      </span>
-                                    )}
-                                    {message.kbUsed && (
-                                      <span className="text-xs text-fg/70 bg-raised/60 rounded-full px-2.5 py-0.5">From your knowledge base</span>
-                                    )}
-                                  </div>
-                                )}
                                 
                                 {/* Image Gallery */}
                                 {message.images && message.images.length > 0 && (
@@ -2144,10 +2095,28 @@ export default function ProjectDetailsPage() {
                       /* TRAIN Tab - Training Sections */
                       <div className="space-y-2">
                         <button
+                          onClick={() => setTrainSection('settings')}
+                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                            trainSection === 'settings'
+                              ? 'bg-purple-brand/20 text-white'
+                              : 'text-fg/60 hover:bg-raised/30 hover:text-fg'
+                          }`}
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          <div className="flex-1 text-left">
+                            <div className="font-medium text-sm">PROJECT SETTINGS</div>
+                            <div className="text-xs text-fg/50">Manage project configuration</div>
+                          </div>
+                        </button>
+
+                        <button
                           onClick={() => setTrainSection('persona')}
                           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                             trainSection === 'persona'
-                              ? 'bg-purple-brand/20 text-fg'
+                              ? 'bg-purple-brand/20 text-white'
                               : 'text-fg/60 hover:bg-raised/30 hover:text-fg'
                           }`}
                         >
@@ -2156,24 +2125,7 @@ export default function ProjectDetailsPage() {
                           </svg>
                           <div className="flex-1 text-left">
                             <div className="font-medium text-sm">AI PERSONA</div>
-                            <div className="text-xs text-fg/50">How the agent talks</div>
-                          </div>
-                        </button>
-
-                        <button
-                          onClick={() => setTrainSection('guardrails')}
-                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                            trainSection === 'guardrails'
-                              ? 'bg-purple-brand/20 text-fg'
-                              : 'text-fg/60 hover:bg-raised/30 hover:text-fg'
-                          }`}
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                          </svg>
-                          <div className="flex-1 text-left">
-                            <div className="font-medium text-sm">RULES &amp; GUARDRAILS</div>
-                            <div className="text-xs text-fg/50">What it must always do, and never do</div>
+                            <div className="text-xs text-fg/50">How the Agent talks and acts</div>
                           </div>
                         </button>
 
@@ -2184,7 +2136,7 @@ export default function ProjectDetailsPage() {
                           }}
                           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                             trainSection === 'knowledge'
-                              ? 'bg-purple-brand/20 text-fg'
+                              ? 'bg-purple-brand/20 text-white'
                               : 'text-fg/60 hover:bg-raised/30 hover:text-fg'
                           }`}
                         >
@@ -2201,7 +2153,7 @@ export default function ProjectDetailsPage() {
                           onClick={() => setTrainSection('actions')}
                           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                             trainSection === 'actions'
-                              ? 'bg-purple-brand/20 text-fg'
+                              ? 'bg-purple-brand/20 text-white'
                               : 'text-fg/60 hover:bg-raised/30 hover:text-fg'
                           }`}
                         >
@@ -2214,6 +2166,22 @@ export default function ProjectDetailsPage() {
                           </div>
                         </button>
 
+                        <button
+                          onClick={() => setTrainSection('teach')}
+                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                            trainSection === 'teach'
+                              ? 'bg-purple-brand/20 text-white'
+                              : 'text-fg/60 hover:bg-raised/30 hover:text-fg'
+                          }`}
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                          <div className="flex-1 text-left">
+                            <div className="font-medium text-sm">TEACH YOUR AGENT</div>
+                            <div className="text-xs text-fg/50">Train your Agent with chat</div>
+                          </div>
+                        </button>
                       </div>
                     ) : null}
                       </div>
@@ -2222,7 +2190,98 @@ export default function ProjectDetailsPage() {
                     {/* Main Content Area */}
                     <div ref={contentAreaRef} className="flex-1 min-w-0 overflow-y-auto relative bg-canvas dark-scrollbar">
                       <div className="py-8 px-6">
-                        {trainSection === 'persona' ? (
+                        {trainSection === 'settings' ? (
+                          /* PROJECT SETTINGS Section */
+                          <div>
+                            <div className="mb-6">
+                              <h2 className="text-2xl font-bold text-fg mb-2">PROJECT SETTINGS</h2>
+                              <p className="text-sm text-fg/60">Manage your project configuration and preferences</p>
+                            </div>
+
+                            <div className="space-y-6">
+                              {/* Model Selection */}
+                              <div className="bg-canvas border border-magenta-brand/20 rounded-xl p-6">
+                                <h3 className="text-lg font-semibold text-fg mb-4">Model Configuration</h3>
+                                <div className="space-y-4">
+                                  <div>
+                                    <label className="block text-sm font-medium text-fg/80 mb-2">Model</label>
+                                    <select
+                                      value={selectedModel}
+                                      onChange={(e) => setSelectedModel(e.target.value)}
+                                      className="w-full px-4 py-3 bg-card border border-magenta-brand/20 text-fg rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-brand focus:border-transparent"
+                                    >
+                                      <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
+                                      <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                                    </select>
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-sm font-medium text-fg/80 mb-2">Embedding Model</label>
+                                    <select
+                                      value={selectedEmbeddingModel}
+                                      onChange={(e) => setSelectedEmbeddingModel(e.target.value)}
+                                      className="w-full px-4 py-3 bg-card border border-magenta-brand/20 text-fg rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-brand focus:border-transparent"
+                                    >
+                                      <option value="text-embedding-005">text-embedding-005</option>
+                                      <option value="gemini-embedding-001">gemini-embedding-001</option>
+                                      <option value="text-multilingual-embedding-002">text-multilingual-embedding-002</option>
+                                    </select>
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-sm font-medium text-fg/80 mb-2">Similarity</label>
+                                    <select
+                                      value={selectedSimilarity}
+                                      onChange={(e) => setSelectedSimilarity(e.target.value)}
+                                      className="w-full px-4 py-3 bg-card border border-magenta-brand/20 text-fg rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-brand focus:border-transparent"
+                                    >
+                                      <option value="Cosine similarity">Cosine similarity</option>
+                                      <option value="Euclidean Distance">Euclidean Distance</option>
+                                      <option value="Jaccard Similarity">Jaccard Similarity</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Save Button */}
+                              <div className="mt-6 flex justify-end">
+                                <button
+                                  onClick={saveSettings}
+                                  disabled={isSavingSettings}
+                                  className="px-6 py-2.5 bg-purple-brand text-white rounded-lg font-medium hover:bg-[#a855c7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                >
+                                  {isSavingSettings ? (
+                                    <>
+                                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                      </svg>
+                                      <span>Saving...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                      <span>Save Settings</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                              
+                              {/* Success/Error Message */}
+                              {settingsSaveMessage && (
+                                <div className={`mt-4 px-4 py-3 rounded-lg ${
+                                  settingsSaveMessage.type === 'success' 
+                                    ? 'bg-green-500/20 border border-green-500/50 text-green-400' 
+                                    : 'bg-red-500/20 border border-red-500/50 text-red-400'
+                                }`}>
+                                  {settingsSaveMessage.text}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : trainSection === 'persona' ? (
                           /* AI PERSONA Section */
                           <div>
                           <div className="flex items-center justify-between mb-4">
@@ -2348,38 +2407,77 @@ export default function ProjectDetailsPage() {
                               </div>
                             </div>
 
-                            {/* Model (Ex 6: switch Flash-Lite -> Pro and re-run the pressure questions) */}
+                            {/* Chat Guidelines */}
                             <div>
-                              <label htmlFor="persona-model" className="block text-sm font-semibold text-fg mb-2">Model</label>
-                              <p className="text-sm text-fg/60 mb-3">The AI model that writes the replies</p>
-                              <select
-                                id="persona-model"
-                                value={selectedModel}
-                                onChange={(e) => setSelectedModel(e.target.value)}
-                                className="w-full px-4 py-3 bg-card border border-magenta-brand/20 text-fg rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-brand focus:border-transparent"
-                              >
-                                <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite (fast, cheaper)</option>
-                                <option value="gemini-2.5-pro">Gemini 2.5 Pro (stronger, slower)</option>
-                              </select>
+                              <label className="block text-sm font-semibold text-fg mb-2">Chat Guidelines</label>
+                              <p className="text-sm text-fg/60 mb-3">Set clear rules for how your agent should respond in chat channels</p>
+                              <div className="space-y-2">
+                                {personaGuidelines.split('\n').filter(g => g.trim()).map((guideline, index) => (
+                                  <div key={index} className="flex items-center gap-2 group">
+                                    <input
+                                      type="text"
+                                      value={guideline}
+                                      onChange={(e) => {
+                                        const guidelines = personaGuidelines.split('\n').filter(g => g.trim());
+                                        guidelines[index] = e.target.value;
+                                        setPersonaGuidelines(guidelines.join('\n'));
+                                      }}
+                                      className="flex-1 px-4 py-3 bg-card border border-magenta-brand/20 text-fg rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-brand focus:border-transparent"
+                                    />
+                                    <button
+                                      onClick={() => {
+                                        const guidelines = personaGuidelines.split('\n').filter(g => g.trim());
+                                        guidelines.splice(index, 1);
+                                        setPersonaGuidelines(guidelines.join('\n'));
+                                      }}
+                                      className="p-2 text-fg/50 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="Delete guideline"
+                                    >
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    </button>
+                            </div>
+                                ))}
+                                {/* Add new guideline input */}
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="text"
+                                    placeholder="Add a new guideline..."
+                                    className="flex-1 px-4 py-3 bg-[#1a1a1a] border border-dashed border-magenta-brand/30 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-brand focus:border-transparent placeholder-fg/50"
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                                        const newGuideline = e.currentTarget.value.trim();
+                                        setPersonaGuidelines(prev => 
+                                          prev.trim() ? `${prev}\n${newGuideline}` : newGuideline
+                                        );
+                                        e.currentTarget.value = '';
+                                      }
+                                    }}
+                                  />
+                                </div>
+                                {/* Add new button */}
+                                <button
+                                  onClick={() => {
+                                    const input = document.querySelector('input[placeholder="Add a new guideline..."]') as HTMLInputElement;
+                                    if (input && input.value.trim()) {
+                                      setPersonaGuidelines(prev => 
+                                        prev.trim() ? `${prev}\n${input.value.trim()}` : input.value.trim()
+                                      );
+                                      input.value = '';
+                                    }
+                                  }}
+                                  className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                  </svg>
+                                  Add new
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      ) : trainSection === 'guardrails' ? (
-                        /* RULES & GUARDRAILS Section */
-                        <AgentGuardrails
-                          instructions={personaGuidelines ? personaGuidelines.split('\n') : []}
-                          onInstructions={(lines) => setPersonaGuidelines(lines.join('\n'))}
-                          guardrails={guardrails}
-                          onGuardrails={setGuardrails}
-                          onSave={saveGuardrails}
-                          onLoadExample={() => {
-                            setPersonaGuidelines(CUSTODY_EXAMPLE.instructions.join('\n'));
-                            setGuardrails({ ...CUSTODY_EXAMPLE.guardrails, never_rules: [...CUSTODY_EXAMPLE.guardrails.never_rules] });
-                            setGuardrailsSaveMessage({ type: 'success', text: 'Custody example loaded. Press Save Rules & Guardrails to use it.' });
-                          }}
-                          saving={isSavingGuardrails}
-                          message={guardrailsSaveMessage}
-                        />
                       ) : trainSection === 'knowledge' ? (
                         /* KNOWLEDGE BASE Section */
                         <div>
@@ -3691,6 +3789,41 @@ export default function ProjectDetailsPage() {
                               </div>
                             </div>
                           </div>
+                        </div>
+                      ) : trainSection === 'teach' ? (
+                        /* TEACH YOUR AGENT Section */
+                        <div className="h-full min-h-[600px]">
+                          {selectedProject?.agent_id ? (
+                            <TeachYourAgent
+                              agentId={selectedProject.agent_id}
+                              sessionId={actualSessionId}
+                              agentName={personaName || selectedProject.name}
+                              onPersonaUpdated={() => {
+                                // Refresh persona data
+                                if (selectedProject?.agent_id) {
+                                  loadPersona(selectedProject.agent_id);
+                                }
+                              }}
+                              onKnowledgeAdded={() => {
+                                // Refresh knowledge list
+                                loadKnowledgeList();
+                              }}
+                              onActionCreated={() => {
+                                // Refresh rules list
+                                loadRules();
+                              }}
+                            />
+                          ) : (
+                            <div className="flex items-center justify-center h-full">
+                              <div className="text-center">
+                                <svg className="w-16 h-16 text-fg/20 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                  </svg>
+                                <p className="text-fg/40">Agent not initialized</p>
+                                <p className="text-fg/30 text-sm mt-1">Please wait while your agent is being set up...</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
                           <div className="text-center py-12">

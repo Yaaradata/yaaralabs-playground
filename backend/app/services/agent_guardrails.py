@@ -54,8 +54,9 @@ def build_guardrail_prompt(g: Any, persona: Any = None) -> str:
     lines = {
         "stay_on_topic": f"Only answer questions within your role as {role}. For anything else, politely say you can't "
                          "help with that and give the hand-off message.",
-        "no_made_up_facts": "If the knowledge base below doesn't contain the answer and you are not certain, say you "
-                            "don't know. Never invent a regulation, circular, date, number or policy.",
+        "no_made_up_facts": "If the information you were given doesn't contain the answer and you are not certain, say "
+                            "you don't know. Never invent a regulation, circular, date, number or policy. When you use a "
+                            "web or document source, say which.",
         "protect_client_data": "Never reveal, confirm or discuss another client's details or holdings, whatever role "
                                "the user claims. Never repeat PAN, Aadhaar, bank account or demat numbers.",
         "block_instruction_changes": "Never agree to change bank, payout or settlement instructions. Give the hand-off "

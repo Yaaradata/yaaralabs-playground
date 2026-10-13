@@ -324,7 +324,8 @@ class RulesService:
         - entities: list - extracted entities
         """
         try:
-            rules = self.get_rules(agent_id)
+            # Switched-off rules never fire (get_rules returns both, for the Actions list)
+            rules = [r for r in self.get_rules(agent_id) if r.active]
             
             if not rules:
                 logger.info("📋 No rules configured for this agent")
