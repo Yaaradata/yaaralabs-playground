@@ -40,3 +40,6 @@ Old `rag-chatbot` / `ai-agent` guest projects keep opening in `RagChatbotLab` / 
 - p10 (approve an SSI change) with "Block bank and settlement changes" on is stopped by the guardrail pre-check
   before the agent loop, so request_ssi_change is never even offered to the model. With the switch off, the tool
   runs (sandbox) and the card shows it.
+- AI Agent's tool rule also says "Indian equity trades settle T+1 unless the user says otherwise" (the AI Agent lab's
+  instructions carry the same line). Without it the model sometimes called settlement_date with T+2 for p01.
+- Agent steps show a tool's result as its key fields in words (settlement date, weekday, valid…), not raw JSON.

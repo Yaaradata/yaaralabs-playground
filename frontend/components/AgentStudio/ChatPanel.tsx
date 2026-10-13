@@ -28,15 +28,26 @@ const argsText = (args?: Record<string, unknown>) =>
     .map(([k, v]) => `${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`)
     .join(', ');
 
-/** A tool result in a few words. */
+// The fields that say what a tool found, in the order worth reading
+const KEY_FIELDS = ['answer', 'settlement_date', 'weekday', 'date', 'result', 'valid', 'company', 'symbol', 'holder_type',
+  'state', 'trading', 'settlement', 'holiday', 'status', 'note', 'warning'];
+
+/** A tool result in a few words: its most telling fields, not the raw JSON. */
 function shortResult(result: unknown): string {
   if (result == null) return '';
-  if (typeof result === 'string') return result.length > 140 ? `${result.slice(0, 140)}…` : result;
+  if (typeof result !== 'object') {
+    const s = String(result);
+    return s.length > 140 ? `${s.slice(0, 140)}…` : s;
+  }
   const r = result as Record<string, unknown>;
   if (typeof r.error === 'string') return `error: ${r.error}`;
-  if (typeof r.truncated === 'string') return `${r.truncated.slice(0, 140)}…`;
+  if (typeof r.truncated === 'string' || typeof r.json === 'string') return 'see the full result in the trace';
+  const parts = KEY_FIELDS.filter((k) => r[k] !== undefined && r[k] !== null && typeof r[k] !== 'object')
+    .slice(0, 3)
+    .map((k) => `${k.replace(/_/g, ' ')} ${String(r[k])}`);
+  if (parts.length) return parts.join(', ');
   const s = JSON.stringify(r);
-  return s.length > 160 ? `${s.slice(0, 160)}…` : s;
+  return s.length > 120 ? `${s.slice(0, 120)}…` : s;
 }
 
 function AnswerText({ text, count, onCite }: { text: string; count: number; onCite: (n: number) => void }) {

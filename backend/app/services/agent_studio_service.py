@@ -43,7 +43,7 @@ RAG_RULE = ("Answer using only the numbered passages. Cite every passage you use
             "cover this.' and give the hand-off message. Greetings and small talk need no passages.")
 TOOL_RULE = ("Use your tools when they help. Use search_knowledge_base for SEBI or company documents, web_search for "
              "anything current or not in the documents, and the calculators for any date or number. Say which source "
-             "you used.")
+             "you used.\nIndian equity trades settle T+1 (one business day after the trade) unless the user says otherwise.")
 FORCE_KB_RULE = "An action requires it: call search_knowledge_base before you answer, and answer from what it returns."
 EMPTY_KB_REPLY = "Add documents in Knowledge Base first."
 WEB_PROMPT = "Search the web for: {query}. Reply with 3-6 short factual bullet points and nothing else."
