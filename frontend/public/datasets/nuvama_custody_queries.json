@@ -168,63 +168,87 @@
   "test": [
     {
       "id": 1,
-      "text": "When do we get paid for the Carraro dividend?",
-      "expected": "Corporate action",
-      "note": "New wording"
+      "text": "Can you send me a copy of this month's custody invoice?",
+      "expected": "Fees & billing",
+      "note": "Invoice is billing."
     },
     {
       "id": 2,
-      "text": "Has the bonus from L&T reached us?",
-      "expected": "Corporate action",
-      "note": "Short"
+      "text": "Why have we been charged a transaction fee on every trade?",
+      "expected": "Fees & billing",
+      "note": "A question about a charge, asked calmly."
     },
     {
       "id": 3,
-      "text": "Why did my bill go up?",
+      "text": "The GST on the June invoice is calculated on the wrong amount.",
       "expected": "Fees & billing",
-      "note": "Short and informal"
+      "note": "A billing error, not a complaint: no anger, no threat."
     },
     {
       "id": 4,
-      "text": "Please resend the August invoice to our finance team.",
-      "expected": "Fees & billing",
-      "note": "'Resend' sounds like a statement request"
+      "text": "When will the TCS dividend be paid to our account?",
+      "expected": "Corporate action",
+      "note": "Dividend payment."
     },
     {
       "id": 5,
-      "text": "What else do you need to finish our account opening?",
-      "expected": "Onboarding & KYC",
-      "note": "New wording"
+      "text": "Please confirm how many bonus shares we will receive from the Wipro issue.",
+      "expected": "Corporate action",
+      "note": "Bonus entitlement."
     },
     {
       "id": 6,
-      "text": "You people lost money for our investors.",
-      "expected": "Complaint / escalation",
-      "note": "Angry, no topic words"
+      "text": "Is the record date for the ITC split before our purchase settles?",
+      "expected": "Corporate action",
+      "note": "Record dates are corporate actions, even with a trade in the sentence."
     },
     {
       "id": 7,
-      "text": "I want to make a statement about the failed trade.",
-      "expected": "Complaint / escalation",
-      "note": "Trap word 'statement'"
+      "text": "What documents do you need to open a custody account for our new fund?",
+      "expected": "Onboarding & KYC",
+      "note": "Account opening."
     },
     {
       "id": 8,
-      "text": "The statement is wrong and the dividend is missing.",
-      "expected": "Complaint / escalation",
-      "note": "Mixes two topics; a person should decide"
+      "text": "Our authorised signatory has left the company. Please remove her.",
+      "expected": "Onboarding & KYC",
+      "note": "Signatory change."
     },
     {
       "id": 9,
-      "text": "What's the weather in Mumbai?",
-      "expected": "None of these",
-      "note": "Out of scope: confidence should be low"
+      "text": "Our FATCA self-certification is due. Where do we submit it?",
+      "expected": "Onboarding & KYC",
+      "note": "FATCA/CRS is KYC."
     },
     {
       "id": 10,
+      "text": "This is the second time the dividend was credited late. I want to speak to your manager.",
+      "expected": "Complaint / escalation",
+      "note": "Mentions a dividend, but the client wants a senior person."
+    },
+    {
+      "id": 11,
+      "text": "We are not happy with your service and are reviewing whether to stay with you.",
+      "expected": "Complaint / escalation",
+      "note": "Threat to leave."
+    },
+    {
+      "id": 12,
+      "text": "You charged us twice and nobody has fixed it in a month. Escalate this now.",
+      "expected": "Complaint / escalation",
+      "note": "Mentions a charge, but it is an escalation."
+    },
+    {
+      "id": 13,
+      "text": "What's the weather in Mumbai?",
+      "expected": "None of these",
+      "note": "Off-topic: no desk handles it."
+    },
+    {
+      "id": 14,
       "text": "Hello",
       "expected": "None of these",
-      "note": "Out of scope: confidence should be low"
+      "note": "A greeting, not a request."
     }
   ]
 }

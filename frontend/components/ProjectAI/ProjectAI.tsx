@@ -38,7 +38,8 @@ interface MlState {
 }
 
 const MODEL_TYPES: Record<string, string> = {
-  logistic_regression_ovr: 'Logistic Regression',
+  sentence_embed_lr: 'Logistic Regression (with sentence meaning)',
+  logistic_regression_ovr: 'Logistic Regression (word matching)',
   logistic_regression: 'Logistic Regression',
   distilbert: 'DistilBERT',
   efficientnet: 'Image model (EfficientNet)',

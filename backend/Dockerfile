@@ -45,6 +45,12 @@ RUN mkdir -p /app/.cache/huggingface && \
     print('✅ DistilBERT model cached successfully')" || \
     echo "⚠️ Warning: Failed to pre-download DistilBERT model (will download at runtime)"
 
+# Bake the Text Recognition sentence-embedding model into the image (text_embed_service.py loads it
+# from TEXT_EMBED_MODEL_DIR with local_files_only=True, so nothing is downloaded at request time).
+# BAAI/bge-small-en-v1.5: ~130 MB (config, tokenizer, safetensors weights).
+ENV TEXT_EMBED_MODEL=BAAI/bge-small-en-v1.5     TEXT_EMBED_MODEL_DIR=/app/models/text-embed
+RUN python -c "from huggingface_hub import snapshot_download;     snapshot_download('BAAI/bge-small-en-v1.5', local_dir='/app/models/text-embed',     allow_patterns=['*.json', '*.txt', 'model.safetensors'])" &&     python -c "from transformers import AutoTokenizer, AutoModel;     AutoTokenizer.from_pretrained('/app/models/text-embed', local_files_only=True);     AutoModel.from_pretrained('/app/models/text-embed', local_files_only=True);     print('✅ Text embedding model baked into the image')"
+
 # Copy application code
 COPY . .
 

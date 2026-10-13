@@ -263,7 +263,23 @@ async def startup_event():
     logger.info("✅ YaaraLabs Playground API starting")
     logger.info(f"Environment: {settings.node_env}")
     logger.info(f"GCP Project: {settings.google_cloud_project}")
+    _warm_text_embedder()
     logger.info("🚀 Startup complete (no background workers)")
+
+
+def _warm_text_embedder():
+    """Load the Text Recognition sentence-embedding model in a background thread, so the first
+    learner's training or prediction doesn't wait for it. Startup itself is not delayed."""
+    import threading
+
+    def warm():
+        try:
+            from .text_embed_service import embed_text_trainer
+            embed_text_trainer.embedder.warm()
+        except Exception as e:  # noqa: BLE001 - training / prediction will retry the load
+            logger.warning(f"Text embedding model warm-up failed: {e}")
+
+    threading.Thread(target=warm, name="text-embed-warmup", daemon=True).start()
 
 @app.on_event("shutdown")
 async def shutdown_event():

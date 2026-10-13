@@ -27,6 +27,7 @@ from ...services.guest_service import GuestService
 from ...services.project_service import ProjectService
 from ...training_service import trainer, distilbert_trainer
 from ...text_ovr_service import ovr_text_trainer, MODEL_TYPE as OVR_MODEL_TYPE
+from ...text_embed_service import embed_text_trainer, MODEL_TYPE as EMBED_MODEL_TYPE
 from ...image_training_service import image_trainer, ImageRecognitionTrainer
 from ...services.image_url_fetcher import fetch_image_from_url, ImageUrlError
 from ...training_job_service import training_job_service
@@ -1102,19 +1103,22 @@ async def start_guest_training(
 
 
 async def _train_text_ovr_model(
-    session_id: str, project_id: str, training_examples: list, guest_service: GuestService
+    session_id: str, project_id: str, training_examples: list, guest_service: GuestService,
+    model_type: str = EMBED_MODEL_TYPE,
 ) -> TrainingResponse:
-    """Train the Logistic Regression (one classifier per label) text model and save it."""
+    """Train a Logistic Regression text model and save it: the sentence-meaning model (default,
+    text_embed_service) or the older word-only one (logistic_regression_ovr, text_ovr_service)."""
+    text_trainer, suffix = (ovr_text_trainer, "ovr") if model_type == OVR_MODEL_TYPE else (embed_text_trainer, "embed")
     try:
-        logger.info("Using Logistic Regression (per-label confidence) for text classification")
+        logger.info("Training text model %s", model_type)
         training_result = await asyncio.get_event_loop().run_in_executor(
-            _training_executor, ovr_text_trainer.train_model, training_examples
+            _training_executor, text_trainer.train_model, training_examples
         )
-        model_filename = f"model_{project_id}_ovr.pkl"
+        model_filename = f"model_{project_id}_{suffix}.pkl"
         model_path = f"models/{project_id}/{model_filename}"
         await asyncio.get_event_loop().run_in_executor(
             _training_executor,
-            ovr_text_trainer.save_model_to_gcs,
+            text_trainer.save_model_to_gcs,
             gcp_clients.get_bucket(),
             model_path,
             training_result["model"],
@@ -1126,7 +1130,7 @@ async def _train_text_ovr_model(
             'model.accuracy': training_result.get('accuracy'),
             'model.loss': None,
             'model.labels': training_result.get('labels', []),
-            'model.modelType': OVR_MODEL_TYPE,
+            'model.modelType': model_type,
             'model.trainedAt': now_iso,
             'model.endpointUrl': f"/api/guests/session/{session_id}/projects/{project_id}/predict",
             'status': 'trained',
@@ -1186,13 +1190,15 @@ async def _train_text_recognition_project(
             logger.info(f"Training with {len(training_examples)} examples")
             logger.info(f"Example labels: {[ex.label for ex in training_examples]}")
             
-            # Model chosen on the training page dropdown (optional).
-            # 'logistic_regression' -> ML-for-Kids-style classifier (text_ovr_service).
+            # Model chosen on the training page (optional).
+            # 'logistic_regression' (the page's default) / 'sentence_embed_lr' -> Logistic Regression with
+            #   sentence meaning (text_embed_service); 'logistic_regression_ovr' -> the older word-only model.
             # anything else / not sent -> existing behaviour below (DistilBERT default).
             requested_model = ((training_config.modelType if training_config else None) or "").strip().lower()
-            if requested_model in ("logistic_regression", OVR_MODEL_TYPE):
+            if requested_model in ("logistic_regression", EMBED_MODEL_TYPE, OVR_MODEL_TYPE):
                 return await _train_text_ovr_model(
-                    session_id, project_id, training_examples, guest_service
+                    session_id, project_id, training_examples, guest_service,
+                    OVR_MODEL_TYPE if requested_model == OVR_MODEL_TYPE else EMBED_MODEL_TYPE,
                 )
 
             # Use DistilBERT by default (better accuracy for text classification)
@@ -1586,6 +1592,21 @@ async def predict_guest_text(
                         'confidence': prob['confidence']
                     } for prob in prediction_result['all_probabilities'][1:]  # every other label, highest first
                 ]
+            )
+        elif model_type == EMBED_MODEL_TYPE:
+            # Logistic Regression with sentence meaning (embeddings x familiarity)
+            prediction_result = await asyncio.get_event_loop().run_in_executor(
+                None,
+                embed_text_trainer.predict_from_gcs,
+                prediction_request.text,
+                gcp_clients.get_bucket(),
+                model_gcs_path,
+            )
+            return PredictionResponse(
+                success=True,
+                label=prediction_result['label'],
+                confidence=prediction_result['confidence'],
+                alternatives=prediction_result['alternatives']
             )
         elif model_type == OVR_MODEL_TYPE:
             # Logistic Regression, one classifier per label: independent confidence per label

@@ -212,7 +212,8 @@ export default function LearnPage() {
   const isTextProject = !selectedProject?.type || selectedProject.type === 'text-recognition';
   const modelTypeLabel = (type: string | null) => {
     if (!type) return 'Unknown';
-    if (type === 'logistic_regression_ovr') return 'Logistic Regression';
+    if (type === 'sentence_embed_lr') return 'Logistic Regression (with sentence meaning)';
+    if (type === 'logistic_regression_ovr') return 'Logistic Regression (word matching)';
     if (type === 'distilbert') return 'DistilBERT';
     if (type === 'logistic_regression') return 'Logistic Regression (previous version)';
     return type;
@@ -520,7 +521,7 @@ export default function LearnPage() {
           const { projectStatus, currentJob } = statusData;
           setTrainedModelType(statusData.modelType ?? null);
           if (statusData.modelType === 'distilbert') setSelectedTextModel('distilbert');
-          else if (statusData.modelType === 'logistic_regression_ovr') setSelectedTextModel('logistic_regression');
+          else if (statusData.modelType === 'sentence_embed_lr' || statusData.modelType === 'logistic_regression_ovr') setSelectedTextModel('logistic_regression');
           
           // Update current training job
           setCurrentTrainingJob(currentJob);
@@ -700,7 +701,7 @@ export default function LearnPage() {
 
            setTrainedModel(completedModel);
            // The model just trained (the status read before training still shows the project's old default)
-           if (isTextProject) setTrainedModelType(selectedTextModel === 'distilbert' ? 'distilbert' : 'logistic_regression_ovr');
+           if (isTextProject) setTrainedModelType(selectedTextModel === 'distilbert' ? 'distilbert' : 'sentence_embed_lr');
 
            // Save to localStorage
            const modelKey = `yaaralabs_playground_model_${actualSessionId}_${actualProjectId}`;
@@ -933,8 +934,8 @@ export default function LearnPage() {
   const [showTestData, setShowTestData] = useState(false);
 
   const textModels = [
-    { id: 'logistic_regression' as const, name: 'Logistic Regression', hint: 'Fast, counts key words' },
-    { id: 'distilbert' as const, name: 'DistilBERT', hint: 'Slower, reads meaning' },
+    { id: 'logistic_regression' as const, name: 'Logistic Regression', hint: 'Fast, understands meaning' },
+    { id: 'distilbert' as const, name: 'DistilBERT', hint: 'Slower, a bigger language model' },
   ];
   const modelSelector = isTextProject ? (
     <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Model to train">

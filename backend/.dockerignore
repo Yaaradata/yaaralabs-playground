@@ -11,3 +11,5 @@ logs/
 distilbert_results/
 app/data/exercises/runtime/
 .git/
+# the text embedding model is downloaded during the build, never copied from a laptop
+models/

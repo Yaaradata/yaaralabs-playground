@@ -42,12 +42,18 @@ const byLabel = (label: string) => data.queries.filter((q) => q.label === label)
 const answerKey = (n = 6): Choices =>
   Object.fromEntries(L.flatMap((l) => byLabel(l.label).slice(0, n).map((q) => [q.id, q.label])));
 
-test('file: 4 labels, 20 queries (5 each), 10 test messages', () => {
+test('file: 4 labels, 20 queries (5 each), 14 test messages (3 per label + 2 off-topic)', () => {
   assert.equal(L.length, 4);
   assert.equal(data.queries.length, 20);
   for (const l of L) assert.equal(byLabel(l.label).length, 5, l.label);
-  assert.equal(data.test.length, 10);
+  assert.equal(data.test.length, 14);
   assert.equal(data.test.filter((t) => t.expected === 'None of these').length, 2);
+  for (const l of L) assert.equal(data.test.filter((t) => t.expected === l.label).length, 3, l.label);
+  // only the 4 labels or "None of these", and none of the test messages is a training query
+  const names = new Set([...L.map((l) => l.label), 'None of these']);
+  for (const t of data.test) assert.ok(names.has(t.expected), t.expected);
+  const train = new Set(data.queries.map((q) => q.text.trim().toLowerCase()));
+  for (const t of data.test) assert.ok(!train.has(t.text.trim().toLowerCase()), t.text);
 });
 
 test('label names: readable and allowed by the label rules', () => {

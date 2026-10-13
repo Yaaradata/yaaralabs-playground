@@ -42,23 +42,23 @@ def test_default_still_splits_on_commas():
 
 def test_split_false_keeps_commas():
     project = _project()
-    _add(_service(project), [("Statement bhej do please, quarter end wala.", "Statement request"),
-                             ("Has yesterday's sale of 5,000 TCS shares settled?", "Settlement status")], split=False)
-    assert _texts(project, "Statement request") == ["Statement bhej do please, quarter end wala."]
-    assert _texts(project, "Settlement status") == ["Has yesterday's sale of 5,000 TCS shares settled?"]
+    _add(_service(project), [("Invoice bhej do please, quarter end wala.", "Fees and billing"),
+                             ("Have the 5,000 TCS bonus shares been credited?", "Corporate action")], split=False)
+    assert _texts(project, "Fees and billing") == ["Invoice bhej do please, quarter end wala."]
+    assert _texts(project, "Corporate action") == ["Have the 5,000 TCS bonus shares been credited?"]
 
 
 def test_skip_existing_is_idempotent_and_keeps_own_examples():
-    own = TextExample(text="my own example", label="Statement request")
+    own = TextExample(text="my own example", label="Onboarding and KYC")
     project = _project([own])
     service = _service(project)
-    items = [("Can you resend last week's contract notes?", "Statement request"), ("Why is the custody fee higher?", "Fees and billing")]
+    items = [("Please update our registered address, and the PAN too.", "Onboarding and KYC"), ("Why is the custody fee higher?", "Fees and billing")]
     first = _add(service, items, split=False, skip_existing=True)
     second = _add(service, items, split=False, skip_existing=True)
     assert first["skipped"] == 0 and second["skipped"] == 2
     assert len(project.dataset.examples) == 3  # own + 2, nothing duplicated
-    assert "my own example" in _texts(project, "Statement request")
-    assert set(project.dataset.labels) == {"Statement request", "Fees and billing"}
+    assert "my own example" in _texts(project, "Onboarding and KYC")
+    assert set(project.dataset.labels) == {"Onboarding and KYC", "Fees and billing"}
 
 
 def test_skip_existing_ignores_case_and_spacing_but_not_label():
