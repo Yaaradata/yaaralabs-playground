@@ -3,14 +3,14 @@
   "description": "Trainer-written custody client queries for the Day 1 text classification exercise. 4 labels, 5 queries per label (participants label all 5 per label), plus 10 unseen test messages.",
   "labels": [
     {
-      "label": "Corporate action",
-      "desk": "Corporate Actions",
-      "covers": "Dividends, bonus, rights, splits, buybacks, mergers, record dates and entitlements, including tax on them."
-    },
-    {
       "label": "Fees & billing",
       "desk": "Billing",
       "covers": "Custody fees, invoices, GST on invoices, charges and fee schedules."
+    },
+    {
+      "label": "Corporate action",
+      "desk": "Corporate Actions",
+      "covers": "Dividends, bonus, rights, splits, buybacks, mergers, record dates and entitlements, including tax on them."
     },
     {
       "label": "Onboarding & KYC",

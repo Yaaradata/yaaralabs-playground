@@ -3930,7 +3930,9 @@ export default function ProjectDetailsPage() {
                     <span>{selectedProject.name}</span>
             </h1>
           </div>
-                <div className={`grid grid-cols-1 gap-8 mx-auto ${['text-recognition', 'image-recognition'].includes(selectedProject.type) ? 'md:grid-cols-3 max-w-6xl' : 'md:grid-cols-2 max-w-4xl'}`}>
+                <div className={`grid grid-cols-1 gap-8 mx-auto ${
+                  selectedProject.type === 'text-recognition' ? 'md:grid-cols-2 xl:grid-cols-4 max-w-7xl' :
+                  selectedProject.type === 'image-recognition' ? 'md:grid-cols-3 max-w-6xl' : 'md:grid-cols-2 max-w-4xl'}`}>
             {/* Train Card */}
             <div className="bg-canvas border border-magenta-brand/20 rounded-xl p-8 text-center hover:bg-purple-brand/5 transition-all duration-300 flex flex-col">
               <h2 className="text-2xl md:text-3xl font-bold text-blue-400 mb-6">
@@ -3983,6 +3985,26 @@ export default function ProjectDetailsPage() {
                   className="w-full bg-purple-brand hover:bg-purple-brand/90 text-white py-3 px-6 rounded-lg font-medium transition-all duration-300"
                 >
                   Use the AI
+                </button>
+              </div>
+            )}
+
+            {/* Evaluate Card (Text Recognition): the trained model on sample messages it has never seen */}
+            {selectedProject.type === 'text-recognition' && (
+              <div className="bg-canvas border border-magenta-brand/20 rounded-xl p-8 text-center hover:bg-purple-brand/5 transition-all duration-300 flex flex-col">
+                <h2 className="text-2xl md:text-3xl font-bold text-pink-brand mb-6">
+                  4. Evaluate
+                </h2>
+                <p className="text-fg mb-8 text-sm md:text-base leading-relaxed flex-grow">
+                  Check your trained model on sample messages it has never seen
+                </p>
+                <button
+                  onClick={() => {
+                    window.location.href = `/projects/${urlUserId}/${urlProjectId}/learn#evaluate`;
+                  }}
+                  className="w-full bg-purple-brand hover:bg-purple-brand/90 text-white py-3 px-6 rounded-lg font-medium transition-all duration-300"
+                >
+                  Evaluate
                 </button>
               </div>
             )}

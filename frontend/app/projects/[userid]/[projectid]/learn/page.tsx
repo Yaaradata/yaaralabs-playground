@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Header from '../../../../../components/Header';
@@ -788,11 +788,14 @@ export default function LearnPage() {
     }
   };
 
-  // "3. Test" on the project page opens this page at #test. The page keeps loading for a while
-  // (project, images, model status) and can re-render, so keep the test section in view until it
-  // has stayed put for a moment, or until the learner scrolls themselves.
+  // The project page can open this page at #test or #evaluate ("3. Evaluate" also opens the sample
+  // data table). The page keeps loading for a while (project, images, model status) and can
+  // re-render, so keep that section in view until it has stayed put for a moment, or until the
+  // learner scrolls themselves.
   useEffect(() => {
-    if (window.location.hash !== '#test') return;
+    const target = window.location.hash.slice(1);
+    if (target !== 'test' && target !== 'evaluate') return;
+    if (target === 'evaluate') setShowTestData(true);
     let stableSince = 0;
     let lastTop = NaN;
     let stopped = false;
@@ -801,7 +804,7 @@ export default function LearnPage() {
     events.forEach((e) => window.addEventListener(e, stop, { passive: true }));
     const started = Date.now();
     const timer = window.setInterval(() => {
-      const el = document.getElementById('test');
+      const el = document.getElementById(target);
       if (stopped || Date.now() - started > 20000) {
         window.clearInterval(timer);
         return;
@@ -929,21 +932,31 @@ export default function LearnPage() {
   const sampleTestSet = useSampleTestSet(isTextProject ? trainingStats.labelBreakdown.map((l) => l.name) : []);
   const [showTestData, setShowTestData] = useState(false);
 
+  const textModels = [
+    { id: 'logistic_regression' as const, name: 'Logistic Regression', hint: 'Fast, counts key words' },
+    { id: 'distilbert' as const, name: 'DistilBERT', hint: 'Slower, reads meaning' },
+  ];
   const modelSelector = isTextProject ? (
-    <div className="flex items-center gap-2">
-      <label htmlFor="text-model-select" className="text-fg/70 text-sm whitespace-nowrap">
-        Model to train
-      </label>
-      <select
-        id="text-model-select"
-        value={selectedTextModel}
-        onChange={(e) => setSelectedTextModel(e.target.value as 'logistic_regression' | 'distilbert')}
-        disabled={isTraining}
-        className="w-full sm:w-56 bg-canvas border border-magenta-brand/40 focus:border-pink-brand focus:outline-none text-fg text-sm rounded-lg px-3 py-2 disabled:opacity-50"
-      >
-        <option value="logistic_regression">Logistic Regression</option>
-        <option value="distilbert">DistilBERT</option>
-      </select>
+    <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Model to train">
+      {textModels.map((m) => {
+        const on = selectedTextModel === m.id;
+        return (
+          <button
+            key={m.id}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            onClick={() => setSelectedTextModel(m.id)}
+            disabled={isTraining}
+            className={`rounded-lg border-2 px-3 py-2 text-left transition-colors disabled:opacity-50 ${
+              on ? 'border-pink-brand bg-purple-brand/15' : 'border-magenta-brand/25 hover:border-magenta-brand/50'
+            }`}
+          >
+            <span className="block text-sm font-semibold text-fg">{m.name}</span>
+            <span className="block text-xs text-fg/60">{m.hint}</span>
+          </button>
+        );
+      })}
     </div>
   ) : null;
 
@@ -951,6 +964,7 @@ export default function LearnPage() {
     // Clear previous model state
     setTrainedModel(null);
     setTestResult(null);
+    setShowTestData(false);
     
     // Start training the new model
     await handleTrainModel();
@@ -971,6 +985,33 @@ export default function LearnPage() {
     console.log('🔮 Sample test prediction:', { text, label: data.label, confidence: data.confidence, alternatives: data.alternatives });
     return { label: data.label, confidence: Math.round(data.confidence * 100) / 100 };
   };
+
+  // Text projects: after "Train model", step through training -> deploying -> ready for testing,
+  // a few seconds each, before the test area opens (training itself is often near-instant)
+  const TRAIN_STEPS = ['Training model', 'Deploying model', 'Ready for testing'] as const;
+  const STEP_MS = 2500;
+  const [trainPhase, setTrainPhase] = useState<number | null>(null); // index into TRAIN_STEPS
+  const phaseStartedAt = useRef(0);
+  const startTextTraining = (fresh: boolean) => {
+    phaseStartedAt.current = Date.now();
+    setTrainPhase(0);
+    void (fresh ? handleTrainNewModel() : handleTrainModel());
+  };
+  useEffect(() => {
+    if (trainPhase === null) return;
+    if (trainPhase === 0) {
+      if (isTraining) return; // still training: stay on step 1
+      if (trainedModel?.status !== 'available') {
+        if (!trainedModel || trainedModel.status !== 'training') setTrainPhase(null); // failed: the alert already explained
+        return;
+      }
+      const wait = Math.max(0, STEP_MS - (Date.now() - phaseStartedAt.current));
+      const t = window.setTimeout(() => setTrainPhase(1), wait);
+      return () => window.clearTimeout(t);
+    }
+    const t = window.setTimeout(() => setTrainPhase(trainPhase === 1 ? 2 : null), trainPhase === 1 ? STEP_MS : 1500);
+    return () => window.clearTimeout(t);
+  }, [trainPhase, isTraining, trainedModel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleTestModel = async () => {
     if (!testText.trim() || !trainedModel || !actualSessionId || !actualProjectId) return;
@@ -1362,6 +1403,9 @@ export default function LearnPage() {
     console.log('Describe model clicked');
   };
 
+  // "Use the AI" opens once a trained model is ready (and the training steps have finished)
+  const canUseAI = trainedModel?.status === 'available' && !isTraining && trainPhase === null;
+
   // Check if training requirements are met
   const canTrainModel = trainingStats.totalExamples >= 5 && trainingStats.totalLabels >= 2;
 
@@ -1414,7 +1458,7 @@ export default function LearnPage() {
       <Header />
 
       <main className="pt-[88px] pb-6 px-4 sm:px-6 lg:px-8">
-        <div>
+        <div className="min-h-[calc(100dvh-112px)] flex flex-col">
           {/* Back to Project + title, one row */}
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 mb-4">
             <Link
@@ -1430,10 +1474,132 @@ export default function LearnPage() {
               <span className="text-fg">Machine learning </span>
               <span className="text-pink-brand">models</span>
             </h1>
-            <span />
+            {canUseAI ? (
+            <Link
+              href={`/projects/${urlUserId}/${urlProjectId}/make`}
+              className="justify-self-end inline-flex items-center gap-2 bg-purple-brand hover:bg-purple-brand/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            >
+              Move to next - Use the AI
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+            ) : <span />}
           </div>
 
-          {/* Two Column Layout */}
+          <div className={isTextProject ? 'grid gap-4 lg:grid-cols-[minmax(0,25rem)_minmax(0,1fr)] items-start' : undefined}>
+          {isTextProject ? (
+            /* Text: one compact card: what you collected, which model, train, status */
+            (() => {
+              const counts = trainingStats.labelBreakdown.map((l) => l.count);
+              const same = counts.length > 0 && counts.every((n) => n === counts[0]);
+              return (
+                <section className="bg-canvas border border-magenta-brand/20 rounded-xl px-5 py-4 shadow-lg min-w-0" aria-labelledby="train-h">
+                  <h2 id="train-h" className="text-lg font-bold text-fg">Train your model</h2>
+                  {trainingStats.labelBreakdown.length > 0 ? (
+                    <>
+                      <p className="text-sm text-fg/80 mt-1">
+                        {same
+                          ? <>You&apos;ve collected <b>{counts[0]} samples each</b> for {counts.length} labels:</>
+                          : <>You&apos;ve collected <b>{trainingStats.totalExamples} samples</b> across {counts.length} labels:</>}
+                      </p>
+                      <ul className="flex flex-wrap gap-2 mt-2">
+                        {trainingStats.labelBreakdown.map((l) => (
+                          <li key={l.name} className="rounded-full border border-magenta-brand/30 bg-purple-brand/10 px-3 py-1 text-xs font-medium text-fg">
+                            {l.name} <span className="tabular-nums text-fg/60">· {l.count}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <p className="text-sm text-fg/50 italic mt-1">No examples collected yet</p>
+                  )}
+
+                  {!canTrainModel ? (
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      <p className="flex-1 min-w-0 text-sm text-pink-brand">
+                        You need at least 2 labels and 5 examples to train a model.
+                      </p>
+                      <button onClick={handleGoToTrain} className="bg-purple-brand hover:bg-purple-brand/90 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                        Go to Collect Data
+                      </button>
+                    </div>
+                  ) : (
+                    trainPhase !== null ? (
+                    <fieldset disabled className="mt-4 space-y-3">
+                      {modelSelector}
+                      <div className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-purple-brand/40 text-white px-6 py-2.5 text-sm font-semibold">
+                        {trainPhase < 2 ? (
+                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />
+                        ) : (
+                          <span aria-hidden="true">✓</span>
+                        )}
+                        {TRAIN_STEPS[trainPhase]}{trainPhase < 2 ? '…' : null}
+                      </div>
+                    </fieldset>
+                    ) : (
+                    <div className="mt-4 space-y-3">
+                      {modelSelector}
+                      {isTraining ? (
+                        <p className="inline-flex items-center gap-2 text-sm font-semibold text-pink-brand px-2" role="status">
+                          <span className="w-4 h-4 border-2 border-magenta-brand/20 border-t-pink-brand rounded-full animate-spin" aria-hidden="true" />
+                          Training…{currentTrainingJob?.progress ? ` ${currentTrainingJob.progress}%` : ''}
+                        </p>
+                      ) : trainedModel ? (
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--success)]" role="status">
+                            <span aria-hidden="true">✓</span>
+                            {trainedModel.status === 'available' ? 'Model trained' : `Model ${trainedModel.status}`}
+                          </p>
+                          <button
+                            onClick={() => startTextTraining(true)}
+                            className="border border-magenta-brand/50 text-fg hover:bg-purple-brand/10 px-4 py-2 rounded-lg text-sm font-medium"
+                          >
+                            Train again
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => startTextTraining(false)}
+                          className="w-full bg-purple-brand hover:bg-purple-brand/90 text-white px-6 py-2.5 rounded-lg text-sm font-semibold"
+                        >
+                          Train model
+                        </button>
+                      )}
+                    </div>
+                    )
+                  )}
+
+                  {trainedModel && !isTraining && trainPhase === null && (
+                    <div className="mt-4 pt-3 border-t border-fg/10 text-xs text-fg/60 space-y-1">
+                      <p className="flex items-center gap-1.5 text-sm text-fg font-medium">
+                        <span className={`w-2 h-2 rounded-full ${trainedModel.status === 'available' ? 'bg-[var(--success)]' : 'bg-pink-brand'}`} aria-hidden="true" />
+                        {trainedModel.status === 'available' ? 'Model ready' : `Model ${trainedModel.status}`}
+                        {trainedModelType && <span className="text-fg/60 font-normal">· {modelTypeLabel(trainedModelType)}</span>}
+                      </p>
+                      <p>Trained {trainedModel.startedAt.toLocaleString('en-US', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                      <p>Deleted after {trainedModel.expiresAt.toLocaleString('en-US', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                      <button
+                        onClick={handleDeleteModel}
+                        disabled={isDeletingModel}
+                        className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-lg border border-red-500/60 text-red-400 hover:bg-red-500/10 hover:text-red-300 px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50"
+                      >
+                        {isDeletingModel ? (
+                          <span className="w-4 h-4 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin" aria-hidden="true" />
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        )}
+                        {isDeletingModel ? 'Deleting…' : 'Delete this model'}
+                      </button>
+                    </div>
+                  )}
+                </section>
+              );
+            })()
+          ) : (
+          /* Images: two columns, what you have done and what's next */
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             {/* Left Box: What have you done? */}
             <div className="bg-canvas border border-magenta-brand/20 rounded-xl px-5 py-4 shadow-lg">
@@ -1472,9 +1638,69 @@ export default function LearnPage() {
               </div>
             </div>
           </div>
+          )}
 
-            {/* Bottom section: training state, the test card, model details */}
-            <div>
+            {/* Bottom section: training state, the test card, model details (text: the right column, scrolls inside the window) */}
+            <div className={isTextProject ? 'min-w-0 space-y-4 lg:max-h-[calc(100dvh-14.5rem)] lg:overflow-y-auto lg:pr-1' : undefined}>
+
+             {/* Text: the right column before testing opens: an empty state, or the training stages */}
+             {isTextProject && !isInitializing && (!trainedModel || isTraining || trainPhase !== null) && (() => {
+               const busy = trainPhase !== null || isTraining;
+               const stage = trainPhase ?? 0;
+               const STEP_TEXT = [
+                 `Learning patterns from your ${trainingStats.totalExamples} examples`,
+                 'Putting the model online so you can test it',
+                 'Your model is ready. Opening the test area…',
+               ];
+               const steps = busy ? TRAIN_STEPS : (['Train', 'Test your own text', 'Evaluate on sample data'] as const);
+               return (
+                 <div className="bg-canvas border border-magenta-brand/20 rounded-xl px-6 py-10 lg:min-h-[26rem] flex flex-col items-center justify-center text-center" aria-live="polite">
+                   <div className="w-14 h-14 rounded-full bg-purple-brand/15 flex items-center justify-center mb-4">
+                     {busy && stage < 2 ? (
+                       <span className="w-8 h-8 border-[3px] border-magenta-brand/20 border-t-pink-brand rounded-full animate-spin" aria-hidden="true" />
+                     ) : busy ? (
+                       <span className="text-2xl text-[var(--success)]" aria-hidden="true">✓</span>
+                     ) : (
+                       <svg className="w-7 h-7 text-pink-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+                       </svg>
+                     )}
+                   </div>
+                   <h3 className="text-xl font-semibold text-fg">
+                     {busy ? `${TRAIN_STEPS[stage]}${stage < 2 ? '…' : ''}` : 'No model yet'}
+                   </h3>
+                   <p className="text-sm text-fg/60 mt-1 max-w-md">
+                     {busy ? STEP_TEXT[stage] : 'Pick a model on the left and click Train model. You can then test it here.'}
+                   </p>
+
+                   {/* three steps on a line */}
+                   <ol className="mt-8 w-full max-w-xl grid grid-cols-3">
+                     {steps.map((label, i) => {
+                       const done = busy && (i < stage || stage === 2);
+                       const active = busy && i === stage && !done;
+                       return (
+                         <li key={label} className="relative flex flex-col items-center gap-2 px-2">
+                           {i > 0 && (
+                             <span
+                               className={`absolute top-3.5 right-1/2 w-full h-0.5 -z-0 ${done || active ? 'bg-pink-brand/70' : 'bg-fg/15'}`}
+                               aria-hidden="true"
+                             />
+                           )}
+                           <span
+                             className={`relative z-10 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold border-2 ${
+                               done ? 'bg-[var(--success)] border-[var(--success)] text-black' : active ? 'bg-canvas border-pink-brand text-pink-brand' : 'bg-canvas border-fg/20 text-fg/50'
+                             }`}
+                           >
+                             {done ? '✓' : i + 1}
+                           </span>
+                           <span className={`text-xs ${active ? 'text-fg font-medium' : done ? 'text-[var(--success)]' : 'text-fg/50'}`}>{label}</span>
+                         </li>
+                       );
+                     })}
+                   </ol>
+                 </div>
+               );
+             })()}
             
                          {/* Loading State */}
              {isInitializing && (
@@ -1485,8 +1711,8 @@ export default function LearnPage() {
                </div>
              )}
 
-                         {/* Training in Progress */}
-             {isTraining && (
+                         {/* Training in Progress (text projects show it in the train card) */}
+             {isTraining && !isTextProject && (
                <div className="text-center mb-6">
                  <div className="w-16 h-16 border-4 border-magenta-brand/20 border-t-pink-brand rounded-full animate-spin mx-auto mb-4"></div>
                  <h4 className="text-xl font-bold text-fg mb-2">Training in Progress</h4>
@@ -1530,7 +1756,7 @@ export default function LearnPage() {
             )}
 
                          {/* Trained Model Interface */}
-             {trainedModel && !isTraining && (
+             {trainedModel && !isTraining && trainPhase === null && (
                <div className="space-y-4">
                  {/* Status indicator */}
                  {isStatusLoading && (
@@ -1882,30 +2108,49 @@ export default function LearnPage() {
                          </button>
                        </div>
 
-                       {/* Text Test Results */}
+                       {/* Text Test Result: label and confidence on one line */}
                        {testResult && (
-                         <div className="mt-4">
-                           <h5 className="text-md font-medium text-fg mb-3">Test Result:</h5>
-                           <div className="bg-purple-brand/10 p-4 rounded-lg border border-magenta-brand/20">
-                             <div className="mb-2">
-                               <span className="text-fg font-medium">&ldquo;{testResult.text}&rdquo;</span>
-                             </div>
-                             <div className="flex items-center gap-2 mb-2">
-                               <span className="text-fg/70">Confidence:</span>
-                               <span className="text-pink-brand font-medium">
-                                 {testResult.prediction} ({testResult.confidence.toFixed(1)}%)
-                               </span>
-                             </div>
-                           </div>
-                         </div>
+                         <p className="mt-3 text-sm flex flex-wrap items-baseline gap-x-2 gap-y-1 bg-purple-brand/10 border border-magenta-brand/20 rounded-lg px-4 py-2.5" role="status">
+                           <span className="text-fg/80 min-w-0 break-words">&ldquo;{testResult.text}&rdquo;</span>
+                           <span className="text-fg/40" aria-hidden="true">→</span>
+                           <span className="text-pink-brand font-semibold">{testResult.prediction}</span>
+                           <span className="text-fg/70 tabular-nums">{testResult.confidence.toFixed(1)}% confident</span>
+                         </p>
                        )}
 
                      </>
                    )}
                 </div>
 
+                {/* Evaluation step (text projects built from the sample labels) */}
+                {isTextProject && sampleTestSet && trainedModel.status === 'available' && (
+                  <section id="evaluate" className="bg-canvas border border-magenta-brand/20 rounded-xl px-5 py-4 shadow-lg scroll-mt-24" aria-labelledby="evaluate-h">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <h4 id="evaluate-h" className="text-base font-semibold text-fg">Evaluate your model</h4>
+                        <p className="text-sm text-fg/60">Test it on sample messages it has never seen, and compare with the expected label.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowTestData((v) => !v)}
+                        aria-expanded={showTestData}
+                        className={showTestData
+                          ? 'border border-magenta-brand/50 text-fg hover:bg-purple-brand/10 px-4 py-2 rounded-lg text-sm font-medium transition-colors'
+                          : 'bg-pink-brand hover:bg-pink-brand/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors'}
+                      >
+                        {showTestData ? 'Hide sample data' : 'Test with sample data'}
+                      </button>
+                    </div>
+                    {showTestData && (
+                      <div className="mt-4">
+                        <SampleTestMessages data={sampleTestSet} predict={predictText} />
+                      </div>
+                    )}
+                  </section>
+                )}
+
                 {/* Training Results */}
-                {currentTrainingJob && currentTrainingJob.result && (
+                {!isTextProject && currentTrainingJob && currentTrainingJob.result && (
                   <div className="bg-canvas border border-magenta-brand/20 rounded-lg p-6 mb-6">
                     <h4 className="text-lg font-semibold text-fg mb-4">Training Results</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -1967,7 +2212,8 @@ export default function LearnPage() {
                 </div>
                 )}
 
-                {/* Model details: one line, then the actions */}
+                {/* Model details: one line, then the actions (text projects show them in the train card) */}
+                {!isTextProject && (
                 <div className="px-1">
                   <p className="text-sm text-fg/60 mb-3 flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="inline-flex items-center gap-1.5 text-fg font-medium">
@@ -2001,44 +2247,22 @@ export default function LearnPage() {
                         'Delete this model'
                       )}
                     </button>
-                    <button
-                      onClick={handleTrainNewModel}
-                      className="bg-purple-brand hover:bg-purple-brand/90 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-300"
-                    >
-                      Train new machine learning model
-                    </button>
-                    {isTextProject && sampleTestSet && trainedModel.status === 'available' && (
+                    {!isTextProject && (
                       <button
-                        onClick={() => setShowTestData((v) => !v)}
-                        aria-expanded={showTestData}
-                        className={showTestData
-                          ? 'border border-magenta-brand/50 text-fg hover:bg-purple-brand/10 px-6 py-3 rounded-lg font-medium transition-colors duration-300'
-                          : 'bg-pink-brand hover:bg-pink-brand/90 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-300'}
+                        onClick={handleTrainNewModel}
+                        className="bg-purple-brand hover:bg-purple-brand/90 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-300"
                       >
-                        {showTestData ? 'Hide test data' : 'Test data'}
+                        Train new machine learning model
                       </button>
                     )}
                   </div>
-                  {isTextProject && sampleTestSet && showTestData && trainedModel.status === 'available' && (
-                    <div
-                      className="mt-5 scroll-mt-24"
-                      ref={(el) => {
-                        // bring the table into view when it opens
-                        if (el && !el.dataset.shown) {
-                          el.dataset.shown = '1';
-                          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }
-                      }}
-                    >
-                      <SampleTestMessages data={sampleTestSet} predict={predictText} />
-                    </div>
-                  )}
                 </div>
+                )}
               </div>
             )}
 
                                       {/* Default Training Interface */}
-             {!isTraining && !trainedModel && (
+             {!isTraining && !trainedModel && !isTextProject && (
                <div className="flex flex-col items-center gap-3 pt-1">
                 {!canTrainModel && (
                   <div className="text-center p-4 bg-canvas border border-magenta-brand/20 rounded-lg max-w-md">
@@ -2096,6 +2320,21 @@ export default function LearnPage() {
             )}
 
           </div>
+          </div>
+
+          {canUseAI && (
+            <div className="flex justify-end mt-auto pt-4">
+            <Link
+              href={`/projects/${urlUserId}/${urlProjectId}/make`}
+              className="inline-flex items-center gap-2 bg-purple-brand hover:bg-purple-brand/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            >
+              Move to next - Use the AI
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+            </div>
+          )}
         </div>
       </main>
     </div>

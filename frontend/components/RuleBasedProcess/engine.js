@@ -227,7 +227,8 @@ export function mountRuleBasedProcess(root, options) {
           return [
             mk("when_flag"),
             mk("ml_use_model", { f: { MODEL: mlModelName } }),
-            mk("forever", { body: [mk("ask", { i: { Q: "Type a client message" } })].concat(routes) }),
+            // no question text: Sparky just waits for the client message in the reply box
+            mk("forever", { body: [mk("ask", { i: { Q: "" } })].concat(routes) }),
           ];
         },
       });
@@ -1412,7 +1413,7 @@ export function mountRuleBasedProcess(root, options) {
 
       if (c) {
         c.appendChild(d);
-        c.scrollTop = c.scrollHeight;
+        scrollChatToEnd();
       }
       if (skipMood) return;
       if (kind === "ask") {
@@ -1431,6 +1432,63 @@ export function mountRuleBasedProcess(root, options) {
         setBuddyMood("wait", text);
       }
     }
+    /** A model call shown as a collapsible card in the chat: closed, one line (tool -> label, confidence);
+     *  open, the model, the input and a confidence bar. */
+    function logToolCall(tool, input, label, conf) {
+      if (R.fast || R.auto) return;
+      var c = $("#console"), ph = c && c.querySelector(".ph");
+      if (ph) ph.remove();
+      function el(tag, cls, text) {
+        var e = document.createElement(tag);
+        if (cls) e.className = cls;
+        if (text != null) e.textContent = String(text);
+        return e;
+      }
+      var pct = Math.max(0, Math.min(100, Math.round(Number(conf) || 0)));
+      var d = el("div", "cl tool from-host");
+      var card = el("details", "cl-card");
+
+      var head = el("summary", "tool-head");
+      head.appendChild(el("span", "tool-ico", "⚙"));
+      head.appendChild(el("span", "tool-kind", "Model call"));
+      head.appendChild(el("code", "tool-name", tool));
+      var brief = el("span", "tool-brief");
+      brief.appendChild(el("b", null, label || "(no label)"));
+      brief.appendChild(el("span", "tool-brief-pct" + (pct < 50 ? " low" : ""), pct + "%"));
+      head.appendChild(brief);
+      head.appendChild(el("span", "tool-chev", "▾"));
+      card.appendChild(head);
+
+      var body = el("div", "tool-body");
+      var rows = el("div", "tool-rows");
+      [["model", mlModelName, ""], ["input", input, " tool-in"], ["label", label || "(no label)", " tool-out"]].forEach(function (r) {
+        var row = el("div", "tool-row");
+        row.appendChild(el("span", "tool-k", r[0]));
+        row.appendChild(el("span", "tool-v" + r[2], r[1]));
+        rows.appendChild(row);
+      });
+      body.appendChild(rows);
+      var confRow = el("div", "tool-conf" + (pct < 50 ? " low" : ""));
+      var bar = el("span", "tool-bar");
+      var fill = el("i");
+      fill.style.width = pct + "%";
+      bar.appendChild(fill);
+      confRow.appendChild(bar);
+      confRow.appendChild(el("span", "tool-pct", pct + "% confident"));
+      body.appendChild(confRow);
+      card.appendChild(body);
+
+      d.appendChild(card);
+      if (c) {
+        c.appendChild(d);
+        scrollChatToEnd();
+      }
+      // opening the newest card should not push its details out of view
+      card.addEventListener("toggle", function () {
+        if (card.open && c && c.lastElementChild === d) scrollChatToEnd();
+      });
+    }
+
     function clearConsole() {
       var c = $("#console");
       var stage = $("#play-stage");
@@ -1490,12 +1548,22 @@ export function mountRuleBasedProcess(root, options) {
       if (err) err.textContent = msg || "";
       if (sect) sect.classList.toggle("bad", !!msg);
     }
+    /** Keep the newest chat line in view. Runs again after layout, because the reply box
+     *  appearing or hiding changes the chat's height after the line was added. */
+    function scrollChatToEnd() {
+      var c = $("#console");
+      if (!c) return;
+      c.scrollTop = c.scrollHeight;
+      requestAnimationFrame(function () { c.scrollTop = c.scrollHeight; });
+    }
+
     function armAnswerBox(on, q) {
       var box = $("#askin"), sect = $("#answer"), stage = $("#play-stage");
       if (!box || !sect) return;
       sect.classList.toggle("live", on);
       if (on) sect.removeAttribute("hidden");
       else sect.setAttribute("hidden", "");
+      scrollChatToEnd();
       if (stage) stage.classList.toggle("is-cue", !!on);
       box.disabled = !on;
       var send = $("#asksend");
@@ -1538,7 +1606,9 @@ export function mountRuleBasedProcess(root, options) {
         }
         return Promise.resolve(queued);
       }
-      logLine("ask", "?", q);
+      // The ML text starter used to ask "Type a client message"; saved workspaces still have it
+      if (ML && q === "Type a client message") q = "";
+      if (q) logLine("ask", "?", q);   // a blank question: no chat bubble, the reply box just waits
       armAnswerBox(true, q);
       return new Promise(function (res) { R.pending = res; });
     }
@@ -1605,7 +1675,7 @@ export function mountRuleBasedProcess(root, options) {
         try {
           var res = await ML.recognise(text);
           R.mlCache[text] = { label: String(res && res.label != null ? res.label : ""), confidence: Math.round(Number(res && res.confidence) || 0) };
-          if (!R.fast) logLine("think", "?", "recognise text: " + text + " \u2192 " + R.mlCache[text].label + " (" + R.mlCache[text].confidence + "%)");
+          logToolCall("recognise_text", text, R.mlCache[text].label, R.mlCache[text].confidence);
         } catch (err) {
           R.mlCache[text] = { label: "", confidence: 0 };
           logLine("warn", "!", (err && err.message) ? String(err.message) : "The model could not be reached.");
@@ -1627,15 +1697,12 @@ export function mountRuleBasedProcess(root, options) {
         logLine("warn", "!", "Nothing to recognise: the text is empty.");
         return;
       }
-      if (!R.fast) {
-        logLine("think", "?", "recognise text: " + t);
-        setBuddyMood("think", "Let me check with your model…");
-      }
+      if (!R.fast) setBuddyMood("think", "Let me check with your model…");
       try {
         var res = await ML.recognise(t);
         R.mlLabel = String(res && res.label != null ? res.label : "");
         R.mlConf = Math.round(Number(res && res.confidence) || 0);
-        if (!R.fast) logLine("out", "\u203A", R.mlLabel + " (" + R.mlConf + "% confident)");
+        logToolCall("recognise_text", t, R.mlLabel, R.mlConf);
       } catch (err) {
         logLine("warn", "!", (err && err.message) ? String(err.message) : "The model could not be reached.");
       }
@@ -1662,7 +1729,7 @@ export function mountRuleBasedProcess(root, options) {
         }
         R.mlLabel = String(res.label != null ? res.label : "");
         R.mlConf = Math.round(Number(res.confidence) || 0);
-        if (!R.fast) logLine("out", "\u203A", (res.name ? res.name + ": " : "") + R.mlLabel + " (" + R.mlConf + "% confident)");
+        logToolCall("recognise_image", res.name || "image", R.mlLabel, R.mlConf);
       } catch (err) {
         logLine("warn", "!", (err && err.message) ? String(err.message) : "The model could not be reached.");
       }
@@ -2102,6 +2169,12 @@ export function mountRuleBasedProcess(root, options) {
       $("#run").disabled = on;
       $("#stop").disabled = !on;
       $("#restart").disabled = false;
+      var cr = $("#canvasrun");
+      if (cr) {
+        cr.classList.toggle("is-on", !!on);
+        cr.lastChild.textContent = on ? "Stop" : "Run";
+        cr.title = on ? "Stop" : "Run the script";
+      }
     }
   
     // Stage / Python tabs
@@ -2117,6 +2190,28 @@ export function mountRuleBasedProcess(root, options) {
     $$(".ptab").forEach(function (t) {
       t.onclick = function () { showPane(t.dataset.p); };
     });
+    // "Use the AI" (ML mode) shows only the Stage: no Python tab
+    if (ML && $("#ptabs")) $("#ptabs").style.display = "none";
+    // ...no header toolbar (run, stop, restart, reset, undo, full screen): the canvas button runs it.
+    // The buttons stay in the page, hidden, because the canvas button clicks #run / #stop.
+    if (ML && $(".runbar")) $(".runbar").style.display = "none";
+    // ...and a Run / Stop button on the canvas itself, next to the script
+    if (ML && $("#wrap") && !$("#canvasrun")) {
+      var cr = document.createElement("button");
+      cr.id = "canvasrun";
+      cr.type = "button";
+      cr.className = "canvas-run";
+      cr.title = "Run the script";
+      var ico = document.createElement("span");
+      ico.className = "canvas-run-ico";
+      ico.setAttribute("aria-hidden", "true");
+      cr.appendChild(ico);
+      cr.appendChild(document.createTextNode("Run"));
+      cr.onclick = function () { (R.on ? $("#stop") : $("#run")).click(); };
+      $("#wrap").appendChild(cr);
+    }
+    // ...and one colour for every Sparky bubble (see .rbp-ml in the CSS)
+    if (ML && $("#console") && $("#console").closest(".rbp-root")) $("#console").closest(".rbp-root").classList.add("rbp-ml");
   
     $("#restart").onclick = function () {
       if (R.on) $("#stop").onclick();

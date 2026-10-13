@@ -1,17 +1,18 @@
 'use client';
 
 /**
- * Label a sample dataset, then "Finish": every chosen label becomes a project label with its
- * queries inside, exactly like labels added by hand. Choices are kept in this browser as a draft.
+ * Label a sample dataset, then "Finish labelling": every chosen label becomes a project label with
+ * its queries inside, exactly like labels added by hand. Choices are kept in this browser as a draft.
+ * Trainers can fill the answer key with Ctrl+Alt+Shift+F; it is not shown on screen.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   MIN_PER_LABEL,
-  SAMPLE_SOURCES,
   canGroup,
   countByLabel,
   examplesToAdd,
+  fillAllLabels,
   inOtherLabel,
   validateDataset,
   type Choices,
@@ -19,62 +20,6 @@ import {
   type SampleDataset,
   type SampleSource,
 } from './sample';
-
-/* ───────── "Use sample data" dropdown ───────── */
-
-export function SampleDataButton({ onPick, compact }: { onPick: (s: SampleSource) => void; compact?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    document.addEventListener('mousedown', close);
-    document.addEventListener('keydown', esc);
-    return () => {
-      document.removeEventListener('mousedown', close);
-      document.removeEventListener('keydown', esc);
-    };
-  }, [open]);
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        className={`border-2 border-purple-brand text-purple-brand hover:bg-purple-brand/10 rounded-lg transition-all duration-300 inline-flex items-center gap-2 text-sm font-medium ${compact ? 'px-4 py-2' : 'px-4 py-4'}`}
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M4 12h16M4 17h10" />
-        </svg>
-        Use sample data
-        <svg className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      {open && (
-        <div role="menu" className="absolute right-0 mt-2 w-80 bg-card border border-magenta-brand/30 rounded-lg shadow-xl z-40 overflow-hidden">
-          {SAMPLE_SOURCES.map((s) => (
-            <button
-              key={s.id}
-              role="menuitem"
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                onPick(s);
-              }}
-              className="w-full text-left px-4 py-3 hover:bg-purple-brand/10 focus:bg-purple-brand/10 focus:outline-none"
-            >
-              <span className="block text-sm font-medium text-fg">{s.name}</span>
-              <span className="block text-xs text-fg/60 mt-0.5">20 client messages to sort into 4 labels</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 /* ───────── Labelling table ───────── */
 
@@ -135,6 +80,21 @@ export default function SampleLabeller({ source, draftKey, existing, onClose, on
     return () => document.removeEventListener('keydown', esc);
   }, [busy, onClose]);
 
+  // Trainer shortcut: fill every query with the answer key
+  useEffect(() => {
+    if (!data) return;
+    const fill = (e: KeyboardEvent) => {
+      if (busy || !e.ctrlKey || !e.altKey || !e.shiftKey || e.code !== 'KeyF') return;
+      e.preventDefault();
+      const all = fillAllLabels(data.queries);
+      writeDraft(draftKey, all);
+      setChoices(all);
+      setNotice(null);
+    };
+    document.addEventListener('keydown', fill);
+    return () => document.removeEventListener('keydown', fill);
+  }, [data, busy, draftKey]);
+
   const choose = (id: number, label: string) => {
     setChoices((c) => {
       const next = { ...c, [id]: label };
@@ -181,7 +141,7 @@ export default function SampleLabeller({ source, draftKey, existing, onClose, on
             <p className="text-xs font-semibold uppercase tracking-wider text-pink-brand">Sample data</p>
             <h2 id="sample-title" className="text-xl font-semibold mt-1">{source.name}</h2>
             <p className="text-sm text-fg/70 mt-1">
-              Pick a label for each query. You need at least {MIN_PER_LABEL} per label to train.
+              Pick a label for each query below. You need at least five per label.
             </p>
           </div>
           <button type="button" onClick={onClose} disabled={busy} className="text-fg/60 hover:text-fg p-1 rounded disabled:opacity-40" aria-label="Close">
@@ -238,24 +198,26 @@ export default function SampleLabeller({ source, draftKey, existing, onClose, on
             {/* footer */}
             <div className="px-5 sm:px-6 py-4 border-t border-fg/10 space-y-2">
               <div className="flex items-center gap-3">
-                <div className="flex flex-nowrap items-center gap-1.5 flex-1 min-w-0 overflow-x-auto" aria-label="Examples per label">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 flex-1 min-w-0" aria-label="Examples per label">
                   {data.labels.map((l) => {
                     const n = counts[l.label] ?? 0;
                     const ok = n >= MIN_PER_LABEL;
                     return (
-                      <span
-                        key={l.label}
-                        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium whitespace-nowrap shrink-0 ${
-                          ok ? 'border-[var(--success)] text-[var(--success)] bg-[var(--success)]/10' : 'border-fg/20 text-fg/80'
-                        }`}
-                      >
-                        {ok && (
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                        {l.label} <span className="tabular-nums">{n} / {MIN_PER_LABEL}</span>
-                      </span>
+                      <div key={l.label} className="min-w-[9rem] flex-1 shrink-0">
+                        <div className="flex items-baseline justify-between gap-2 text-xs">
+                          <span className={`font-medium truncate ${ok ? 'text-[var(--success)]' : 'text-fg/80'}`}>
+                            {ok && <span aria-hidden="true">✓ </span>}
+                            {l.label}
+                          </span>
+                          <span className="tabular-nums text-fg/60">{n}</span>
+                        </div>
+                        <div className="mt-1 h-1.5 rounded-full bg-fg/10 overflow-hidden" aria-hidden="true">
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 ${ok ? 'bg-[var(--success)]' : 'bg-purple-brand'}`}
+                            style={{ width: `${Math.min(100, (n / MIN_PER_LABEL) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
@@ -265,7 +227,7 @@ export default function SampleLabeller({ source, draftKey, existing, onClose, on
                   disabled={!ready || busy}
                   className="bg-purple-brand hover:bg-purple-brand/90 text-white px-5 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2 shrink-0"
                 >
-                  {busy ? 'Finishing…' : 'Finish'}
+                  {busy ? 'Finishing…' : 'Finish labelling'}
                 </button>
               </div>
               {notice && <p className="text-sm text-fg/70" role="status">{notice}</p>}

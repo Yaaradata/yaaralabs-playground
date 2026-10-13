@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   MIN_PER_LABEL,
+  STANDARD_LABELS,
   batches,
   canGroup,
   countByLabel,
@@ -51,8 +52,9 @@ test('file: 4 labels, 20 queries (5 each), 10 test messages', () => {
 
 test('label names: readable and allowed by the label rules', () => {
   assert.deepEqual(L.map((l) => projectLabelName(l.label)), [
-    'Corporate action', 'Fees and billing', 'Onboarding and KYC', 'Complaint or escalation',
+    'Fees and billing', 'Corporate action', 'Onboarding and KYC', 'Complaint or escalation',
   ]);
+  assert.deepEqual(L.map((l) => l.label), STANDARD_LABELS, 'the sample uses the standard labels, in order');
   for (const l of L) assert.ok(isValidLabelName(projectLabelName(l.label)), l.label);
   assert.equal(projectLabelName('  A  &  B / C!  '), 'A and B or C');
 });
@@ -66,7 +68,7 @@ test('counter: counts per label and labelled total, ignoring cleared rows', () =
   assert.equal(labelledCount(choices), 3);
 });
 
-test('Group it: enabled only when every label has at least 5', () => {
+test('Finish labelling: enabled only when every label has at least 5', () => {
   assert.equal(MIN_PER_LABEL, 5);
   assert.equal(canGroup(L, {}), false);
   assert.equal(canGroup(L, answerKey(4)), false, '4 per label is not enough');
@@ -77,7 +79,7 @@ test('Group it: enabled only when every label has at least 5', () => {
   assert.equal(canGroup(L, answerKey(6)), true);
 });
 
-test('Fill labels: every query gets its sample answer key', () => {
+test('Trainer fill: every query gets its sample answer key', () => {
   const filled = fillAllLabels(data.queries);
   assert.equal(Object.keys(filled).length, 20);
   for (const q of data.queries) assert.equal(filled[q.id], q.label);

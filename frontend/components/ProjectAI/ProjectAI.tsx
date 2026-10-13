@@ -24,6 +24,9 @@ interface Props {
   /** Project page (Back) and training page (Train) links. */
   backHref: string;
   trainHref: string;
+  /** "Move to next" in the header once the model is trained (Text Recognition: the Evaluate step). */
+  nextHref?: string;
+  nextLabel?: string;
 }
 
 interface MlState {
@@ -44,7 +47,7 @@ const MODEL_TYPES: Record<string, string> = {
 
 type Result = { label: string; confidence: number; name?: string };
 
-export default function ProjectAI({ kind, projectName, sessionId, projectId, backHref, trainHref }: Props) {
+export default function ProjectAI({ kind, projectName, sessionId, projectId, backHref, trainHref, nextHref, nextLabel }: Props) {
   const [ml, setMl] = useState<MlState | null>(null);
   const [picker, setPicker] = useState(false);
   const [pickBusy, setPickBusy] = useState<string | null>(null);
@@ -153,10 +156,9 @@ export default function ProjectAI({ kind, projectName, sessionId, projectId, bac
       : { kind: 'text', trained: ml.trained, labels: ml.labels, model, recognise: predictText }
     : undefined;
 
+  // Only a hint while there is no trained model; once it is ready the header shows just the title
   const subtitle = ml ? (
-    ml.trained ? (
-      <span className="text-[#0FBD8C] font-semibold">● ML Model blocks ready · labels: {ml.labels.join(', ')}</span>
-    ) : (
+    ml.trained ? null : (
       <span className="opacity-75">
         Train your model to unlock the ML Model blocks.{' '}
         <Link href={trainHref} className="underline font-semibold">Go to training</Link>
@@ -170,6 +172,19 @@ export default function ProjectAI({ kind, projectName, sessionId, projectId, bac
       subtitle={subtitle}
       backHref={backHref}
       backLabel="Back to project"
+      actions={
+        nextHref && ml?.trained ? (
+          <Link
+            href={nextHref}
+            className="inline-flex items-center gap-2 whitespace-nowrap bg-purple-brand hover:bg-purple-brand/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+          >
+            {nextLabel ?? 'Move to next'}
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+        ) : null
+      }
       overlay={
         picker && ml ? (
           <ImagePicker

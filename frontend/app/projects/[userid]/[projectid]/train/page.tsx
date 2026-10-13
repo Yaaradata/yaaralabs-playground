@@ -16,8 +16,8 @@ import {
 import { cleanupSessionWithReason, SessionCleanupReason } from '../../../../../lib/session-cleanup';
 import Link from 'next/link';
 import { ImageUpload, ImageGallery } from '../../../../../components/ImageCollection';
-import SampleLabeller, { SampleDataButton } from '../../../../../components/SampleLabelling/SampleLabeller';
-import { batches, type NewExample, type SampleSource } from '../../../../../components/SampleLabelling/sample';
+import SampleLabeller from '../../../../../components/SampleLabelling/SampleLabeller';
+import { SAMPLE_SOURCES, batches, standardLabelNames, type NewExample, type SampleSource } from '../../../../../components/SampleLabelling/sample';
 import SampleImagesDialog from '../../../../../components/SampleImages/SampleImagesDialog';
 import { MIN_IMAGES_PER_LABEL, labelNamesKey } from '../../../../../components/SampleImages/sampleImages';
 
@@ -677,7 +677,20 @@ export default function TrainPage() {
     return success;
   };
 
-  /** "Group it" from the sample labelling table: add each query whole (no comma splitting),
+  /** "Create standard labels": add the four standard labels that are not in the project yet, in order. */
+  const handleCreateStandardLabels = () => {
+    if (!actualSessionId || !actualProjectId) return;
+    const have = new Set(labels.map((l) => l.name.toLowerCase()));
+    const now = Date.now();
+    const created: Label[] = standardLabelNames()
+      .filter((name) => !have.has(name.toLowerCase()))
+      .map((name, i) => ({ id: `label-${now}-${i}`, name, examples: [], createdAt: new Date().toLocaleDateString() }));
+    if (created.length === 0) return;
+    setLabels([...created, ...labels]);
+    saveLocalLabels(actualSessionId, actualProjectId, [...created, ...loadLocalLabels(actualSessionId, actualProjectId)]);
+  };
+
+  /** "Finish labelling" from the sample labelling table: add each query whole (no comma splitting),
    *  skipping any text already under that label, then show the labels like hand-made ones. */
   const handleGroupSample = async (items: NewExample[]) => {
     if (!actualSessionId || !actualProjectId) throw new Error('Your session is not ready yet. Please reload the page.');
@@ -1809,66 +1822,67 @@ export default function TrainPage() {
           {/* Text Recognition Content - only show for text-recognition projects */}
           {selectedProject?.type === 'text-recognition' && (
             <>
-              {/* Centered instruction + actions (same as TheNeural) */}
-              {labels.length === 0 ? (
-                <div className="flex justify-center items-center gap-4 mb-6">
-                  <div className="bg-canvas border border-magenta-brand/20 rounded-lg p-4 max-w-md">
-                    <p className="text-fg text-sm text-center">
-                      Click on the &lsquo;plus&rsquo; button on the right to add your first label.→
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowAddLabelModal(true)}
-                    className="bg-purple-brand hover:bg-purple-brand/90 text-white px-4 py-4 rounded-lg transition-all duration-300 inline-flex items-center gap-2 text-sm font-medium"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              {/* Note (left) and actions (right), one row */}
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                {/* Note on the left */}
+                <div className="w-fit max-w-full bg-canvas border border-magenta-brand/20 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-pink-brand mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
                     </svg>
-                    Add new label
-                  </button>
-                  <SampleDataButton onPick={setSampleSource} />
-                </div>
-              ) : (
-                <div className="flex justify-end items-center gap-3 mb-6">
-                  <button
-                    onClick={() => setShowAddLabelModal(true)}
-                    className="bg-purple-brand hover:bg-purple-brand/90 text-white px-4 py-2 rounded-lg transition-all duration-300 inline-flex items-center gap-2 text-sm font-medium"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    Add new label
-                  </button>
-                  <SampleDataButton onPick={setSampleSource} compact />
-                  {labels.length >= 2 && labels.every(label => label.examples.length >= 5) && (
-                    <Link
-                      href={`/projects/${urlUserId}/${urlProjectId}/learn`}
-                      className="bg-purple-brand hover:bg-purple-brand/90 text-white px-4 py-2 rounded-lg transition-all duration-300 inline-flex items-center gap-2 text-sm font-medium"
-                    >
-                      Move to next - Training
-                    </Link>
-                  )}
-                </div>
-              )}
-
-              {/* Note below — left-aligned, max-w-lg (same structure as TheNeural) */}
-              <div className="mb-6 w-fit max-w-none bg-canvas border border-magenta-brand/20 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-pink-brand mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                  <div>
-                    <h3 className="text-pink-brand font-medium mb-2 whitespace-nowrap">Note: Before you can proceed to next step</h3>
-                    <div className="text-fg text-sm space-y-1">
-                      <p className="whitespace-nowrap">
-                        <strong>1.</strong> You need to create at least <strong>2 classes/labels</strong> (e.g., &ldquo;happy&rdquo;, &ldquo;sad&rdquo;)
-                      </p>
-                      <p className="whitespace-nowrap">
-                        <strong>2.</strong> For each label fill in at least <strong>5 examples at minimum</strong>
-                      </p>
+                    <div>
+                      <h3 className="text-pink-brand font-medium mb-2 lg:whitespace-nowrap">Note: Before you can proceed to next step</h3>
+                      <div className="text-fg text-sm space-y-1">
+                        <p className="lg:whitespace-nowrap">
+                          <strong>1.</strong> Create the standard labels (or at least <strong>2 labels</strong> of your own)
+                        </p>
+                        <p className="lg:whitespace-nowrap">
+                          <strong>2.</strong> Fill in at least <strong>5 examples</strong> for each label: use &lsquo;Input sample label data&rsquo; or add your own
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
+                {/* Actions on the right: create the standard labels, add your own, then label the sample data */}
+                {(() => {
+                  const have = new Set(labels.map((l) => l.name.toLowerCase()));
+                  const standardMissing = standardLabelNames().some((n) => !have.has(n.toLowerCase()));
+                  const ready = labels.length >= 2 && labels.every((label) => label.examples.length >= 5);
+                  const step = 'px-4 py-2.5 rounded-lg transition-all duration-300 inline-flex items-center gap-2 text-sm font-medium';
+                  const primary = `${step} bg-purple-brand hover:bg-purple-brand/90 text-white`;
+                  const secondary = `${step} border-2 border-purple-brand text-purple-brand hover:bg-purple-brand/10`;
+                  return (
+                    <div className="flex flex-wrap items-center gap-3">
+                      {standardMissing && (
+                        <button onClick={handleCreateStandardLabels} className={primary}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                          </svg>
+                          Create standard labels
+                        </button>
+                      )}
+                      <button onClick={() => setShowAddLabelModal(true)} className={secondary}>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Add new label
+                      </button>
+                      {!standardMissing && (
+                        <button onClick={() => setSampleSource(SAMPLE_SOURCES[0])} className={ready ? secondary : primary}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M4 12h16M4 17h10" />
+                          </svg>
+                          Input sample label data
+                        </button>
+                      )}
+                      {ready && (
+                        <Link href={`/projects/${urlUserId}/${urlProjectId}/learn`} className={primary}>
+                          Move to next - Training
+                        </Link>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
             

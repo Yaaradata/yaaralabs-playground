@@ -122,11 +122,7 @@ export default function MakePage() {
           oldDataCleared: true,
           aggressiveClearing: true
         });
-        
-        // Update the URL to match the actual project ID
-        const newUrl = currentUrl.replace(`/${currentProjectIdInUrl}/`, `/${actualProjectId}/`);
-        window.history.replaceState({}, '', newUrl);
-        console.log('URL updated to match actual project:', newUrl);
+        // The URL keeps its masked project ID: putting the real ID there broke reloading this page
       }
     }
   }, [actualProjectId, actualSessionId, selectedProject, urlProjectId]);
@@ -487,6 +483,9 @@ export default function MakePage() {
             projectId={actualProjectId}
             backHref={`/projects/${urlUserId}/${urlProjectId}`}
             trainHref={`/projects/${urlUserId}/${urlProjectId}/learn`}
+            {...(selectedProject.type === 'image-recognition'
+              ? {}
+              : { nextHref: `/projects/${urlUserId}/${urlProjectId}/learn#evaluate`, nextLabel: 'Move to next - Evaluate' })}
           />
         </div>
       </div>

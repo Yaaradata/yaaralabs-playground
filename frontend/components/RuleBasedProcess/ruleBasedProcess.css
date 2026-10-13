@@ -180,6 +180,19 @@
   .rbp-root #menu button.danger:hover{background:rgba(239,111,94,.16)}
   .rbp-root #menu hr{border:none;border-top:1px solid var(--line2);margin:4px 2px}
   .rbp-root .tipbar{position:absolute;left:12px;bottom:10px;font-size:11.5px;color:var(--ink3);pointer-events:none}
+  /* Run / Stop on the canvas (Use the AI) */
+  .rbp-root .canvas-run{
+    position:absolute;right:12px;top:10px;z-index:40;
+    display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;border:none;cursor:pointer;
+    font:800 13px/1 var(--sans);color:#10200a;background:var(--lime);
+    box-shadow:0 6px 18px rgba(0,0,0,.35);transition:transform .12s, filter .12s}
+  .rbp-root .canvas-run:hover{filter:brightness(1.05);transform:translateY(-1px)}
+  .rbp-root .canvas-run:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+  .rbp-root .canvas-run-ico{width:0;height:0;border-style:solid;border-width:6px 0 6px 10px;
+    border-color:transparent transparent transparent currentColor}
+  .rbp-root .canvas-run.is-on{color:#fff;background:var(--bad)}
+  .rbp-root .canvas-run.is-on .canvas-run-ico{width:10px;height:10px;border:none;border-radius:2px;background:currentColor}
+
   .rbp-root .zoombar{
     position:absolute;left:10px;top:10px;right:auto;bottom:auto;z-index:40;
     display:inline-flex;align-items:center;gap:4px;padding:0;
@@ -633,6 +646,50 @@
     border-radius:16px 16px 16px 5px}
   .rbp-root .cl.think .cl-role{color:#e2b7f0}
   .rbp-root .cl.think .cl-text{font-style:italic}
+
+  /* Use the AI (ML mode): Sparky's questions and model results look like the rest of what he says */
+  .rbp-root.rbp-ml .cl.ask .cl-card,
+  .rbp-root.rbp-ml .cl.think .cl-card{
+    color:var(--ink);font-style:normal;background:rgba(219, 254, 135,.16);border-color:rgba(219, 254, 135,.3)}
+  .rbp-root.rbp-ml .cl.ask .cl-role,
+  .rbp-root.rbp-ml .cl.think .cl-role{color:color-mix(in srgb, var(--lime) 85%, #fff)}
+  .rbp-root.rbp-ml .cl.think .cl-text{font-style:normal}
+
+  /* A model call (Use the AI): a collapsible card, full width of the chat */
+  .rbp-root .cl.tool.from-host{padding-right:0}
+  .rbp-root .cl.tool .cl-card{
+    flex:1;min-width:0;padding:10px 12px;border-radius:12px;
+    background:color-mix(in srgb, var(--ink) 4%, transparent);border:1px solid color-mix(in srgb, var(--ink) 16%, transparent);color:var(--ink);
+    font:500 12px/1.45 var(--sans)}
+  .rbp-root .cl.tool .tool-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px;cursor:pointer;list-style:none;user-select:none}
+  .rbp-root .cl.tool .tool-head::-webkit-details-marker{display:none}
+  .rbp-root .cl.tool .tool-head:focus-visible{outline:2px solid var(--lime);outline-offset:3px;border-radius:6px}
+  .rbp-root .cl.tool .tool-brief{order:5;flex-basis:100%;display:flex;align-items:baseline;gap:6px;min-width:0;
+    margin-top:2px;font-size:13px;color:var(--ink)}
+  .rbp-root .cl.tool .tool-brief::before{content:"→";color:var(--ink3)}
+  .rbp-root .cl.tool .tool-brief b{overflow:hidden;text-overflow:ellipsis}
+  .rbp-root .cl.tool .tool-brief-pct{font-size:11px;font-weight:700;color:#0FBD8C}
+  .rbp-root .cl.tool .tool-brief-pct.low{color:#f0c674}
+  .rbp-root .cl.tool .tool-chev{flex:none;margin-left:auto;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;
+    border-radius:6px;color:var(--ink2);background:color-mix(in srgb, var(--ink) 8%, transparent);transition:transform .15s}
+  .rbp-root .cl.tool details[open] .tool-chev{transform:rotate(180deg)}
+  .rbp-root .cl.tool .tool-body{margin-top:8px;padding-top:8px;border-top:1px dashed color-mix(in srgb, var(--ink) 16%, transparent)}
+  .rbp-root .cl.tool .tool-ico{color:color-mix(in srgb, var(--purple) 60%, var(--ink))}
+  .rbp-root .cl.tool .tool-kind{white-space:nowrap;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2)}
+  .rbp-root .cl.tool .tool-name{white-space:nowrap;font:600 11.5px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    color:color-mix(in srgb, var(--purple) 60%, var(--ink));background:rgba(147,51,234,.16);border:1px solid rgba(147,51,234,.35);border-radius:6px;padding:3px 6px}
+  .rbp-root .cl.tool .tool-rows{display:grid;grid-template-columns:auto 1fr;gap:4px 10px}
+  .rbp-root .cl.tool .tool-row{display:contents}
+  .rbp-root .cl.tool .tool-k{font:600 11px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--ink3)}
+  .rbp-root .cl.tool .tool-v{min-width:0;overflow-wrap:anywhere;color:var(--ink2)}
+  .rbp-root .cl.tool .tool-in::before{content:"\201C"}
+  .rbp-root .cl.tool .tool-in::after{content:"\201D"}
+  .rbp-root .cl.tool .tool-out{color:var(--ink);font-weight:800}
+  .rbp-root .cl.tool .tool-conf{display:flex;align-items:center;gap:8px;margin-top:9px}
+  .rbp-root .cl.tool .tool-bar{flex:1;height:6px;border-radius:99px;background:color-mix(in srgb, var(--ink) 12%, transparent);overflow:hidden}
+  .rbp-root .cl.tool .tool-bar i{display:block;height:100%;border-radius:inherit;background:#0FBD8C}
+  .rbp-root .cl.tool .tool-conf.low .tool-bar i{background:#f0c674}
+  .rbp-root .cl.tool .tool-pct{font-size:11px;font-weight:700;color:var(--ink2);white-space:nowrap}
 
   .rbp-root .cl.in .cl-card{
     color:#0f2f2c;background:#7fe3de;border-color:rgba(62,198,193,.45);

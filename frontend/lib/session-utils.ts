@@ -169,7 +169,9 @@ export function isMaskedProjectId(id: string): boolean {
  * Check if a string looks like a full project ID
  */
 export function isProjectId(id: string): boolean {
-  return id.length > 10 && (id.includes('project') || id.includes('proj'));
+  // Older ids contain "project"; current ones are plain UUIDs (e.g. links the Use the AI page used to write)
+  return (id.length > 10 && (id.includes('project') || id.includes('proj'))) ||
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
 
 /**

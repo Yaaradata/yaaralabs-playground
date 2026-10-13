@@ -5,6 +5,11 @@
 
 export const MIN_PER_LABEL = 5; // the same rule as the label page: at least 5 examples per label
 
+/** The four standard labels, the same across exercises (and in the sample file, in this order). */
+export const STANDARD_LABELS = ['Fees & billing', 'Corporate action', 'Onboarding & KYC', 'Complaint / escalation'];
+/** Their project names: "Fees and billing", "Corporate action", "Onboarding and KYC", "Complaint or escalation". */
+export const standardLabelNames = () => STANDARD_LABELS.map(projectLabelName);
+
 export interface SampleLabelInfo {
   label: string; // name in the file, e.g. "Fees & billing"
   desk: string;
@@ -13,7 +18,7 @@ export interface SampleLabelInfo {
 export interface SampleQuery {
   id: number;
   text: string;
-  label: string; // the sample answer key used by "Fill labels"
+  label: string; // the sample answer key, used by the trainer fill shortcut
   difficulty: string;
   note: string;
 }
@@ -69,13 +74,13 @@ export function countByLabel(labels: SampleLabelInfo[], choices: Choices): Recor
 
 export const labelledCount = (choices: Choices) => Object.values(choices).filter(Boolean).length;
 
-/** "Group it" is allowed only when every label has at least MIN_PER_LABEL examples. */
+/** "Finish labelling" is allowed only when every label has at least MIN_PER_LABEL examples. */
 export function canGroup(labels: SampleLabelInfo[], choices: Choices, min = MIN_PER_LABEL): boolean {
   const counts = countByLabel(labels, choices);
   return labels.length > 0 && labels.every((l) => counts[l.label] >= min);
 }
 
-/** Fill every query with its sample answer key. */
+/** Fill every query with its sample answer key (trainer shortcut in the labelling screen). */
 export function fillAllLabels(queries: SampleQuery[]): Choices {
   return Object.fromEntries(queries.map((q) => [q.id, q.label]));
 }

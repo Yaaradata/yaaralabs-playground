@@ -26,9 +26,11 @@ interface Props {
   children: (toolbarHostRef: RefObject<HTMLDivElement | null>) => ReactNode;
   /** Rendered after the shell (dialogs). */
   overlay?: ReactNode;
+  /** Extra header buttons, next to the run bar (e.g. "Move to next"). */
+  actions?: ReactNode;
 }
 
-export default function BlockStudioShell({ title, subtitle, backHref, backLabel = 'Back', children, overlay }: Props) {
+export default function BlockStudioShell({ title, subtitle, backHref, backLabel = 'Back', children, overlay, actions }: Props) {
   const [theme, setTheme] = useState(() => readExerciseTheme());
   const toolbarHostRef = useRef<HTMLDivElement>(null);
   useEffect(() => subscribeExerciseTheme(setTheme), []);
@@ -54,7 +56,10 @@ export default function BlockStudioShell({ title, subtitle, backHref, backLabel 
               )}
             </div>
           </div>
-          <div ref={toolbarHostRef} className="rbp-shell-toolbar" />
+          <div className="flex items-center gap-3 shrink-0">
+            <div ref={toolbarHostRef} className="rbp-shell-toolbar" />
+            {actions}
+          </div>
         </div>
         <div className="ex-workspace">{children(toolbarHostRef)}</div>
       </div>
