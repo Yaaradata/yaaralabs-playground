@@ -15,12 +15,16 @@ export interface SampleImageLabel {
 export interface SampleImageTestItem {
   file: string;
   expected: string;
+  /** Deep test only: the defects this image has, e.g. "handwritten fill; coffee stain; ..." */
+  defects?: string;
 }
 export interface SampleImageSet {
   name: string;
   description: string;
   labels: SampleImageLabel[];
   test: SampleImageTestItem[];
+  /** Harder images: handwriting plus several defects each (nuvama_document_images/test/deep test). */
+  deepTest?: SampleImageTestItem[];
 }
 
 export const sampleImageUrl = (file: string) => `${SAMPLE_IMAGES_BASE}/${file}`;

@@ -9,7 +9,7 @@ the model learns to recognise what kind of document a client has sent.
 | `KYC/` | 5 | Blank KYC / demat account-opening forms (individual and non-individual), each from a different firm |
 | `corporate_action/` | 5 | Stock-exchange corporate-action notices: dividend, bonus, buyback, stock split; 5 different companies |
 | `invoice/` | 5 | Business invoices, each from a different layout template |
-| `cheque/` | 5 | Indian-style **specimen** cheques, synthetic, each from a different fictional bank |
+| `cheque/` | 5 | 2 synthetic **SPECIMEN** cheques (fictional banks) + 3 real cheque photos (Wikimedia Commons) |
 | `test/` | 12 | 3 per class, from documents not used in training; 1 clean + 2 degraded each; shuffled |
 | `test/deep test/` | 20 | 5 per class, from documents used nowhere else; handwriting + 4 or more defects each (see below) |
 
@@ -68,14 +68,29 @@ templates 1, 7, 13, 16, 28; test: 10, 40, 46), so no two images share a layout. 
 were fetched from the 690 MB archive. The invoice contents (companies, names, addresses) are FATURA's own
 generated fake data. Originals are 595 x 841 px and were upscaled to 1024 px on the long side.
 
-### Cheque: synthetic, generated for this dataset
-Made with `raw/_scripts/make_cheques.py`: CTS-2010-like layout (payee line, amount in words and
+### Cheque: 2 synthetic + 3 real photos (training), 1 synthetic + 2 real (test)
+So the model does not learn "red SPECIMEN stamp = cheque", the cheque class mixes both kinds.
+
+**Real cheque photos** (Wikimedia Commons; cropped and redacted by `raw/_scripts/prep_real_cheques.py`, which
+pixelates payee names, account numbers, personal seals and signatures):
+
+| File | Cheque | Licence |
+|---|---|---|
+| `cheque/chq_03.jpg` | Assam Gramin Vikash Bank, blank leaf (India) | CC BY-SA 4.0, Chiring chandan |
+| `cheque/chq_04.jpg` | UCO Bank, filled in by hand (India) | CC BY-SA 3.0, Tshrinivasan |
+| `cheque/chq_05.jpg` | WestLB crossed cheque, 2004 (Germany) | Public domain |
+| `test/test_09.jpg` | First Commercial Bank, 2014 (Taiwan) | CC BY-SA 4.0, Solomon203 |
+| `test/test_08.jpg` | Deutsche Bank, handwritten, 1909 | No known copyright restrictions (Flickr Commons) |
+
+Source links are in `SOURCES.csv`. CC BY-SA images must keep this credit and the same licence if shared.
+
+**Synthetic SPECIMEN cheques** (`chq_01`, `chq_02`, `test_05`): made with `raw/_scripts/make_cheques.py`: CTS-2010-like layout (payee line, amount in words and
 figures, date boxes, account boxes, MICR band, blank signature area), the word **SPECIMEN** across
 each, and "VALID FOR 3 MONTHS ONLY". Each uses a different **fictional** bank (Kestrel Valley,
 Indigo Harbour, Saffron Ridge, Lotus Meadow, Peacock Hill, Monsoon Trust, Tamarind Grove, Marigold
 Coast), its own colours, a simple drawn mark (not a real logo), and varied placement so they are not
 near-copies of each other. Payees, account numbers, IFSC codes (all start with `QX`, which no real bank
-uses) and MICR numbers are invented. No real bank names or logos, no real cheques, nothing from the
+uses) and MICR numbers are invented. These synthetic ones use no real bank names or logos and nothing from the
 IDRBT dataset. No signatures.
 
 ## How the test images were made
@@ -87,7 +102,7 @@ Degradations differ by class, and each is recorded in `test_key.csv`:
 | KYC | Yes Securities | phone-photo look: perspective skew 12 deg, rotation -3 deg, shadow gradient, dark desk | partial crop: bottom 25% cut off |
 | corporate_action | Eris | Gaussian blur, radius 3 | low light / low contrast (brightness x0.45, contrast x0.5) |
 | invoice | Template 10 | heavy JPEG compression, quality 6 | motion blur, 15 px horizontal |
-| cheque | Monsoon Trust | phone-photo look: skew 9 deg, rotation 4 deg, shadow, dark desk | partial crop: right 22% cut off |
+| cheque | First Commercial Bank (real scan) | Tamarind Grove SPECIMEN: phone-photo look, skew 9 deg, rotation 4 deg, shadow, dark desk | Deutsche Bank 1909 (real photo): partial crop, right 22% cut off |
 
 The 12 were shuffled with a fixed seed, so `test_01`...`test_12` do not follow class order.
 
@@ -120,7 +135,8 @@ Rebuild with `python raw/_scripts/make_deep_test.py .` (needs `pymupdf`, `pillow
 
 ## Licences, in short
 - FATURA invoices: CC BY 4.0 (credit above).
-- Cheques: synthetic, made for this dataset.
+- Cheques: chq_01, chq_02 and test_05 are synthetic, made for this dataset. chq_03, chq_04, chq_05, test_08 and
+  test_09 are real photos from Wikimedia Commons (CC BY-SA 4.0 / CC BY-SA 3.0 / public domain; see the table above).
 - KYC forms and exchange notices: publicly published documents with **no licence stated**. They are
   used here for internal, non-commercial training only; check with the publishers before any other use.
 
@@ -128,6 +144,7 @@ Rebuild with `python raw/_scripts/make_deep_test.py .` (needs `pymupdf`, `pillow
 From this folder, with Python and `pymupdf`, `pillow`, `imagehash`, `numpy`:
 ```
 python raw/_scripts/make_cheques.py raw/cheque
+python raw/_scripts/prep_real_cheques.py .   # needs the Commons originals in raw/cheque_real/originals/
 python raw/_scripts/build_dataset.py .
 ```
 `raw/_scripts/fatura_fetch.py` downloads single FATURA images without the whole archive. The build

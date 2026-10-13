@@ -23,11 +23,12 @@ interface Props {
   onCancel: () => void;
 }
 
-type Tab = 'upload' | 'webcam' | 'test';
+type Tab = 'upload' | 'webcam' | 'test' | 'deep';
 
 export default function ImagePicker({ labels, namesKey, busy, error, onPick, onCancel }: Props) {
   const [tab, setTab] = useState<Tab>('upload');
   const [tests, setTests] = useState<SampleImageSet['test']>([]);
+  const [deep, setDeep] = useState<SampleImageSet['test']>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const { videoRef, error: camError, ready } = useCamera(tab === 'webcam' && !busy);
 
@@ -39,7 +40,10 @@ export default function ImagePicker({ labels, namesKey, busy, error, onPick, onC
         const renamed = readLabelNames(namesKey);
         const have = new Set(labels);
         const used = d.labels.filter((l) => have.has(renamed[l.label] ?? l.label)).length;
-        if (alive && used >= 2) setTests(d.test);
+        if (alive && used >= 2) {
+          setTests(d.test);
+          setDeep(d.deepTest ?? []);
+        }
       })
       .catch(() => undefined);
     return () => {
@@ -69,6 +73,7 @@ export default function ImagePicker({ labels, namesKey, busy, error, onPick, onC
     { id: 'upload', name: 'Upload' },
     { id: 'webcam', name: 'Webcam' },
     ...(tests.length ? [{ id: 'test' as Tab, name: 'Test images' }] : []),
+    ...(deep.length ? [{ id: 'deep' as Tab, name: 'Deep test' }] : []),
   ];
 
   return (
@@ -129,14 +134,18 @@ export default function ImagePicker({ labels, namesKey, busy, error, onPick, onC
               </div>
             )
           ) : (
-            <ul className="grid grid-cols-4 gap-2" aria-label="Test images">
-              {tests.map((t) => (
+            <ul className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[60vh] overflow-y-auto" aria-label={tab === 'deep' ? 'Deep test images' : 'Test images'}>
+              {(tab === 'deep' ? deep : tests).map((t, k) => (
                 <li key={t.file}>
                   <button
                     type="button"
-                    onClick={async () => onPick({ file: await sampleImageFile(t.file), name: fileName(t.file).replace(/\.\w+$/, '').replace('test_', 'Test ') })}
+                    onClick={async () => {
+                      // names that do not give the answer away: Test 01..12, Deep 01..20
+                      const name = tab === 'deep' ? `Deep ${String(k + 1).padStart(2, '0')}` : fileName(t.file).replace(/\.\w+$/, '').replace('test_', 'Test ');
+                      onPick({ file: await sampleImageFile(t.file), name });
+                    }}
                     className="block w-full rounded-md overflow-hidden border border-fg/10 hover:border-pink-brand bg-white"
-                    title={fileName(t.file)}
+                    title={tab === 'deep' ? t.defects ?? '' : fileName(t.file)}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={sampleImageUrl(t.file)} alt={fileName(t.file)} className="w-full aspect-[3/4] object-cover object-top" />

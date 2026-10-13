@@ -37,7 +37,7 @@
     },
     {
       "label": "Cheque",
-      "covers": "Specimen cheques from fictional banks",
+      "covers": "Real cheque photos and specimen cheques",
       "files": [
         "cheque/chq_01.jpg",
         "cheque/chq_02.jpg",
@@ -95,6 +95,108 @@
     {
       "file": "test/test_12.jpg",
       "expected": "KYC"
+    }
+  ],
+  "deepTest": [
+    {
+      "file": "deep/KYC/deep_kyc_01.jpg",
+      "expected": "KYC",
+      "defects": "handwritten fill (7 fields, ticks, signature); coffee stain; phone-photo skew 10 deg, rotation -4 deg, shadow; heavy JPEG (q30)"
+    },
+    {
+      "file": "deep/KYC/deep_kyc_02.jpg",
+      "expected": "KYC",
+      "defects": "handwritten fill (7 fields, ticks, signature); coffee stain; fold crease; motion blur 8 px"
+    },
+    {
+      "file": "deep/KYC/deep_kyc_03.jpg",
+      "expected": "KYC",
+      "defects": "handwritten fill (4 fields, ticks, signature); photocopy (grey, speckle, fading toner); rotated 6 deg; bottom 20% cut off"
+    },
+    {
+      "file": "deep/KYC/deep_kyc_04.jpg",
+      "expected": "KYC",
+      "defects": "handwritten fill (5 fields, ticks, signature); thumb over the edge; low light; blur 1.5"
+    },
+    {
+      "file": "deep/KYC/deep_kyc_05.jpg",
+      "expected": "KYC",
+      "defects": "handwritten fill (6 fields, ticks, signature); yellowed paper; phone-photo skew 14 deg, rotation 3 deg; sensor noise"
+    },
+    {
+      "file": "deep/corporate_action/deep_ca_01.jpg",
+      "expected": "Corporate action",
+      "defects": "highlighter; handwritten margin note \"Fwd to CA desk - urgent\"; phone-photo skew 11 deg, rotation 5 deg, shadow; heavy JPEG (q25)"
+    },
+    {
+      "file": "deep/corporate_action/deep_ca_02.jpg",
+      "expected": "Corporate action",
+      "defects": "record date circled; handwritten margin note \"Check entitlement!\"; punch holes; fold crease; blur 2"
+    },
+    {
+      "file": "deep/corporate_action/deep_ca_03.jpg",
+      "expected": "Corporate action",
+      "defects": "handwritten margin note \"file: bonus 1:1 ?\"; photocopy; rotated -5 deg; right 15% cut off"
+    },
+    {
+      "file": "deep/corporate_action/deep_ca_04.jpg",
+      "expected": "Corporate action",
+      "defects": "record date circled; handwritten margin note \"Credit date pending\"; coffee stain; low light; motion blur 10 px"
+    },
+    {
+      "file": "deep/corporate_action/deep_ca_05.jpg",
+      "expected": "Corporate action",
+      "defects": "highlighter; handwritten margin note \"Noted - RK 14/10\"; thumb over the edge; phone-photo skew 8 deg; sensor noise"
+    },
+    {
+      "file": "deep/invoice/deep_inv_01.jpg",
+      "expected": "Invoice",
+      "defects": "PAID rubber stamp; handwritten approval; phone-photo skew 12 deg, rotation -5 deg, shadow; heavy JPEG (q20)"
+    },
+    {
+      "file": "deep/invoice/deep_inv_02.jpg",
+      "expected": "Invoice",
+      "defects": "total circled + note; coffee stain; vertical fold crease; blur 2"
+    },
+    {
+      "file": "deep/invoice/deep_inv_03.jpg",
+      "expected": "Invoice",
+      "defects": "handwritten note; photocopy; rotated 7 deg; bottom 18% cut off"
+    },
+    {
+      "file": "deep/invoice/deep_inv_04.jpg",
+      "expected": "Invoice",
+      "defects": "RECEIVED rubber stamp; highlighter; low light; motion blur 9 px"
+    },
+    {
+      "file": "deep/invoice/deep_inv_05.jpg",
+      "expected": "Invoice",
+      "defects": "amount struck through and corrected by hand; thumb over the edge; yellowed paper; sensor noise"
+    },
+    {
+      "file": "deep/cheque/deep_chq_01.jpg",
+      "expected": "Cheque",
+      "defects": "handwritten date and signature; phone-photo skew 13 deg, rotation -6 deg, shadow; sensor noise; heavy JPEG (q22)"
+    },
+    {
+      "file": "deep/cheque/deep_chq_02.jpg",
+      "expected": "Cheque",
+      "defects": "handwritten date and signature; handwritten A/c payee; coffee stain; vertical fold crease"
+    },
+    {
+      "file": "deep/cheque/deep_chq_03.jpg",
+      "expected": "Cheque",
+      "defects": "handwritten date and signature; photocopy; rotated -4 deg; right 20% cut off"
+    },
+    {
+      "file": "deep/cheque/deep_chq_04.jpg",
+      "expected": "Cheque",
+      "defects": "handwritten date and signature; thumb over the edge; low light; motion blur 12 px"
+    },
+    {
+      "file": "deep/cheque/deep_chq_05.jpg",
+      "expected": "Cheque",
+      "defects": "handwritten date and signature; thumb over the edge; rotated 9 deg; heavy JPEG (q28)"
     }
   ]
 }

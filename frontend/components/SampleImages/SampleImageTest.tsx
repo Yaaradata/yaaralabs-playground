@@ -22,12 +22,13 @@ interface Props {
   predict: (file: File) => Promise<ImagePrediction>;
 }
 
-const title = (file: string) => fileName(file).replace(/\.\w+$/, '').replace('test_', 'Test ');
+type TestSet = 'standard' | 'deep';
 
 export default function SampleImageTest({ projectLabels, namesKey, predict }: Props) {
   const [data, setData] = useState<SampleImageSet | null>(null);
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
+  const [set, setSet] = useState<TestSet>('standard');
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<Record<string, ImagePrediction | string>>({});
 
@@ -61,10 +62,20 @@ export default function SampleImageTest({ projectLabels, namesKey, predict }: Pr
   };
 
   if (!show || !data) return null;
-  const expectedOf = (file: string) => asProject(data.test.find((t) => t.file === file)?.expected ?? '');
+  const deep = data.deepTest ?? [];
+  const items = set === 'deep' && deep.length ? deep : data.test;
+  const all = [...data.test, ...deep];
+  const itemOf = (file: string) => all.find((t) => t.file === file);
+  const expectedOf = (file: string) => asProject(itemOf(file)?.expected ?? '');
+  // names that do not give the answer away: Test 01..12, Deep 01..20
+  const title = (file: string) => {
+    const d = deep.findIndex((t) => t.file === file);
+    if (d > -1) return `Deep ${String(d + 1).padStart(2, '0')}`;
+    return fileName(file).replace(/\.\w+$/, '').replace('test_', 'Test ');
+  };
   const res = picked ? results[picked] : undefined;
   const pred = res && typeof res !== 'string' ? res : null;
-  const scored = data.test.filter((t) => results[t.file] && typeof results[t.file] !== 'string');
+  const scored = items.filter((t) => results[t.file] && typeof results[t.file] !== 'string');
   const right = scored.filter((t) => (results[t.file] as ImagePrediction).label === expectedOf(t.file)).length;
 
   return (
@@ -72,8 +83,31 @@ export default function SampleImageTest({ projectLabels, namesKey, predict }: Pr
       <div className="flex flex-wrap items-center gap-3 px-4 py-3">
         <div className="flex-1 min-w-0">
           <h5 className="font-semibold text-fg">Test dataset</h5>
-          <p className="text-sm text-fg/60">{data.test.length} images the model has never seen. Some are blurred, cropped or photographed at an angle.</p>
+          <p className="text-sm text-fg/60">
+            {set === 'deep'
+              ? `${items.length} hard images: handwriting, stamps, stains, folds, thumbs, photocopies and bad photos, several at once.`
+              : `${items.length} images the model has never seen. Some are blurred, cropped or photographed at an angle.`}
+          </p>
         </div>
+        {open && deep.length > 0 && (
+          <div className="flex gap-1 p-1 rounded-lg bg-canvas border border-fg/10" role="tablist" aria-label="Test set">
+            {([['standard', `Standard (${data.test.length})`], ['deep', `Deep test (${deep.length})`]] as [TestSet, string][]).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={set === id}
+                onClick={() => {
+                  setSet(id);
+                  setPicked(null);
+                }}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium ${set === id ? 'bg-purple-brand text-white' : 'text-fg/70 hover:bg-purple-brand/10'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
         {open && scored.length > 0 && (
           <span className="text-sm text-fg" aria-live="polite"><b>{right} of {scored.length}</b> correct</span>
         )}
@@ -100,7 +134,12 @@ export default function SampleImageTest({ projectLabels, namesKey, predict }: Pr
             ) : (
               <>
                 <div className="flex items-center gap-3 mb-3">
-                  <h6 className="font-semibold text-fg flex-1">{title(picked)}</h6>
+                  <div className="flex-1 min-w-0">
+                    <h6 className="font-semibold text-fg">{title(picked)}</h6>
+                    {itemOf(picked)?.defects && (
+                      <p className="text-xs text-fg/60 mt-0.5">Defects: {itemOf(picked)?.defects}</p>
+                    )}
+                  </div>
                   <button
                     type="button"
                     onClick={test}
@@ -149,7 +188,7 @@ export default function SampleImageTest({ projectLabels, namesKey, predict }: Pr
 
           {/* right: the test images */}
           <ul className="grid grid-cols-3 lg:grid-cols-2 gap-2 lg:max-h-[32rem] lg:overflow-y-auto pr-1" aria-label="Test images">
-            {data.test.map((t) => {
+            {items.map((t) => {
               const r = results[t.file];
               const p = r && typeof r !== 'string' ? r : null;
               return (
