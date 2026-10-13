@@ -26,3 +26,11 @@ Old `rag-chatbot` / `ai-agent` guest projects keep opening in `RagChatbotLab` / 
 - "Ready" on the projects list for a staged agent means its persona has been saved at least once (persona
   `updated_at` later than `created_at`). Legacy agents still show no status.
 - Pseudo-project names use the project name the participant typed (`project_name`), falling back to the agent name.
+- Actions: when the model-based rule matcher answers "no rule applies", the keyword fallback no longer overrides it.
+  The fallback matched substrings (the word "or" inside "for custodians" fired the bank-change action on a SEBI
+  question). The fallback still runs if the model call fails. This affects legacy agents too, as a bug fix.
+- The existing rule matcher understands meaning, so the rephrased bank request ("Our payout should now go to a
+  different bank") is caught by the action too. The Ex 6 lesson "a rule only catches the wording it knows" does not
+  show with this engine; the deterministic guardrail is the better place to show that contrast.
+- Staged agents skip condition detection (intent, sentiment) when no action is switched on, since nothing could
+  fire; that saves two model calls per message.

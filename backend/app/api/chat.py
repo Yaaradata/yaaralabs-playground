@@ -6,6 +6,8 @@ from ..models import (
     ErrorResponse
 )
 from ..services.chat_service import ChatService
+from ..services.agent_service import AgentService
+from ..services.agent_studio_service import AgentStudioService, StudioModelError
 
 router = APIRouter(prefix="/chat", tags=["agent"])
 
@@ -32,6 +34,21 @@ async def chat(
     5. Else: embeds message, retrieves KB, builds prompt, calls Vertex AI
     6. Logs full trace
     """
+    # Day 2 Agent Studio: staged agents answer through AgentStudioService; legacy agents keep ChatService.chat
+    agent = AgentService().get_agent(request.agent_id)
+    if agent and agent.stage:
+        if agent.session_id != request.session_id:
+            raise HTTPException(status_code=403, detail="That agent belongs to another session.")
+        try:
+            result = AgentStudioService(chat_service=chat_service).answer(agent, request.message, request.session_id)
+        except StudioModelError as e:
+            raise HTTPException(status_code=502, detail=str(e))
+        except HTTPException:
+            raise
+        except Exception as e:
+            status = getattr(e, "status_code", None) or (502 if type(e).__name__.endswith("ModelError") else 500)
+            raise HTTPException(status_code=status, detail=str(e))
+        return ChatResponse(response=result["response"], trace=result["trace"], images=[], chat_id=result.get("chat_id"))
     try:
         result = chat_service.chat(request)
         return ChatResponse(

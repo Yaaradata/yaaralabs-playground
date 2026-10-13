@@ -1,0 +1,227 @@
+/* Day 2 Agent Studio. Theme tokens from app/globals.css (--fg, --card, --raised, --canvas) flip with
+   <html data-theme>, so everything here works in light and dark. Brand colours stay the same in both. */
+
+.as-chat {
+  position: relative;
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  gap: 12px;
+}
+
+/* chat bubbles */
+.as-bubble {
+  max-width: min(46rem, 85%);
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.as-bubble-user {
+  background: var(--color-purple-brand);
+  color: #fff;
+  border-top-right-radius: 4px;
+}
+.as-bubble-bot {
+  background: var(--card);
+  color: var(--fg);
+  border: 1px solid color-mix(in srgb, var(--color-magenta-brand) 18%, transparent);
+  border-top-left-radius: 4px;
+}
+.as-bubble-error {
+  border-color: color-mix(in srgb, #ef4444 55%, transparent);
+  background: color-mix(in srgb, #ef4444 9%, var(--card));
+}
+.as-answer {
+  white-space: pre-wrap;
+}
+
+/* small grey chips under a reply */
+.as-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--fg) 75%, transparent);
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+}
+.as-chip-guard {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--color-purple-brand) 16%, transparent);
+}
+.as-chip-button {
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.as-chip-button:hover,
+.as-chip-button:focus-visible {
+  border-color: var(--color-pink-brand);
+  outline: none;
+}
+
+/* [n] citation chips */
+.as-cite {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35em;
+  height: 1.35em;
+  padding: 0 4px;
+  margin: 0 1px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  vertical-align: 0.15em;
+  color: #fff;
+  background: var(--color-purple-brand);
+  cursor: pointer;
+}
+.as-cite:hover,
+.as-cite:focus-visible {
+  background: var(--color-pink-brand);
+  outline: none;
+}
+.as-cite-bad {
+  background: #dc2626;
+  cursor: not-allowed;
+}
+
+/* passages */
+.as-passage {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--fg) 10%, transparent);
+  background: color-mix(in srgb, var(--fg) 3%, transparent);
+}
+.as-passage:hover,
+.as-passage:focus-visible {
+  border-color: var(--color-pink-brand);
+  outline: none;
+}
+.as-passage-cited {
+  border-color: color-mix(in srgb, var(--color-purple-brand) 60%, transparent);
+  background: color-mix(in srgb, var(--color-purple-brand) 10%, transparent);
+}
+.as-scorebar {
+  display: inline-block;
+  width: 56px;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fg) 12%, transparent);
+  overflow: hidden;
+}
+.as-scorebar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-purple-brand);
+}
+
+/* agent steps */
+.as-steps {
+  margin-top: 6px;
+  padding-left: 14px;
+  border-left: 2px solid color-mix(in srgb, var(--color-purple-brand) 35%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.as-step {
+  font-size: 0.85rem;
+  color: var(--fg);
+  overflow-wrap: anywhere;
+}
+.as-step-blocked {
+  font-weight: 600;
+}
+.as-step-err {
+  color: #dc2626;
+}
+.as-source {
+  display: inline-block;
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--color-purple-brand);
+  background: color-mix(in srgb, var(--color-purple-brand) 12%, transparent);
+  vertical-align: middle;
+}
+.as-source:hover {
+  text-decoration: underline;
+}
+
+/* tags on the Actions list */
+.as-tag {
+  padding: 2px 8px;
+  border-radius: 6px;
+  color: var(--fg);
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+}
+.as-tag-when {
+  background: color-mix(in srgb, #3b82f6 16%, transparent);
+}
+.as-tag-do {
+  background: color-mix(in srgb, #10b981 16%, transparent);
+}
+
+/* side drawers (sample questions, the PDF) */
+.as-drawer {
+  display: flex;
+  flex-direction: column;
+  width: 22rem;
+  flex-shrink: 0;
+  min-height: 0;
+  border: 1px solid color-mix(in srgb, var(--color-magenta-brand) 20%, transparent);
+  border-radius: 12px;
+  background: var(--card);
+  overflow: hidden;
+}
+.as-drawer-wide {
+  width: min(44rem, 52%);
+}
+.as-pinned {
+  padding: 10px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--fg) 10%, transparent);
+  background: color-mix(in srgb, var(--color-purple-brand) 12%, var(--card));
+  max-height: 30%;
+  overflow-y: auto;
+}
+
+.as-head-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--fg);
+  border: 1px solid color-mix(in srgb, var(--color-magenta-brand) 30%, transparent);
+}
+.as-head-btn:hover,
+.as-head-btn:focus-visible {
+  background: var(--raised);
+  outline: none;
+}
+.as-head-btn:disabled {
+  opacity: 0.5;
+}
+
+@media (max-width: 900px) {
+  .as-chat {
+    flex-direction: column;
+  }
+  .as-drawer,
+  .as-drawer-wide {
+    width: 100%;
+    max-height: 60%;
+  }
+}
