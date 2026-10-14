@@ -2,7 +2,8 @@
  * Evaluate step for Text Recognition projects: everything the page shows, computed from the
  * endpoint's scored items. Pure functions (no React), tested in scripts/test-evaluate.ts.
  *
- * Plain words for senior learners: accuracy, precision, recall. Nothing else.
+ * Plain words for senior learners: each scientific term is shown with its business words
+ * (termRows). No F1, no averages, no ROC.
  */
 
 import { STANDARD_LABELS, projectLabelName, type SampleDataset } from '../SampleLabelling/sample';
@@ -59,15 +60,30 @@ export const shortName = (label: string) => SHORT[label] ?? label;
 /** What one test item is: a message (Text Recognition) or an image (Image Recognition). */
 export type Unit = 'messages' | 'images';
 
-/** "complaints", "KYC messages", "Invoice images": how a desk's items are named in a sentence. */
+/** "Complaint" -> "complaint"; acronyms such as "KYC" stay in capitals. */
+export const lowerName = (label: string) => {
+  const s = shortName(label);
+  return s === s.toUpperCase() ? s : s.toLowerCase();
+};
+
+/** "complaint messages", "KYC messages", "Invoice images": how a desk's items are named in a sentence. */
 export function deskNoun(label: string, n = 2, unit: Unit = 'messages'): string {
   const s = shortName(label);
-  if (s === 'Complaint' && unit === 'messages') return n === 1 ? 'complaint' : 'complaints';
-  return `${s} ${n === 1 ? unit.slice(0, -1) : unit}`;
+  const noun = n === 1 ? unit.slice(0, -1) : unit;
+  return s === 'Complaint' && unit === 'messages' ? `complaint ${noun}` : `${s} ${noun}`;
 }
 
 export function defaultDesk(labels: string[]): string {
   return labels.find((l) => /complain|escalat/i.test(l)) ?? labels[0] ?? '';
+}
+
+/* ───────── before the exam: what is in it ───────── */
+
+/** Count pills for the exam card: "Fees 3", "Corporate action 3", ..., "Off-topic 2". In `labels` order. */
+export function examCounts(items: { expected: string }[], labels: string[]): { name: string; n: number }[] {
+  const out = labels.map((l) => ({ name: shortName(l), n: items.filter((i) => i.expected === l).length })).filter((c) => c.n > 0);
+  const off = items.filter((i) => i.expected === NONE).length;
+  return off ? [...out, { name: 'Off-topic', n: off }] : out;
 }
 
 /* ───────── block 1: accuracy ───────── */
@@ -107,7 +123,14 @@ export function mostMissesLine(items: EvalItem[], labels: string[], unit: Unit =
   return `Most mistakes: ${shortName(best.label)} ${unit} sent to other desks (${best.missed} of ${best.total}).`;
 }
 
-const sure = (i: EvalItem) => Math.round((i.scores[i.predicted] ?? 0) * 100);
+const score = (i: EvalItem) => i.scores[i.predicted] ?? 0;
+const sure = (i: EvalItem) => Math.round(score(i) * 100);
+
+/** How sure, for display: "under 1%" below 0.01 (rounding would show a misleading "0%"), else "N%". */
+export function surePct(x: EvalItem | number): string {
+  const v = typeof x === 'number' ? x : score(x);
+  return v < 0.01 ? 'under 1%' : `${Math.round(v * 100)}%`;
+}
 
 /** Below this the bot is unsure (the same line as the training page's test table). */
 export const LOW_CONFIDENCE = 50;
@@ -116,24 +139,24 @@ const andList = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, 
 
 /**
  * One line about the off-topic messages. When the bot was unsure about all of them (below 50%) the
- * desk it picked means nothing, so the line says how sure it was instead, e.g. 2 off-topic messages
- * ("What's the weather in Mumbai?", "Hello"): the bot has no 'none of these' answer, so it still had
- * to pick a desk, but it was only 0% and 0% sure. Otherwise: ... so it still sent them to Corporate
- * action (41%, 24% sure).
+ * desk it picked means nothing, so the line says how sure it was: 2 off-topic messages ("What's the
+ * weather in Mumbai?", "Hello"): it was only under 1% and under 1% sure, so they go to a person.
+ * Otherwise: ... the bot has no 'none of these' answer, so it still sent them to Corporate action
+ * (62%, 70% sure).
  */
 export function offTopicLine(items: EvalItem[]): string | null {
   const off = items.filter((i) => i.expected === NONE);
   if (!off.length) return null;
   const quoted = off.map((i) => `“${i.text}”`).join(', ');
-  const them = off.length === 1 ? 'it' : 'them';
-  const intro = `${off.length} off-topic ${off.length === 1 ? 'message' : 'messages'} (${quoted}): the bot has no ‘none of these’ answer, so it still`;
+  const one = off.length === 1;
+  const head = `${off.length} off-topic ${one ? 'message' : 'messages'} (${quoted}):`;
   if (off.every((i) => sure(i) < LOW_CONFIDENCE)) {
-    return `${intro} had to pick a desk, but it was only ${andList(off.map((i) => `${sure(i)}%`))} sure. Below ${LOW_CONFIDENCE}% means it doesn’t recognise ${them}.`;
+    return `${head} it was only ${andList(off.map(surePct))} sure, so ${one ? 'it goes' : 'they go'} to a person.`;
   }
-  const head = `${intro} sent ${them} to`;
+  const sent = `${head} the bot has no ‘none of these’ answer, so it still sent ${one ? 'it' : 'them'} to`;
   const desks = [...new Set(off.map((i) => i.predicted))];
-  if (desks.length === 1) return `${head} ${desks[0]} (${off.map((i) => `${sure(i)}%`).join(', ')} sure).`;
-  return `${head} ${off.map((i) => `${i.predicted} (${sure(i)}% sure)`).join(', ')}.`;
+  if (desks.length === 1) return `${sent} ${desks[0]} (${off.map(surePct).join(', ')} sure).`;
+  return `${sent} ${off.map((i) => `${i.predicted} (${surePct(i)} sure)`).join(', ')}.`;
 }
 
 /* ───────── blocks 4-5: one desk, and the lean slider ───────── */
@@ -210,4 +233,74 @@ export function deskDots(items: EvalItem[], desk: string) {
     real: desks.filter((i) => i.expected === desk).map((item) => ({ item, ok: item.predicted === desk })),
     flagged: desks.filter((i) => i.predicted === desk).map((item) => ({ item, ok: item.expected === desk })),
   };
+}
+
+/* ───────── bottom: the scientific terms, in business words ───────── */
+
+export interface TermRow {
+  term: string; // the scientific name
+  meaning: string; // what it means at work
+  yours: string; // how this bot did
+}
+
+/**
+ * The terms table under the results. Recall, Precision, False negative and False positive follow the
+ * chosen desk (deskAtLean at 0, the same numbers as the desk card). Overfitting is left out when
+ * there is no practice score (image runs). `own`: the answer key is the learner's own labels.
+ */
+export function termRows(
+  items: EvalItem[],
+  labels: string[],
+  desk: string,
+  practice: { correct: number; total: number },
+  unit: Unit = 'messages',
+  own = false,
+): TermRow[] {
+  const one = unit.slice(0, -1);
+  const acc = accuracy(items);
+  const r = deskAtLean(items, labels, desk, 0);
+  const name = lowerName(desk);
+  const mistakes = acc.total - acc.right;
+  const off = items.filter((i) => i.expected === NONE);
+  const lowest = items.length ? items.reduce((a, b) => (score(b) < score(a) ? b : a)) : null;
+
+  const rows: TermRow[] = [
+    { term: 'Test set', meaning: `The exam: ${unit} the bot never saw`, yours: `${items.length} ${unit}` },
+    {
+      term: 'Ground truth',
+      meaning: own ? 'The answer key: your own labels' : 'The answer key: labels a person gave',
+      yours: `Every ${one}`,
+    },
+    { term: 'Accuracy', meaning: 'Overall hit rate', yours: `${acc.right} of ${acc.total} (${acc.pct}%)` },
+    { term: 'Confusion matrix', meaning: 'The error table: what went where', yours: `${mistakes} ${mistakes === 1 ? 'mistake' : 'mistakes'}` },
+    {
+      term: 'Recall',
+      meaning: `Catch rate: of the real ${deskNoun(desk, 2, unit)}, how many it found`,
+      yours: r.total ? `${r.caught} of ${r.total} (${r.recall}%)` : `No ${deskNoun(desk, 2, unit)} in this exam`,
+    },
+    {
+      term: 'Precision',
+      meaning: `Alert quality: when it said ${name}, how often it was right`,
+      yours: r.flagged ? `${r.caught} of ${r.flagged} (${r.precision}%)` : `It never said ${shortName(desk)}`,
+    },
+    {
+      term: 'False negative',
+      meaning: `A miss: a real ${deskNoun(desk, 1, unit)} sent to another ${unit === 'images' ? 'label' : 'desk'}`,
+      yours: `${r.total - r.caught}`,
+    },
+    { term: 'False positive', meaning: `A false alarm: called ${name} when it wasn’t`, yours: `${r.falseAlarms}` },
+    {
+      term: 'Confidence score',
+      meaning: `How sure it was; below ${LOW_CONFIDENCE}% a person takes over`,
+      yours: unit === 'messages' && off.length ? `Off-topic: ${surePct(off[0])}` : lowest ? `Lowest: ${surePct(lowest)}` : '—',
+    },
+  ];
+  if (practice.total > 0) {
+    rows.push({
+      term: 'Overfitting',
+      meaning: 'Practice score flatters; only the exam counts',
+      yours: `${practice.correct} of ${practice.total} vs ${acc.right} of ${acc.total}`,
+    });
+  }
+  return rows;
 }
