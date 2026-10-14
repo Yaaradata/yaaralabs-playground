@@ -5,6 +5,7 @@ Measure the three numbers shown under each model on the training page (Text and 
   unknown   off-topic inputs the model marks as unknown: top confidence below 50% (the app's
             LOW_CONFIDENCE line), so it does not pass them off as one of the labels
   speed     median time per prediction on this machine, after warm-up
+  train     seconds to train on the 20 samples (what the cards show as Speed)
 
 Each model is trained with the app's own trainer on the sample data (20 messages / 20 images).
 Off-topic inputs: text = the sample's 2 "None of these" messages + 10 below; images = photos of
@@ -59,12 +60,12 @@ def timed(fn, items):
     return out, statistics.median(ms)
 
 
-def report(name, test, preds, off_preds, ms):
+def report(name, test, preds, off_preds, ms, train_s=None):
     right = sum(p[0] == e for p, e in zip(preds, test))
     unknown = sum(c < LOW for _, c in off_preds)
     row = {"model": name, "accuracy": f"{right}/{len(test)}", "accuracy_pct": round(100 * right / len(test)),
            "unknown": f"{unknown}/{len(off_preds)}", "unknown_pct": round(100 * unknown / len(off_preds)),
-           "ms_per_prediction": round(ms, 1)}
+           "ms_per_prediction": round(ms, 1), "train_seconds": None if train_s is None else round(train_s, 1)}
     print(json.dumps(row), flush=True)
 
 
@@ -79,7 +80,9 @@ def text():
 
     from app.text_embed_service import SentenceEmbedTrainer
     lr = SentenceEmbedTrainer()
+    t0 = time.perf_counter()
     m = lr.train_model(train)["model"]
+    lr_s = time.perf_counter() - t0
 
     def lr_pred(t):
         r = lr.predict(m, t)
@@ -87,12 +90,14 @@ def text():
 
     preds, ms = timed(lr_pred, test_texts)
     off_preds, _ = timed(lr_pred, off)
-    report("logistic_regression", test_labels, preds, off_preds, ms)
+    report("logistic_regression", test_labels, preds, off_preds, ms, lr_s)
 
     import torch
     from app.training_service import DistilBERTTrainer, TextExample
     bt = DistilBERTTrainer()
+    t0 = time.perf_counter()
     res = bt.train_model([TextExample(text=x["text"], label=x["label"]) for x in train])
+    bert_s = time.perf_counter() - t0
     model, tok = res["model"], res["tokenizer"]
     model.eval()
 
@@ -105,7 +110,7 @@ def text():
 
     preds, ms = timed(bert_pred, test_texts)
     off_preds, _ = timed(bert_pred, off)
-    report("distilbert", test_labels, preds, off_preds, ms)
+    report("distilbert", test_labels, preds, off_preds, ms, bert_s)
 
 
 # ------------------------------------------------------------------ images
@@ -150,8 +155,10 @@ def image():
             return np.array(Image.open(path).convert("RGB").resize(tuple(tr.img_size))).astype(np.float32)
 
         tr._download_image_to_memory = local
+        t0 = time.perf_counter()
         images, labels, names = tr.prepare_training_data_direct(examples)
         tr.train_model_direct(images, labels, names)
+        train_s = time.perf_counter() - t0
 
         def pred(path, tr=tr):
             r = tr.predict_image(str(path))
@@ -159,7 +166,7 @@ def image():
 
         preds, ms = timed(pred, [p for p, _ in tests])
         off_preds, _ = timed(pred, off)
-        report(arch, [e for _, e in tests], preds, off_preds, ms)
+        report(arch, [e for _, e in tests], preds, off_preds, ms, train_s)
 
 
 if __name__ == "__main__":

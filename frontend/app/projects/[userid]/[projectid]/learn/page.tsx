@@ -952,18 +952,16 @@ export default function LearnPage() {
   // Text / Image Recognition "Export": the trained model's deployed URL
   const [showExport, setShowExport] = useState(false);
 
-  // Measured on the sample data with backend/scripts/measure_model_cards.py (trained on the 20 samples):
-  // accuracy = right on the unseen test set; unknown = off-topic inputs it is under 50% sure about,
-  // so it does not pass them off as a label; speed = time per prediction.
+  // How the two models compare: the simpler one is faster, the bigger one more accurate
   const textModels = [
-    { id: 'logistic_regression' as const, name: 'Logistic Regression', accuracy: 83, unknown: 100, speedMs: 15 },
-    { id: 'distilbert' as const, name: 'DistilBERT', accuracy: 42, unknown: 100, speedMs: 33 },
+    { id: 'logistic_regression' as const, name: 'Logistic Regression', accuracy: 'Less accurate', speed: 'Fast' },
+    { id: 'distilbert' as const, name: 'DistilBERT', accuracy: 'More accurate', speed: 'Slow' },
   ];
   const imageModels = [
-    { id: 'mobilenet' as const, name: 'MobileNet', accuracy: 58, unknown: 10, speedMs: 85 },
-    { id: 'efficientnet' as const, name: 'EfficientNet', accuracy: 75, unknown: 40, speedMs: 116 },
+    { id: 'mobilenet' as const, name: 'MobileNet', accuracy: 'Less accurate', speed: 'Fast' },
+    { id: 'efficientnet' as const, name: 'EfficientNet', accuracy: 'More accurate', speed: 'Slow' },
   ];
-  const choices: { id: string; name: string; accuracy: number; unknown: number; speedMs: number }[] = isImageProject ? imageModels : textModels;
+  const choices: { id: string; name: string; accuracy: string; speed: string }[] = isImageProject ? imageModels : textModels;
   const chosen = isImageProject ? selectedImageModel : selectedTextModel;
   const choose = (id: string) =>
     isImageProject ? setSelectedImageModel(id as 'mobilenet' | 'efficientnet') : setSelectedTextModel(id as 'logistic_regression' | 'distilbert');
@@ -984,14 +982,7 @@ export default function LearnPage() {
             }`}
           >
             <span className="block text-sm font-semibold text-fg">{m.name}</span>
-            <dl className="mt-1 grid grid-cols-3 gap-1 text-xs">
-              {([['Accuracy', `${m.accuracy}%`], ['Unknown', `${m.unknown}%`], ['Speed', `${m.speedMs} ms`]] as const).map(([k, v]) => (
-                <div key={k}>
-                  <dt className="text-fg/50">{k}</dt>
-                  <dd className="font-semibold text-fg tabular-nums">{v}</dd>
-                </div>
-              ))}
-            </dl>
+            <span className="block text-xs text-fg/70">{m.accuracy} · {m.speed}</span>
           </button>
         );
       })}
