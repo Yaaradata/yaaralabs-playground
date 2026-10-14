@@ -43,6 +43,10 @@ export const config = {
         `/api/confusion-matrix/session/${sessionId}/projects/${projectId}`,
     },
     // RAG Chatbot projects: documents → chunks → search → grounded answers
+    copilotLab: {
+      project: (sessionId: string, projectId: string) =>
+        `/api/copilot-lab/session/${sessionId}/projects/${projectId}`,
+    },
     ragChatbot: {
       library: '/api/rag-chatbot/library',
       libraryPdf: (docId: string) => `/api/rag-chatbot/library/${docId}/pdf`,

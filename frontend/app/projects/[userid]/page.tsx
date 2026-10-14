@@ -311,6 +311,9 @@ function CreateProjectPage() {
         allProjects.map(async (project) => {
           // Fetch model status for the ML types that show the Model Trained tag (not the Day 2 agents)
           if (project.agent_id) return project;
+          if (project.type === 'copilot-ethics' || project.type === 'copilot-document-ai') {
+            return { ...project, modelStatus: await getCopilotStatus(project.id) };
+          }
           if (
             project.type === 'text-recognition' ||
             project.type === 'image-recognition' ||
@@ -533,6 +536,20 @@ function CreateProjectPage() {
     } catch (error) {
       console.error('Error validating Teachable Machine URL:', error);
       return false;
+    }
+  };
+
+  // Copilot labs (Ex 9, Ex 10): ready once the lab has a saved step
+  const getCopilotStatus = async (projectId: string): Promise<'available' | 'unavailable'> => {
+    try {
+      const sessionId = localStorage.getItem('yaaralabs_playground_session_id');
+      if (!sessionId) return 'unavailable';
+      const res = await fetch(`${config.apiBaseUrl}${config.api.copilotLab.project(sessionId, projectId)}`);
+      if (!res.ok) return 'unavailable';
+      const body = await res.json();
+      return (body?.data?.completedSteps || []).length > 0 ? 'available' : 'unavailable';
+    } catch {
+      return 'unavailable';
     }
   };
 
@@ -923,7 +940,7 @@ function CreateProjectPage() {
 
   const handleProjectClick = (project: Project) => {
     // For teachable machine, text recognition, image recognition, and custom AI agent projects, don't redirect - let the Launch button handle it
-    if (project.type === 'image-recognition-teachable-machine' || project.type === 'pose-recognition-teachable-machine' || project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'live-video-classification' || project.type === 'exercises' || project.type === 'confusion-matrix' || project.type === 'rag-chatbot' || project.type === 'ai-agent') {
+    if (project.type === 'image-recognition-teachable-machine' || project.type === 'pose-recognition-teachable-machine' || project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'live-video-classification' || project.type === 'exercises' || project.type === 'confusion-matrix' || project.type === 'rag-chatbot' || project.type === 'ai-agent' || project.type === 'copilot-ethics' || project.type === 'copilot-document-ai') {
       return;
     } else {
       // For other project types, navigate to the project-specific page using masked project ID
@@ -946,7 +963,7 @@ function CreateProjectPage() {
       }
     } else if (opensInScratch(project) && actualSessionId) {
       window.open(getRbpScratchUrl(actualSessionId, project.id), '_blank');
-    } else if (project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'live-video-classification' || project.type === 'exercises' || project.type === 'confusion-matrix' || project.type === 'rag-chatbot' || project.type === 'ai-agent') {
+    } else if (project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'live-video-classification' || project.type === 'exercises' || project.type === 'confusion-matrix' || project.type === 'rag-chatbot' || project.type === 'ai-agent' || project.type === 'copilot-ethics' || project.type === 'copilot-document-ai') {
       // Navigate to the project-specific page for text recognition, image recognition, custom AI agent, rule based process (built-in editor), and live object detection
       const projectId = project.maskedId || project.id;
       window.location.href = `/projects/${urlParam}/${projectId}`;
@@ -1263,7 +1280,7 @@ function CreateProjectPage() {
                   <div
                     key={project.id}
                     className={`bg-canvas border border-magenta-brand/20 rounded-xl p-6 hover:bg-purple-brand/5 transition-all duration-300 ${
-                      project.type === 'image-recognition-teachable-machine' || project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'live-video-classification' || project.type === 'exercises' || project.type === 'confusion-matrix' || project.type === 'rag-chatbot' || project.type === 'ai-agent' ? '' : 'cursor-pointer'
+                      project.type === 'image-recognition-teachable-machine' || project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'live-video-classification' || project.type === 'exercises' || project.type === 'confusion-matrix' || project.type === 'rag-chatbot' || project.type === 'ai-agent' || project.type === 'copilot-ethics' || project.type === 'copilot-document-ai' ? '' : 'cursor-pointer'
                     }`}
                     onClick={() => handleProjectClick(project)}
                   >
@@ -1336,6 +1353,8 @@ function CreateProjectPage() {
                           project.type === 'exercises' ? 'Exercises' :
                           project.type === 'confusion-matrix' ? 'Confusion Matrix' :
                           project.type === 'rag-chatbot' ? 'RAG Chatbot' :
+                          project.type === 'copilot-ethics' ? 'Copilot: AI Ethics (Ex 9)' :
+                          project.type === 'copilot-document-ai' ? 'Copilot: Document AI (Ex 10)' :
                           project.type === 'ai-agent' ? 'AI Agent' :
                           project.type === 'live-video-classification' ? 'Live Object Detection' :
                           project.type === 'classification' ? 'Classification' :
@@ -1357,6 +1376,16 @@ function CreateProjectPage() {
                        </div>
                      )}
                      
+                     {/* Copilot labs: ready once a step has been saved */}
+                     {(project.type === 'copilot-ethics' || project.type === 'copilot-document-ai') && (
+                       <div className="text-fg mb-4">
+                         <span className="text-sm">Result saved: </span>
+                         <span className={`font-medium ${project.modelStatus === 'available' ? 'text-green-400' : 'text-red-400'}`}>
+                           {project.modelStatus === 'available' ? 'Yes' : 'Not yet'}
+                         </span>
+                       </div>
+                     )}
+
                      {/* Spacer for the Day 2 agents (Ex 6-8) to match the Model Trained line's height */}
                      {(project.type === 'custom-ai-agent' || project.type === 'rag-chatbot' || project.type === 'ai-agent') && (
                        <div className="mb-4 h-6"></div>
@@ -1384,9 +1413,9 @@ function CreateProjectPage() {
                     )}
                     
                                                               {/* Launch Button and Date Info in Parallel */}
-                     <div className={`mt-4 flex items-start justify-between gap-4 ${project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'live-video-classification' || project.type === 'exercises' || project.type === 'confusion-matrix' || project.type === 'rag-chatbot' || project.type === 'ai-agent' ? 'mt-16' : ''}`}>
+                     <div className={`mt-4 flex items-start justify-between gap-4 ${project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'live-video-classification' || project.type === 'exercises' || project.type === 'confusion-matrix' || project.type === 'rag-chatbot' || project.type === 'ai-agent' || project.type === 'copilot-ethics' || project.type === 'copilot-document-ai' ? 'mt-16' : ''}`}>
                        {/* Launch Button - For teachable machine, text recognition, image recognition, custom AI agent, rule based process, live object detection, and exercises projects */}
-                       {project.type === 'image-recognition-teachable-machine' || project.type === 'pose-recognition-teachable-machine' || project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'live-video-classification' || project.type === 'exercises' || project.type === 'confusion-matrix' || project.type === 'rag-chatbot' || project.type === 'ai-agent' ? (
+                       {project.type === 'image-recognition-teachable-machine' || project.type === 'pose-recognition-teachable-machine' || project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'custom-ai-agent' || project.type === 'rule-based-process' || project.type === 'live-object-detection' || project.type === 'live-video-classification' || project.type === 'exercises' || project.type === 'confusion-matrix' || project.type === 'rag-chatbot' || project.type === 'ai-agent' || project.type === 'copilot-ethics' || project.type === 'copilot-document-ai' ? (
                          <button
                            onClick={(e) => {
                              e.stopPropagation();
@@ -1500,7 +1529,11 @@ function CreateProjectPage() {
                           ['live-object-detection', 'Live Object Detection'],
                         ]
                       : projectDay === 'day2'
-                        ? DAY2_OPTIONS
+                        ? [
+                            ...DAY2_OPTIONS,
+                            ['copilot-ethics', 'Copilot: AI Ethics (Ex 9)'],
+                            ['copilot-document-ai', 'Copilot: Document AI (Ex 10)'],
+                          ]
                         : []
                     ).map(([value, label]) => (
                       <option key={value} value={value} className="bg-canvas text-fg">
@@ -1701,6 +1734,12 @@ function CreateProjectPage() {
                     </option>
                     <option value="custom-ai-agent" className="bg-canvas text-fg">
                       Custom AI Agent
+                    </option>
+                    <option value="copilot-ethics" className="bg-canvas text-fg">
+                      Copilot: AI Ethics (Ex 9)
+                    </option>
+                    <option value="copilot-document-ai" className="bg-canvas text-fg">
+                      Copilot: Document AI (Ex 10)
                     </option>
                     <option value="exercises" className="bg-canvas text-fg">
                       Exercises

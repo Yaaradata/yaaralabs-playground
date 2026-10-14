@@ -23,6 +23,7 @@ import RuleBasedProcessProject, { resolveRbpEditor } from '../../../../component
 import ConfusionMatrixLab from '../../../../components/ConfusionMatrix'
 import RagChatbotLab from '../../../../components/RagChatbot'
 import AiAgentLab from '../../../../components/AiAgent'
+import CopilotLab from '../../../../components/CopilotLab'
 import AgentStudio from '../../../../components/AgentStudio'
 import { isStage, stageToType, type Stage } from '../../../../components/AgentStudio/stages'
 import LiveObjectDetectionProject from '../../../../components/VideoClassifier'
@@ -1735,10 +1736,12 @@ export default function ProjectDetailsPage() {
   // Day 2 Agent Studio: agents with a stage. Guest projects of type rag-chatbot / ai-agent keep their old Labs.
   const isAgentStudio = Boolean(selectedProject.agent_id && selectedProject.stage);
   const isRagChatbot = selectedProject.type === 'rag-chatbot' && !selectedProject.agent_id;
+  // Copilot labs (Ex 9, Ex 10): a worksheet next to Microsoft Copilot
+  const isCopilotLab = selectedProject.type === 'copilot-ethics' || selectedProject.type === 'copilot-document-ai';
   const isAiAgent = selectedProject.type === 'ai-agent' && !selectedProject.agent_id;
   // 'live-video-classification' is the name this type had briefly; those projects open the same way
   const isLiveObjectDetection = selectedProject.type === 'live-object-detection' || selectedProject.type === 'live-video-classification';
-  const studioHeader = isRbp || isExercises || isConfusionMatrix || isRagChatbot || isAiAgent || isLiveObjectDetection || isAgentStudio;
+  const studioHeader = isRbp || isExercises || isConfusionMatrix || isRagChatbot || isAiAgent || isLiveObjectDetection || isAgentStudio || isCopilotLab;
   // These have their own back button in their header row (like "Use the AI"), so no back bar here
   const ownBackButton = (isRbp && resolveRbpEditor(selectedProject.rbpEditor) === 'blocks') || isLiveObjectDetection || isAgentStudio;
 
@@ -3891,6 +3894,13 @@ export default function ProjectDetailsPage() {
             />
           ) : isAiAgent ? (
             <AiAgentLab
+              projectName={selectedProject.name}
+              sessionId={actualSessionId}
+              projectId={selectedProject.id}
+            />
+          ) : isCopilotLab ? (
+            <CopilotLab
+              activity={selectedProject.type === 'copilot-ethics' ? 'ethics' : 'document-ai'}
               projectName={selectedProject.name}
               sessionId={actualSessionId}
               projectId={selectedProject.id}

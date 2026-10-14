@@ -91,6 +91,8 @@ class ProjectType(str, Enum):
     RAG_CHATBOT = "rag-chatbot"
     AI_AGENT = "ai-agent"
     LIVE_VIDEO_CLASSIFICATION = "live-video-classification"
+    COPILOT_ETHICS = "copilot-ethics"
+    COPILOT_DOCUMENT_AI = "copilot-document-ai"
 
 
 class ProjectStatus(str, Enum):
