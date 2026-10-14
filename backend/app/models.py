@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
-from typing import List, Optional, Union, Dict, Any, ClassVar
+from typing import List, Optional, Union, Dict, Any, ClassVar, Literal
 from datetime import datetime, timezone, timedelta
 from enum import Enum
 
@@ -466,6 +466,10 @@ class Agent(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     active: bool = Field(True, description="Whether agent is active")
+    # Day 2 Agent Studio. No stage = legacy agent (old inline UI and ChatService.chat)
+    stage: Optional[Literal["assistant", "rag", "agent"]] = Field(None, description="assistant (Ex 6), rag (Ex 7), agent (Ex 8)")
+    project_name: Optional[str] = Field(None, description="Name the participant gave the project")
+    copied_from: Optional[Dict[str, Any]] = Field(None, description="{agent_id, name, stage} this agent started from")
 
 class Persona(BaseModel):
     agent_id: str = Field(..., description="Agent ID this persona belongs to")
@@ -542,6 +546,60 @@ class SettingsUpdateResponse(BaseModel):
     success: bool = True
     settings: AgentSettings
     message: str = "Settings updated successfully"
+
+GUARDRAIL_NEVER_RULES_MAX = 10
+GUARDRAIL_NEVER_RULE_CHARS = 200
+GUARDRAIL_HANDOFF_CHARS = 300
+
+
+def _check_never_rules(v):
+    if v is None:
+        return v
+    v = [r.strip() for r in v if r and r.strip()]
+    if len(v) > GUARDRAIL_NEVER_RULES_MAX:
+        raise ValueError(f"At most {GUARDRAIL_NEVER_RULES_MAX} 'Also never' lines")
+    for r in v:
+        if len(r) > GUARDRAIL_NEVER_RULE_CHARS:
+            raise ValueError(f"Each 'Also never' line can be at most {GUARDRAIL_NEVER_RULE_CHARS} characters")
+    return v
+
+
+class AgentGuardrails(BaseModel):
+    """Custom AI Agent guardrails: what the agent must never do. All off by default."""
+    agent_id: str = Field(..., description="Agent ID these guardrails belong to")
+    stay_on_topic: bool = False
+    no_made_up_facts: bool = False
+    protect_client_data: bool = False
+    block_instruction_changes: bool = False
+    never_rules: List[str] = Field(default_factory=list)
+    handoff_message: str = Field("", max_length=GUARDRAIL_HANDOFF_CHARS)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @field_validator('never_rules')
+    @classmethod
+    def validate_never_rules(cls, v):
+        return _check_never_rules(v)
+
+
+class GuardrailsUpdateRequest(BaseModel):
+    stay_on_topic: Optional[bool] = None
+    no_made_up_facts: Optional[bool] = None
+    protect_client_data: Optional[bool] = None
+    block_instruction_changes: Optional[bool] = None
+    never_rules: Optional[List[str]] = None
+    handoff_message: Optional[str] = Field(None, max_length=GUARDRAIL_HANDOFF_CHARS)
+
+    @field_validator('never_rules')
+    @classmethod
+    def validate_never_rules(cls, v):
+        return _check_never_rules(v)
+
+
+class GuardrailsUpdateResponse(BaseModel):
+    success: bool = True
+    guardrails: AgentGuardrails
+    message: str = "Guardrails updated successfully"
+
 
 class KnowledgeType(str, Enum):
     TEXT = "text"
@@ -637,8 +695,11 @@ class ChatLog(BaseModel):
 # Request/Response Models
 class AgentCreateRequest(BaseModel):
     session_id: str = Field(..., description="Session ID")
-    agent_description: str = Field(..., description="Free-text description of the agent")
+    agent_description: Optional[str] = Field(None, description="Free-text description of the agent (needed unless copying)")
     user_id: Optional[str] = Field(None, description="User ID (optional, defaults to session_id if not provided)")
+    stage: Literal["assistant", "rag", "agent"] = Field("assistant", description="Day 2 stage")
+    copy_from_agent_id: Optional[str] = Field(None, description="Start from this agent of the same session")
+    project_name: Optional[str] = Field(None, max_length=120, description="Project name shown in the list")
 
 class AgentCreateResponse(BaseModel):
     success: bool = True

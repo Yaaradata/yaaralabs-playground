@@ -1,7 +1,8 @@
 import uuid
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 from google.cloud import firestore
 
 from ..models import ChatLog, ChatRequest, Persona, Knowledge
@@ -11,8 +12,62 @@ from .knowledge_service import KnowledgeService
 from .rules_service import RulesService
 from .vertex_ai_service import VertexAIService
 from .image_search_service import get_image_search_service
+from . import agent_guardrails
 
 logger = logging.getLogger(__name__)
+
+# How persona settings become instructions (the live prompt and the Agent Studio share these)
+RESPONSE_LENGTH_INSTRUCTIONS = {
+    "minimal": "Keep your responses extremely brief - 1-2 sentences maximum. BUT if user asks for a list/specific items, ALWAYS provide the complete list.",
+    "short": "Keep your responses concise - 2-4 sentences for general questions. BUT if user asks for a list (e.g., '10 products', '5 examples'), ALWAYS provide ALL requested items with details.",
+    "long": "Provide detailed responses - 4-8 sentences.",
+    "chatty": "Be conversational and engaging with longer responses."
+}
+TONE_INSTRUCTIONS = {
+    "friendly": "Be warm, approachable, and conversational.",
+    "professional": "Maintain a formal and business-like tone.",
+    "casual": "Be relaxed and informal."
+}
+
+
+def _rule_id(rule_matched: Any) -> Optional[str]:
+    """chat_logs.rule_matched is the rule id (staged agents' traces hold {rule_id, name})."""
+    return rule_matched.get("rule_id") if isinstance(rule_matched, dict) else rule_matched
+
+
+def rule_constraints_block(rule_constraints: Optional[Dict[str, Any]]) -> str:
+    """The instructions an Actions rule adds to the prompt when it fires ("" when none)."""
+    if not rule_constraints:
+        return ""
+    prompt = """
+=== RULE-BASED CONSTRAINTS (MUST FOLLOW) ===
+A rule has been triggered. You MUST follow these constraints:
+"""
+    # Always include content
+    if rule_constraints.get("include_always"):
+        prompt += "\n🔒 ALWAYS INCLUDE in your response:\n"
+        for content in rule_constraints["include_always"]:
+            prompt += f"- {content}\n"
+    # Topics to talk about
+    if rule_constraints.get("talk_about"):
+        prompt += "\n🎯 CRITICAL - YOU MUST FOCUS ONLY ON these topics:\n"
+        for topic in rule_constraints["talk_about"]:
+            prompt += f"- {topic}\n"
+        prompt += "\n⚠️ IMPORTANT: You MUST talk ONLY about the topics above. Do NOT mention other related topics. Stay strictly focused on what's specified.\n"
+    # Topics to avoid
+    if rule_constraints.get("dont_talk_about"):
+        prompt += "\n🚫 DO NOT mention or discuss these topics:\n"
+        for topic in rule_constraints["dont_talk_about"]:
+            prompt += f"- {topic}\n"
+    # Information to ask for
+    if rule_constraints.get("ask_for"):
+        prompt += "\n❓ ASK the user for this information:\n"
+        for info in rule_constraints["ask_for"]:
+            prompt += f"- {info}\n"
+    # Force KB usage
+    if rule_constraints.get("use_kb"):
+        prompt += "\n📚 You MUST answer using ONLY the Knowledge Base information provided below. Do NOT use general knowledge.\n"
+    return prompt
 
 
 class ChatService:
@@ -114,6 +169,8 @@ class ChatService:
                 "response": "",
                 "images": []  # Relevant images for the response
             }
+            # Set by the LLM step; stays empty when the LLM is skipped (rule exact response, guardrail block)
+            image_info: Dict[str, Any] = {}
             
             # Load agent and persona
             agent = self.agent_service.get_agent(request.agent_id)
@@ -129,32 +186,27 @@ class ChatService:
             model_name = settings.model if settings else None
             logger.info(f"📋 Using model from settings: {model_name}")
             
+            # Guardrails (None when the agent never saved any: chat behaves exactly as before)
+            try:
+                guardrails = self.agent_service.get_guardrails(request.agent_id)
+            except Exception as e:
+                logger.warning(f"⚠️ Could not load guardrails, continuing without them: {e}")
+                guardrails = None
+            trace["guardrails_on"] = agent_guardrails.active_switches(guardrails)
+            
+            # Step 0: deterministic guardrail pre-check - refused before rules and before any model call
+            blocked_reply = agent_guardrails.check_blocked_request(guardrails, request.message)
+            if blocked_reply:
+                logger.info("🛡️ Guardrail blocked the request: block_instruction_changes (LLM skipped)")
+                trace["guardrail_blocked"] = "block_instruction_changes"
+                trace["llm_used"] = False
+                trace["response"] = blocked_reply
+                chat_log = self._log_chat(request, blocked_reply, trace)
+                return {"response": blocked_reply, "trace": trace, "chat_id": chat_log.chat_id, "images": []}
+            
             # Step 1: Detect conditions and build context
-            conditions = self._detect_conditions(request.message, model_name)
-            
-            # Check if this is the first message (conversation start)
-            conversation_history = self._get_recent_conversation(
-                request.agent_id, 
-                request.session_id, 
-                limit=1
-            )
-            is_conversation_start = len(conversation_history) == 0
-            
-            # Build context for rule evaluation
-            rule_context = {
-                "intent": conditions.get("intent", {}),
-                "sentiment": conditions.get("sentiment", {}),
-                "keywords": conditions.get("keywords", []),
-                "is_conversation_start": is_conversation_start
-            }
-            
-            # Convert conditions dict to list of dicts for ChatLog model
-            trace["conditions_detected"] = [
-                {"type": "intent", "data": conditions.get("intent", {})},
-                {"type": "sentiment", "data": conditions.get("sentiment", {})},
-                {"type": "keywords", "data": conditions.get("keywords", [])},
-                {"type": "is_conversation_start", "data": is_conversation_start}
-            ]
+            rule_context, trace["conditions_detected"] = self.detect_rule_context(
+                request.agent_id, request.session_id, request.message, model_name)
             
             # Step 2: Evaluate rules (pass context dict for rule evaluation)
             matched_rule = self.rules_service.evaluate_rules(
@@ -251,6 +303,9 @@ class ChatService:
                 # If a rule matched, disable web search - rules should provide the response
                 rule_matched = matched_rule is not None
                 enable_web_search = len(knowledge_items) == 0 and not force_kb and not rule_matched
+                if enable_web_search and "no_made_up_facts" in trace["guardrails_on"]:
+                    enable_web_search = False
+                    logger.info("🛡️ Guardrail 'Don't make things up' on - web search disabled")
                 if enable_web_search:
                     logger.info("🌐 No KB matches found - enabling Google Search Grounding for web search")
                 elif rule_matched:
@@ -263,7 +318,8 @@ class ChatService:
                     knowledge_items,
                     conversation_history,
                     enable_web_search=enable_web_search,
-                    rule_constraints=rule_action_results  # Pass rule action results as constraints
+                    rule_constraints=rule_action_results,  # Pass rule action results as constraints
+                    guardrails=guardrails
                 )
                 
                 # Generate response using Vertex AI (with optional web search)
@@ -284,7 +340,9 @@ class ChatService:
                     trace["web_search_used"] = False
                 
                 # Parse confidence and response (with follow-up questions and image requirements)
-                response, confidence, follow_up_questions, image_info = self._parse_confidence_response_v2(raw_response, persona)
+                response, confidence, follow_up_questions, image_info = self._parse_confidence_response_v2(
+                    raw_response, persona, keep_short_answer=bool(trace["guardrails_on"])
+                )
                 trace["confidence"] = confidence
                 trace["follow_up_questions"] = follow_up_questions
                 trace["image_info"] = image_info
@@ -309,6 +367,13 @@ class ChatService:
                 logger.info(f"📊 Response confidence: {confidence}%")
                 if follow_up_questions:
                     logger.info(f"❓ Follow-up questions requested: {len(follow_up_questions)}")
+            
+            # Guardrail: hide PAN, Aadhaar, account and demat numbers in the final reply
+            if "protect_client_data" in trace["guardrails_on"]:
+                response, masked = agent_guardrails.mask_client_data(response)
+                if masked:
+                    trace["guardrail_masked"] = masked
+                    logger.info(f"🛡️ Guardrail hid {masked} client detail(s)")
             
             trace["llm_used"] = llm_used
             trace["response"] = response
@@ -368,6 +433,26 @@ class ChatService:
             logger.error(f"❌ Failed to process chat: {e}")
             raise Exception(f"Failed to process chat: {str(e)}")
     
+    def detect_rule_context(self, agent_id: str, session_id: str, message: str,
+                            model_name: Optional[str] = None) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
+        """What the Actions engine matches on: intent, sentiment, keywords and whether the conversation is starting.
+        Returns (rule_context, conditions_detected for the trace). Used by ChatService.chat and the Agent Studio."""
+        conditions = self._detect_conditions(message, model_name)
+        is_conversation_start = len(self._get_recent_conversation(agent_id, session_id, limit=1)) == 0
+        rule_context = {
+            "intent": conditions.get("intent", {}),
+            "sentiment": conditions.get("sentiment", {}),
+            "keywords": conditions.get("keywords", []),
+            "is_conversation_start": is_conversation_start
+        }
+        detected = [
+            {"type": "intent", "data": conditions.get("intent", {})},
+            {"type": "sentiment", "data": conditions.get("sentiment", {})},
+            {"type": "keywords", "data": conditions.get("keywords", [])},
+            {"type": "is_conversation_start", "data": is_conversation_start}
+        ]
+        return rule_context, detected
+
     def _get_recent_conversation(self, agent_id: str, session_id: str, limit: int = 10) -> List[Dict[str, str]]:
         """Get recent conversation history for context"""
         try:
@@ -404,24 +489,31 @@ class ChatService:
     def _detect_conditions(self, message: str, model_name: Optional[str] = None) -> Dict[str, Any]:
         """Detect conditions (keyword, intent, sentiment)"""
         conditions = {}
-        
-        # Detect intent
-        try:
-            intent_data = self.vertex_ai.detect_intent(message, model_name=model_name)
-            conditions["intent"] = intent_data
-            logger.info(f"🎯 Detected intent: {intent_data}")
-        except Exception as e:
-            logger.warning(f"Failed to detect intent: {e}")
-            conditions["intent"] = {"intent": "unknown", "confidence": 0.0}
-        
-        # Detect sentiment
-        try:
-            sentiment_data = self.vertex_ai.detect_sentiment(message, model_name=model_name)
-            conditions["sentiment"] = sentiment_data
-            logger.info(f"😊 Detected sentiment: {sentiment_data}")
-        except Exception as e:
-            logger.warning(f"Failed to detect sentiment: {e}")
-            conditions["sentiment"] = {"sentiment": "neutral", "score": 0.0}
+        vertex = self.vertex_ai
+
+        def intent():
+            try:
+                data = vertex.detect_intent(message, model_name=model_name)
+                logger.info(f"🎯 Detected intent: {data}")
+                return data
+            except Exception as e:
+                logger.warning(f"Failed to detect intent: {e}")
+                return {"intent": "unknown", "confidence": 0.0}
+
+        def sentiment():
+            try:
+                data = vertex.detect_sentiment(message, model_name=model_name)
+                logger.info(f"😊 Detected sentiment: {data}")
+                return data
+            except Exception as e:
+                logger.warning(f"Failed to detect sentiment: {e}")
+                return {"sentiment": "neutral", "score": 0.0}
+
+        # Intent and sentiment are independent model calls: run them side by side
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            intent_future, sentiment_future = pool.submit(intent), pool.submit(sentiment)
+            conditions["intent"] = intent_future.result()
+            conditions["sentiment"] = sentiment_future.result()
         
         # Keyword detection (simple - just lowercase message)
         conditions["keywords"] = message.lower().split()
@@ -581,32 +673,17 @@ Remember:
         # Don't append sources as text - frontend handles display via web_sources in trace
         return response
     
-    def _build_prompt_with_confidence(self, persona: Persona, message: str, knowledge_items: List[Knowledge], conversation_history: List[Dict[str, str]] = None, enable_web_search: bool = False, rule_constraints: Dict[str, Any] = None) -> str:
+    def _build_prompt_with_confidence(self, persona: Persona, message: str, knowledge_items: List[Knowledge], conversation_history: List[Dict[str, str]] = None, enable_web_search: bool = False, rule_constraints: Dict[str, Any] = None, guardrails: Any = None) -> str:
         """Build prompt that asks LLM to provide confidence score with response and follow-up questions"""
         
-        # Map response_length to actual instructions
-        response_length_instructions = {
-            "minimal": "Keep your responses extremely brief - 1-2 sentences maximum. BUT if user asks for a list/specific items, ALWAYS provide the complete list.",
-            "short": "Keep your responses concise - 2-4 sentences for general questions. BUT if user asks for a list (e.g., '10 products', '5 examples'), ALWAYS provide ALL requested items with details.",
-            "long": "Provide detailed responses - 4-8 sentences.",
-            "chatty": "Be conversational and engaging with longer responses."
-        }
-        
-        # Map tone to actual behavior instructions
-        tone_instructions = {
-            "friendly": "Be warm, approachable, and conversational.",
-            "professional": "Maintain a formal and business-like tone.",
-            "casual": "Be relaxed and informal."
-        }
-        
         response_length = getattr(persona, 'response_length', 'short') or 'short'
-        length_instruction = response_length_instructions.get(response_length, response_length_instructions["short"])
-        
+        length_instruction = RESPONSE_LENGTH_INSTRUCTIONS.get(response_length, RESPONSE_LENGTH_INSTRUCTIONS["short"])
+
         tone = persona.tone.lower() if persona.tone else 'friendly'
-        tone_instruction = tone_instructions.get(tone, tone_instructions["friendly"])
-        
+        tone_instruction = TONE_INSTRUCTIONS.get(tone, TONE_INSTRUCTIONS["friendly"])
+
         guidelines = getattr(persona, 'guidelines', '') or ''
-        
+
         prompt = f"""You are {persona.name}, a {persona.role}.
 
 === YOUR PERSONALITY ===
@@ -621,41 +698,11 @@ LANGUAGE: {persona.language}
 {guidelines}
 """
         
+        # Guardrails: what the agent must never do ("" when none are set)
+        prompt += agent_guardrails.build_guardrail_prompt(guardrails, persona)
+        
         # Add rule-based constraints if any
-        if rule_constraints:
-            prompt += """
-=== RULE-BASED CONSTRAINTS (MUST FOLLOW) ===
-A rule has been triggered. You MUST follow these constraints:
-"""
-            
-            # Always include content
-            if rule_constraints.get("include_always"):
-                prompt += "\n🔒 ALWAYS INCLUDE in your response:\n"
-                for content in rule_constraints["include_always"]:
-                    prompt += f"- {content}\n"
-            
-            # Topics to talk about
-            if rule_constraints.get("talk_about"):
-                prompt += "\n🎯 CRITICAL - YOU MUST FOCUS ONLY ON these topics:\n"
-                for topic in rule_constraints["talk_about"]:
-                    prompt += f"- {topic}\n"
-                prompt += "\n⚠️ IMPORTANT: You MUST talk ONLY about the topics above. Do NOT mention other related topics. Stay strictly focused on what's specified.\n"
-            
-            # Topics to avoid
-            if rule_constraints.get("dont_talk_about"):
-                prompt += "\n🚫 DO NOT mention or discuss these topics:\n"
-                for topic in rule_constraints["dont_talk_about"]:
-                    prompt += f"- {topic}\n"
-            
-            # Information to ask for
-            if rule_constraints.get("ask_for"):
-                prompt += "\n❓ ASK the user for this information:\n"
-                for info in rule_constraints["ask_for"]:
-                    prompt += f"- {info}\n"
-            
-            # Force KB usage
-            if rule_constraints.get("use_kb"):
-                prompt += "\n📚 You MUST answer using ONLY the Knowledge Base information provided below. Do NOT use general knowledge.\n"
+        prompt += rule_constraints_block(rule_constraints)
         
         # Add conversation history for context
         if conversation_history and len(conversation_history) > 0:
@@ -823,7 +870,7 @@ Return ONLY the JSON object, no other text.
             # This ensures the system still works even if JSON parsing fails
             return (raw_response, -1)
     
-    def _parse_confidence_response_v2(self, raw_response: str, persona: Persona, confidence_threshold: int = 70) -> tuple:
+    def _parse_confidence_response_v2(self, raw_response: str, persona: Persona, confidence_threshold: int = 70, keep_short_answer: bool = False) -> tuple:
         """
         Parse the LLM response to extract answer, confidence, follow-up questions, and image requirements.
         Returns (answer, confidence, follow_up_questions, image_info) tuple.
@@ -923,7 +970,8 @@ Return ONLY the JSON object, no other text.
                     
                     logger.info(f"📝 Enhanced answer with {len(questions_needed)} follow-up questions")
                     return (enhanced_answer.strip(), confidence, questions_needed, image_info)
-                elif answer and len(answer) > 50:
+                elif answer and (len(answer) > 50 or keep_short_answer):
+                    # With guardrails on, a short honest "I don't know" or refusal must not be replaced
                     # LLM provided a substantial answer even with low confidence - use it
                     # The answer might already contain the follow-up questions in natural language
                     logger.info(f"📝 Low confidence ({confidence}%) but LLM provided detailed answer - using it")
@@ -972,7 +1020,7 @@ Return ONLY the JSON object, no other text.
                 "message": request.message,
                 "response": response,
                 "conditions_detected": trace.get("conditions_detected", []),
-                "rule_matched": trace.get("rule_matched"),
+                "rule_matched": _rule_id(trace.get("rule_matched")),
                 "kb_used": trace.get("kb_used", []),
                 "llm_used": trace.get("llm_used", False),
                 "trace": trace,
@@ -996,7 +1044,7 @@ Return ONLY the JSON object, no other text.
                 message=request.message,
                 response=response,
                 conditions_detected=trace.get("conditions_detected", []),
-                rule_matched=trace.get("rule_matched"),
+                rule_matched=_rule_id(trace.get("rule_matched")),
                 kb_used=trace.get("kb_used", []),
                 llm_used=trace.get("llm_used", False),
                 trace=trace
@@ -1074,7 +1122,8 @@ Return ONLY the JSON object, no other text.
                     "id": f"{data.get('chat_id')}_response",
                     "role": "assistant",
                     "content": data.get("response", ""),
-                    "timestamp": data.get("created_at").isoformat() if data.get("created_at") else None
+                    "timestamp": data.get("created_at").isoformat() if data.get("created_at") else None,
+                    "trace": data.get("trace") if (data.get("trace") or {}).get("stage") else None
                 })
             
             logger.info(f"✅ Retrieved {len(messages)} messages")

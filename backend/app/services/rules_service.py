@@ -12,6 +12,9 @@ from .agent_service import AgentService
 
 logger = logging.getLogger(__name__)
 
+# The model looked at the rules and found none that applies (as opposed to the model call failing)
+LLM_NO_MATCH = object()
+
 # Import for LLM-based matching
 try:
     from .vertex_ai_service import VertexAIService
@@ -324,7 +327,8 @@ class RulesService:
         - entities: list - extracted entities
         """
         try:
-            rules = self.get_rules(agent_id)
+            # Switched-off rules never fire (get_rules returns both, for the Actions list)
+            rules = [r for r in self.get_rules(agent_id) if r.active]
             
             if not rules:
                 logger.info("📋 No rules configured for this agent")
@@ -337,9 +341,12 @@ class RulesService:
                 model_name = settings.model if settings else None
                 logger.info(f"📋 RulesService using model from settings: {model_name}")
                 matched_rule = self._evaluate_rules_with_llm(rules, message, context, model_name=model_name)
+                if matched_rule is LLM_NO_MATCH:
+                    # Trust the model's "none applies": the keyword fallback matches substrings ("or" in "for")
+                    return None
                 if matched_rule:
                     return matched_rule
-                logger.info("🤖 LLM found no matching rules, trying code-based fallback...")
+                logger.info("🤖 LLM rule matching failed, trying code-based fallback...")
             
             # Fallback to code-based matching
             for rule in rules:
@@ -438,7 +445,7 @@ Return 0 for matched_rule if no rule clearly applies. Be smart about matching - 
                     return matched_rule
                 else:
                     logger.info(f"🤖 No rule matched by LLM (rule={matched_rule_num}, confidence={confidence}%)")
-                    return None
+                    return LLM_NO_MATCH
                     
             except (json.JSONDecodeError, ValueError, KeyError) as e:
                 logger.warning(f"⚠️ Failed to parse LLM response: {e}, response: {response[:200]}")

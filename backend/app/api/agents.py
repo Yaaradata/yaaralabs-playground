@@ -4,9 +4,10 @@ from typing import List, Optional
 from ..models import (
     AgentCreateRequest, AgentCreateResponse, Agent,
     ErrorResponse, PersonaUpdateRequest, PersonaUpdateResponse, Persona,
-    SettingsUpdateRequest, SettingsUpdateResponse, AgentSettings
+    SettingsUpdateRequest, SettingsUpdateResponse, AgentSettings,
+    AgentGuardrails, GuardrailsUpdateRequest, GuardrailsUpdateResponse,
 )
-from ..services.agent_service import AgentService
+from ..services.agent_service import AgentService, AgentAccessError, AgentRequestError
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 
@@ -33,6 +34,10 @@ async def create_agent(
     try:
         agent = agent_service.create_agent(request)
         return AgentCreateResponse(data=agent)
+    except AgentAccessError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except AgentRequestError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -132,6 +137,48 @@ async def update_persona(
             persona=updated_persona,
             message="Persona updated successfully"
         )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{agent_id}/guardrails", response_model=AgentGuardrails)
+async def get_guardrails(
+    agent_id: str,
+    agent_service: AgentService = Depends(get_agent_service)
+):
+    """
+    Get guardrails (what the agent must never do) for an agent.
+    Returns all-off defaults if nothing is saved.
+    """
+    try:
+        agent = agent_service.get_agent(agent_id)
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        return agent_service.get_guardrails(agent_id) or AgentGuardrails(agent_id=agent_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/{agent_id}/guardrails", response_model=GuardrailsUpdateResponse)
+async def update_guardrails(
+    agent_id: str,
+    request: GuardrailsUpdateRequest,
+    agent_service: AgentService = Depends(get_agent_service)
+):
+    """
+    Update guardrails for an agent: four switches, "Also never" lines and the hand-off message.
+    Used by chat on the next message.
+    """
+    try:
+        agent = agent_service.get_agent(agent_id)
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        updated = agent_service.update_guardrails(agent_id, request)
+        return GuardrailsUpdateResponse(success=True, guardrails=updated)
     except HTTPException:
         raise
     except Exception as e:
