@@ -10,7 +10,8 @@
     "test:exercises": "npx tsx scripts/run-exercise-scenarios.ts",
     "test:sample-labelling": "npx tsx scripts/test-sample-labelling.ts",
     "test:evaluate": "npx tsx scripts/test-evaluate.ts",
-    "test:agent-studio": "npx tsx scripts/test-agent-studio.ts"
+    "test:agent-studio": "npx tsx scripts/test-agent-studio.ts",
+    "test:copilot-lab": "npx tsx scripts/test-copilot-lab.ts"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",
