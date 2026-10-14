@@ -16,6 +16,7 @@ import {
   deskNoun,
   deskAtLean,
   deskDots,
+  examCounts,
   examItems,
   grid,
   hiddenWeakDeskLine,
@@ -24,6 +25,8 @@ import {
   orderLabels,
   perDesk,
   shortName,
+  surePct,
+  termRows,
   type EvalResponse,
 } from '../components/ProjectEvaluate/evaluate';
 import { validateDataset } from '../components/SampleLabelling/sample';
@@ -83,11 +86,18 @@ test('block 2: grid and most mistakes', () => {
   );
 });
 
-test('block 2: off-topic line (the bot was 0% sure, so no desk is named)', () => {
+test('block 2: off-topic line (under 1% sure, so no desk is named)', () => {
   assert.equal(
     offTopicLine(res.items),
-    "2 off-topic messages (“What's the weather in Mumbai?”, “Hello”): the bot has no ‘none of these’ answer, so it still had to pick a desk, but it was only 0% and 0% sure. Below 50% means it doesn’t recognise them.",
+    "2 off-topic messages (“What's the weather in Mumbai?”, “Hello”): it was only under 1% and under 1% sure, so they go to a person.",
   );
+});
+
+test('surePct: under 1% instead of a rounded 0%', () => {
+  assert.equal(surePct(0.004), 'under 1%');
+  assert.equal(surePct(0), 'under 1%');
+  assert.equal(surePct(0.01), '1%');
+  assert.equal(surePct(0.674), '67%');
 });
 
 test('block 2: off-topic line when the bot was sure of a desk', () => {
@@ -104,7 +114,7 @@ test('block 4: Complaint caught 2 of 3, 2 of 3 right', () => {
   assert.deepEqual(r, { caught: 2, total: 3, flagged: 3, falseAlarms: 1, recall: 67, precision: 67 });
   assert.equal(
     hiddenWeakDeskLine(accuracy(res.items), COMPLAINT, r),
-    'Overall it scores 83%, but it caught only 2 of 3 complaints. One overall score can hide a weak desk.',
+    'Overall it scores 83%, but it caught only 2 of 3 complaint messages. One overall score can hide a weak desk.',
   );
 });
 
@@ -147,7 +157,8 @@ test('images: wording uses images, not messages or complaints', () => {
   assert.equal(deskNoun('Invoice', 2, 'images'), 'Invoice images');
   assert.equal(deskNoun('Invoice', 1, 'images'), 'Invoice image');
   assert.equal(deskNoun(COMPLAINT, 2, 'images'), 'Complaint images');
-  assert.equal(deskNoun(COMPLAINT, 2), 'complaints');
+  assert.equal(deskNoun(COMPLAINT, 2), 'complaint messages');
+  assert.equal(deskNoun('Onboarding and KYC', 1), 'KYC message');
   const items = [
     { text: 'Deep 01', expected: 'KYC', predicted: 'KYC', scores: { KYC: 0.9, Invoice: 0.1 }, image: '/x.jpg' },
     { text: 'Deep 02', expected: 'Invoice', predicted: 'KYC', scores: { KYC: 0.6, Invoice: 0.4 }, image: '/y.jpg' },
@@ -163,6 +174,64 @@ test('labels outside the standard desks keep their given order', () => {
 
 test('practice 20 of 20', () => {
   assert.deepEqual(res.practice, { correct: 20, total: 20 });
+});
+
+test('exam card: count pills from the sample', () => {
+  const pills = examCounts(examItems(sample, labels), labels).map((c) => `${c.name} ${c.n}`);
+  assert.deepEqual(pills, ['Fees 3', 'Corporate action 3', 'KYC 3', 'Complaint 3', 'Off-topic 2']);
+});
+
+const yours = (rows: { term: string; yours: string }[]) => Object.fromEntries(rows.map((r) => [r.term, r.yours]));
+
+test('terms table: Complaint', () => {
+  const rows = termRows(res.items, labels, COMPLAINT, res.practice);
+  assert.deepEqual(rows.map((r) => r.term), [
+    'Test set', 'Ground truth', 'Accuracy', 'Confusion matrix', 'Recall', 'Precision',
+    'False negative', 'False positive', 'Confidence score', 'Overfitting',
+  ]);
+  const y = yours(rows);
+  assert.equal(y['Test set'], '14 messages');
+  assert.equal(y['Ground truth'], 'Every message');
+  assert.equal(y.Accuracy, '10 of 12 (83%)');
+  assert.equal(y['Confusion matrix'], '2 mistakes');
+  assert.equal(y.Recall, '2 of 3 (67%)');
+  assert.equal(y.Precision, '2 of 3 (67%)');
+  assert.equal(y['False negative'], '1');
+  assert.equal(y['False positive'], '1');
+  assert.equal(y['Confidence score'], 'Off-topic: under 1%');
+  assert.equal(y.Overfitting, '20 of 20 vs 10 of 12');
+  const m = Object.fromEntries(rows.map((r) => [r.term, r.meaning]));
+  assert.equal(m.Recall, 'Catch rate: of the real complaint messages, how many it found');
+  assert.equal(m['False negative'], 'A miss: a real complaint message sent to another desk');
+  assert.equal(m['Ground truth'], 'The answer key: labels a person gave');
+});
+
+test('terms table: KYC', () => {
+  const rows = termRows(res.items, labels, 'Onboarding and KYC', res.practice);
+  const y = yours(rows);
+  assert.equal(y.Precision, '2 of 2 (100%)');
+  assert.equal(y['False positive'], '0');
+  assert.equal(rows.find((r) => r.term === 'Precision')?.meaning, 'Alert quality: when it said KYC, how often it was right');
+});
+
+test('terms table: images (no practice score, no Overfitting row) and own labels', () => {
+  const items = [
+    { text: 'Test 01', expected: 'Cheque', predicted: 'Cheque', scores: { Cheque: 0.9, Invoice: 0.1 }, image: '/a.jpg' },
+    { text: 'Test 02', expected: 'Cheque', predicted: 'Invoice', scores: { Cheque: 0.3, Invoice: 0.7 }, image: '/b.jpg' },
+    { text: 'Test 03', expected: 'Invoice', predicted: 'Invoice', scores: { Cheque: 0.2, Invoice: 0.8 }, image: '/c.jpg' },
+  ];
+  const rows = termRows(items, ['Invoice', 'Cheque'], 'Cheque', { correct: 0, total: 0 }, 'images');
+  assert.ok(!rows.some((r) => r.term === 'Overfitting'));
+  const y = yours(rows);
+  assert.equal(y['Test set'], '3 images');
+  assert.equal(y['Ground truth'], 'Every image');
+  assert.equal(y['Confusion matrix'], '1 mistake');
+  assert.equal(y['Confidence score'], 'Lowest: 70%');
+  assert.equal(rows.find((r) => r.term === 'Recall')?.meaning, 'Catch rate: of the real Cheque images, how many it found');
+  assert.equal(rows.find((r) => r.term === 'False negative')?.meaning, 'A miss: a real Cheque image sent to another label');
+  const own = termRows(res.items, labels, COMPLAINT, res.practice, 'messages', true);
+  assert.equal(own.find((r) => r.term === 'Ground truth')?.meaning, 'The answer key: your own labels');
+  assert.equal(yours(termRows(res.items, labels, COMPLAINT, { correct: 0, total: 0 })).Overfitting, undefined);
 });
 
 console.log(`\n${passed} tests passed`);
