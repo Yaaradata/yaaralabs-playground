@@ -20,8 +20,9 @@ STAGE_TYPE = {"assistant": "custom-ai-agent", "rag": "rag-chatbot", "agent": "ai
 STAGE_LABEL = {"assistant": "Ex 6 · Custom AI Agent", "rag": "Ex 7 · RAG Chatbot", "agent": "Ex 8 · AI Agent"}
 
 # Flash-Lite answers well from documents; with tools, Flash calls the right one far more reliably
-DEFAULT_MODEL = {"assistant": "gemini-2.5-flash-lite", "rag": "gemini-2.5-flash-lite", "agent": "gemini-2.5-flash"}
-MODEL_CHOICES = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro"]
+# the chat models in the picker: Gemini on Vertex AI, OpenAI and Anthropic through OpenRouter
+DEFAULT_MODEL = {"assistant": "gemini-3.8-flash", "rag": "gemini-3.8-flash", "agent": "gemini-3.8-flash"}
+MODEL_CHOICES = ["gemini-3.8-flash", "openai/gpt-6-luna", "anthropic/claude-haiku-5.5"]
 DEFAULT_EMBEDDING = "text-embedding-005"
 DEFAULT_SIMILARITY = "Cosine similarity"
 
@@ -76,7 +77,7 @@ def plan_copy(source: Dict[str, Any], new_agent_id: str, new_stage: str, new_rul
 
     src_model = (source.get("settings") or {}).get("model")
     # A model the participant chose is kept; the previous stage's default becomes this stage's default
-    model = src_model if src_model and src_model != DEFAULT_MODEL.get(src_stage) else DEFAULT_MODEL[new_stage]
+    model = src_model if src_model in MODEL_CHOICES and src_model != DEFAULT_MODEL.get(src_stage) else DEFAULT_MODEL[new_stage]
     settings = {"agent_id": new_agent_id, "model": model,
                 "embedding_model": (source.get("settings") or {}).get("embedding_model") or DEFAULT_EMBEDDING,
                 "similarity": (source.get("settings") or {}).get("similarity") or DEFAULT_SIMILARITY,

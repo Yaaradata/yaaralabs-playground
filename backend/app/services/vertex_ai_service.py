@@ -21,11 +21,14 @@ class VertexAIService:
         
         # Initialize Gemini client using new google-genai SDK
         # Note: Gemini 3.x publisher models require location="global".
-        self.client = genai.Client(
+        # "provider/model" ids (OpenAI, Anthropic) go to OpenRouter instead: see openrouter_service
+        from .openrouter_service import RoutedClient
+
+        self.client = RoutedClient(genai.Client(
             vertexai=True,
             project=project_id,
             location=location,
-        )
+        ))
         
         # Model name - default to gemini-2.5-flash-lite (can be overridden by agent settings)
         self.model_name = "gemini-2.5-flash-lite"
@@ -170,7 +173,7 @@ Return ONLY a valid JSON object, no other text. Example format:
             
             # Provide more helpful error message for model-related errors
             if "model" in error_msg.lower() or "not found" in error_msg.lower():
-                raise Exception(f"Model '{model_name or self.model_name}' may not be available. Supported models: gemini-2.5-flash-lite, gemini-3.5-flash-lite, gemini-2.5-flash, gemini-3.8-flash, gemini-2.5-pro. Error: {error_msg}")
+                raise Exception(f"Model '{model_name or self.model_name}' may not be available. Supported models: gemini-3.8-flash, openai/gpt-6-luna, anthropic/claude-haiku-5.5. Error: {error_msg}")
             raise Exception(f"Failed to generate text: {error_msg}")
 
     def generate_from_image(
@@ -333,7 +336,7 @@ Return ONLY a valid JSON object, no other text. Example format:
             
             # Provide more helpful error message for model-related errors
             if "model" in error_msg.lower() or "not found" in error_msg.lower():
-                raise Exception(f"Model '{model_name or self.model_name}' may not be available. Supported models: gemini-2.5-flash-lite, gemini-3.5-flash-lite, gemini-2.5-flash, gemini-3.8-flash, gemini-2.5-pro. Error: {error_msg}")
+                raise Exception(f"Model '{model_name or self.model_name}' may not be available. Supported models: gemini-3.8-flash, openai/gpt-6-luna, anthropic/claude-haiku-5.5. Error: {error_msg}")
             raise Exception(f"Failed to generate text with search: {error_msg}")
     
     def detect_intent(self, message: str, model_name: Optional[str] = None) -> Dict[str, Any]:

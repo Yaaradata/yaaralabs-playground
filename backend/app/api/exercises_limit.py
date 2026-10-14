@@ -21,7 +21,7 @@ class LimitTurn(BaseModel):
 class LimitChatBody(BaseModel):
     system: str = Field(..., min_length=1, max_length=8000)
     turns: List[LimitTurn] = Field(..., min_length=1, max_length=40)
-    model: Optional[str] = Field(default="gemini-flash-lite", max_length=64)
+    model: Optional[str] = Field(default="gemini-38-flash", max_length=64)
     temp: float = Field(default=0.3, ge=0.0, le=2.0)
     topp: float = Field(default=1.0, ge=0.05, le=1.0)
     cap: int = Field(default=300, ge=50, le=1000)
@@ -29,7 +29,7 @@ class LimitChatBody(BaseModel):
 
 class LimitCompactBody(BaseModel):
     transcript: str = Field(..., min_length=1, max_length=120000)
-    model: Optional[str] = Field(default="gemini-flash-lite", max_length=64)
+    model: Optional[str] = Field(default="gemini-38-flash", max_length=64)
     temp: float = Field(default=0.3, ge=0.0, le=2.0)
     topp: float = Field(default=1.0, ge=0.05, le=1.0)
     cap: int = Field(default=300, ge=50, le=1000)
@@ -64,7 +64,7 @@ def register_limit_routes(
             return limit_lab.generate_chat(
                 system=body.system,
                 turns=[t.model_dump() for t in body.turns],
-                model=body.model or "gemini-flash-lite",
+                model=body.model or "gemini-38-flash",
                 temp=body.temp,
                 topp=body.topp,
                 cap=body.cap,
@@ -87,7 +87,7 @@ def register_limit_routes(
         try:
             return limit_lab.generate_compact(
                 transcript=body.transcript,
-                model=body.model or "gemini-flash-lite",
+                model=body.model or "gemini-38-flash",
                 temp=body.temp,
                 topp=body.topp,
                 cap=body.cap,

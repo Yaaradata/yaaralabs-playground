@@ -377,7 +377,7 @@ export function ExerciseProvider({
         if (!payload.prompt.trim()) {
           return {
             outputs: [],
-            model: payload.model || 'gemini-2.5-flash-lite',
+            model: payload.model || 'gemini-3.8-flash',
             temperature: payload.temperature ?? 0.7,
             simulated: true,
           };
@@ -386,7 +386,7 @@ export function ExerciseProvider({
       } catch {
         return {
           outputs: simulateGenerate(payload),
-          model: payload.model || 'gemini-2.5-flash-lite',
+          model: payload.model || 'gemini-3.8-flash',
           temperature: payload.temperature ?? 0.7,
           simulated: true,
         };

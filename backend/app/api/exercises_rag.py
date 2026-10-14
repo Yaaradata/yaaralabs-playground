@@ -38,7 +38,7 @@ class AskBody(BaseModel):
     minScore: float = Field(default=0.0, ge=0.0, le=0.5)
     strict: bool = True
     useDoc: bool = True
-    model: Optional[str] = Field(default="gemini-flash-lite", max_length=64)
+    model: Optional[str] = Field(default="gemini-38-flash", max_length=64)
     temp: float = Field(default=0.2, ge=0.0, le=2.0)
     topp: float = Field(default=1.0, ge=0.05, le=1.0)
     cap: int = Field(default=400, ge=50, le=1000)
@@ -125,7 +125,7 @@ def register_rag_routes(
         try:
             return rag.ask(
                 body.question,
-                model=body.model or "gemini-flash-lite",
+                model=body.model or "gemini-38-flash",
                 temp=body.temp,
                 topp=body.topp,
                 cap=body.cap,

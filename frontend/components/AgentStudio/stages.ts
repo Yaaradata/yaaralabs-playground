@@ -36,15 +36,16 @@ export const DAY2_OPTIONS: [string, string][] = [
 ];
 
 export const DEFAULT_MODEL: Record<Stage, string> = {
-  assistant: 'gemini-2.5-flash-lite',
-  rag: 'gemini-2.5-flash-lite',
-  agent: 'gemini-2.5-flash',
+  assistant: 'gemini-3.8-flash',
+  rag: 'gemini-3.8-flash',
+  agent: 'gemini-3.8-flash',
 };
 
 export const MODEL_OPTIONS: [string, string][] = [
-  ['gemini-2.5-flash-lite', 'Gemini 2.5 Flash-Lite (fast, cheapest)'],
-  ['gemini-2.5-flash', 'Gemini 2.5 Flash (stronger with tools)'],
-  ['gemini-2.5-pro', 'Gemini 2.5 Pro (strongest, slowest)'],
+  // Gemini runs on Vertex AI; the "provider/model" ids go through OpenRouter (backend openrouter_service)
+  ['gemini-3.8-flash', 'Gemini 3.8 Flash · Google'],
+  ['openai/gpt-6-luna', 'GPT-6 Luna · OpenAI'],
+  ['anthropic/claude-haiku-5.5', 'Claude Haiku 5.5 · Anthropic'],
 ];
 
 export function isStage(value: unknown): value is Stage {

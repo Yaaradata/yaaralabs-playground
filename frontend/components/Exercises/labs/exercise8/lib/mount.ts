@@ -230,7 +230,7 @@ export function mountExercise8(host: HTMLElement, opts: MountOptions): () => voi
   let promptUndoPushed = false;
 
   const S: LabState = {
-    prov: 'gemini-flash-lite',
+    prov: 'gemini-38-flash',
     ver: '',
     view: 'temp',
     A: { temp: 0.1, topk: 0, topp: 1, cap: 60 },

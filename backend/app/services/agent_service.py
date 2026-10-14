@@ -450,7 +450,7 @@ class AgentService:
                 # Return default settings if not found
                 return AgentSettings(
                     agent_id=agent_id,
-                    model="gemini-2.5-flash-lite",
+                    model="gemini-3.8-flash",
                     embedding_model="text-embedding-005",
                     similarity="Cosine similarity"
                 )
@@ -480,7 +480,7 @@ class AgentService:
             else:
                 current_settings = AgentSettings(
                     agent_id=agent_id,
-                    model="gemini-2.5-flash-lite",
+                    model="gemini-3.8-flash",
                     embedding_model="text-embedding-005",
                     similarity="Cosine similarity"
                 )

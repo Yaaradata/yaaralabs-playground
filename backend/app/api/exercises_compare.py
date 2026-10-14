@@ -21,7 +21,7 @@ class CompareTurn(BaseModel):
 class CompareRunBody(BaseModel):
     system: str = Field(..., min_length=1, max_length=8000)
     turns: List[CompareTurn] = Field(..., min_length=1, max_length=40)
-    model: Optional[str] = Field(default="gemini-flash-lite", max_length=64)
+    model: Optional[str] = Field(default="gemini-38-flash", max_length=64)
     temp: float = Field(default=0.3, ge=0.0, le=2.0)
     topp: float = Field(default=1.0, ge=0.05, le=1.0)
     cap: int = Field(default=300, ge=50, le=1000)
@@ -63,7 +63,7 @@ def register_compare_routes(
             return compare.generate_once(
                 system=body.system,
                 turns=turns,
-                model=body.model or "gemini-flash-lite",
+                model=body.model or "gemini-38-flash",
                 temp=body.temp,
                 topp=body.topp,
                 cap=body.cap,

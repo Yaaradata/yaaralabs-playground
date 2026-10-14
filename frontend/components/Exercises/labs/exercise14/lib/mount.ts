@@ -197,7 +197,7 @@ export function mountExercise14(host: HTMLElement, opts: MountOptions): () => vo
   const $$ = (s: string) => [...host.querySelectorAll(s)] as any[];
 
   let catalog: EthicsCatalog | null = null;
-  let defaultProv = 'gemini-flash-lite';
+  let defaultProv = 'gemini-38-flash';
   let completed = false;
   let unbindFs: (() => void) | null = null;
   let aborted = false;
@@ -223,7 +223,7 @@ let DEFAULTS = {temp:0.7, topp:1, cap:400};
 let ETHICS_ENDPOINT = 'ethics/chat';
 
 /* ============ State ============ */
-const S = {prov:"gemini-flash-lite", temp:DEFAULTS.temp, topp:DEFAULTS.topp, cap:DEFAULTS.cap, calls:0};
+const S = {prov:"gemini-38-flash", temp:DEFAULTS.temp, topp:DEFAULTS.topp, cap:DEFAULTS.cap, calls:0};
 const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
 const P = () => PROVIDERS[S.prov] || PROVIDERS[defaultProv] || Object.values(PROVIDERS)[0] || {name:'Model', tempMax:2, model:'model'};
@@ -968,7 +968,7 @@ host.addEventListener("click",e=>{
           },
         ]),
       );
-      defaultProv = catalog.defaults?.prov || catalog.models?.[0]?.id || 'gemini-flash-lite';
+      defaultProv = catalog.defaults?.prov || catalog.models?.[0]?.id || 'gemini-38-flash';
       DEFAULTS = {
         temp: catalog.defaults?.temp ?? 0.7,
         topp: catalog.defaults?.topp ?? 1,

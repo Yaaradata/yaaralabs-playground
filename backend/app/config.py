@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     
     # Hugging Face API Token (for DistilBERT model downloads - avoids rate limiting)
     huggingface_token: Optional[str] = Field(default=None, env="HF_TOKEN")
+
+    # OpenRouter: the OpenAI and Anthropic chat models in the model pickers (services/openrouter_service.py).
+    # Gemini models keep going to Vertex AI.
+    openrouter_api_key: Optional[str] = Field(default=None, env="OPENROUTER_API_KEY")
     
     class Config:
         env_file = ".env"

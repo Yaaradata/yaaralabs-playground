@@ -22,7 +22,7 @@ class DialValues(BaseModel):
 
 class DialRunBody(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=4000)
-    model: Optional[str] = Field(default="gemini-flash-lite", max_length=64)
+    model: Optional[str] = Field(default="gemini-38-flash", max_length=64)
     dials: DialValues = Field(default_factory=DialValues)
     index: int = Field(default=0, ge=0, le=20)
 
@@ -55,7 +55,7 @@ def register_dials_routes(
         try:
             return dials.generate_once(
                 prompt=body.prompt,
-                model=body.model or "gemini-flash-lite",
+                model=body.model or "gemini-38-flash",
                 dials=body.dials.model_dump(),
                 index=body.index,
             )

@@ -192,7 +192,7 @@ export default function ProjectDetailsPage() {
   const contentAreaRef = useRef<HTMLDivElement>(null);
   
   // Project Settings state
-  const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-flash-lite');
+  const [selectedModel, setSelectedModel] = useState<string>('gemini-3.8-flash');
   const [selectedEmbeddingModel, setSelectedEmbeddingModel] = useState<string>('text-embedding-005');
   const [selectedSimilarity, setSelectedSimilarity] = useState<string>('Cosine similarity');
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -498,7 +498,8 @@ export default function ProjectDetailsPage() {
       const response = await fetch(`${config.apiBaseUrl}${config.api.agents.settings.get(agentId)}`);
       if (response.ok) {
         const settings = await response.json();
-        setSelectedModel(settings.model || 'gemini-2.5-flash-lite');
+        // older agents saved a Gemini 2.5 model: it now runs as Gemini 3.8 Flash
+        setSelectedModel(['gemini-3.8-flash', 'openai/gpt-6-luna', 'anthropic/claude-haiku-5.5'].includes(settings.model) ? settings.model : 'gemini-3.8-flash');
         setSelectedEmbeddingModel(settings.embedding_model || 'text-embedding-005');
         setSelectedSimilarity(settings.similarity || 'Cosine similarity');
         console.log('✅ Settings loaded:', settings);
@@ -2231,8 +2232,10 @@ export default function ProjectDetailsPage() {
                                       onChange={(e) => setSelectedModel(e.target.value)}
                                       className="w-full px-4 py-3 bg-card border border-magenta-brand/20 text-fg rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-brand focus:border-transparent"
                                     >
-                                      <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
-                                      <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                                      {/* Gemini on Vertex AI; OpenAI and Anthropic through OpenRouter */}
+                                      <option value="gemini-3.8-flash">Gemini 3.8 Flash · Google</option>
+                                      <option value="openai/gpt-6-luna">GPT-6 Luna · OpenAI</option>
+                                      <option value="anthropic/claude-haiku-5.5">Claude Haiku 5.5 · Anthropic</option>
                                     </select>
                                   </div>
 

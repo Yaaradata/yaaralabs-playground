@@ -495,22 +495,23 @@ class PersonaUpdateResponse(BaseModel):
     persona: Persona
     message: str = "Persona updated successfully"
 
+# Chat models in the pickers (Gemini on Vertex AI; "provider/model" ids through OpenRouter), and the
+# Gemini ids saved before the pickers changed (they now run as Gemini 3.8 Flash: resolve_vertex_model)
+PICKER_MODELS: List[str] = ["gemini-3.8-flash", "openai/gpt-6-luna", "anthropic/claude-haiku-5.5"]
+LEGACY_MODELS: List[str] = ["gemini-2.5-flash-lite", "gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro"]
+
+
 class AgentSettings(BaseModel):
     agent_id: str = Field(..., description="Agent ID this settings belongs to")
-    model: str = Field("gemini-2.5-flash-lite", description="Model name (e.g., gemini-2.5-flash-lite, gemini-2.5-pro)")
+    model: str = Field("gemini-3.8-flash", description="Model id: gemini-3.8-flash (Vertex), openai/gpt-6-luna or anthropic/claude-haiku-5.5 (OpenRouter)")
     embedding_model: str = Field("text-embedding-005", description="Embedding model name")
     similarity: str = Field("Cosine similarity", description="Similarity method (Cosine similarity, Euclidean Distance, Jaccard Similarity)")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Valid model names
-    VALID_MODELS: ClassVar[List[str]] = [
-        "gemini-2.5-flash-lite",
-        "gemini-3.5-flash-lite",
-        "gemini-2.5-flash",
-        "gemini-3.8-flash",
-        "gemini-2.5-pro",
-    ]
+    # the model picker (exercises_vertex_models), plus the Gemini ids saved before it changed
+    VALID_MODELS: ClassVar[List[str]] = PICKER_MODELS + LEGACY_MODELS
     
     @field_validator('model')
     @classmethod
@@ -526,13 +527,8 @@ class SettingsUpdateRequest(BaseModel):
     similarity: Optional[str] = Field(None, description="Similarity method")
     
     # Valid model names
-    VALID_MODELS: ClassVar[List[str]] = [
-        "gemini-2.5-flash-lite",
-        "gemini-3.5-flash-lite",
-        "gemini-2.5-flash",
-        "gemini-3.8-flash",
-        "gemini-2.5-pro",
-    ]
+    # what a save may set: the models in the picker (exercises_vertex_models)
+    VALID_MODELS: ClassVar[List[str]] = PICKER_MODELS
     
     @field_validator('model')
     @classmethod
@@ -1021,7 +1017,7 @@ class ExercisesGenerateRequest(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=12000)
     system: Optional[str] = Field(None, max_length=8000)
     examples: List[ExercisesChatExample] = Field(default_factory=list)
-    model: str = Field("gemini-2.5-flash-lite")
+    model: str = Field("gemini-3.8-flash")
     temperature: float = Field(0.7, ge=0.0, le=2.0)
     n: int = Field(1, ge=1, le=10)
     max_tokens: int = Field(400, ge=32, le=2048)

@@ -75,10 +75,10 @@ test('start from: only the previous stage, newest first (AI Agent lists RAG chat
   assert.equal(defaultStartFrom([agents[0]], 'agent'), ''); // no RAG chatbot yet: start fresh
 });
 
-test('models: three choices; Flash for AI Agent', () => {
-  assert.deepEqual(MODEL_OPTIONS.map(([v]) => v), ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro']);
-  assert.equal(DEFAULT_MODEL.assistant, 'gemini-2.5-flash-lite');
-  assert.equal(DEFAULT_MODEL.agent, 'gemini-2.5-flash');
+test('models: Gemini 3.8 Flash (Vertex), GPT-6 Luna and Claude Haiku 5.5 (OpenRouter); Gemini by default', () => {
+  assert.deepEqual(MODEL_OPTIONS.map(([v]) => v), ['gemini-3.8-flash', 'openai/gpt-6-luna', 'anthropic/claude-haiku-5.5']);
+  assert.equal(DEFAULT_MODEL.assistant, 'gemini-3.8-flash');
+  assert.equal(DEFAULT_MODEL.agent, 'gemini-3.8-flash');
 });
 
 test('citation chips: [2], [1, 3], [2-4], bold, and out-of-range numbers', () => {

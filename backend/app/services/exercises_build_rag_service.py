@@ -208,7 +208,7 @@ DEFAULTS: Dict[str, Any] = {
     "store": "numpy",
     "numbered": True,
     "evalGen": True,
-    "prov": "gemini-flash-lite",
+    "prov": "gemini-38-flash",
     "clean": {"headers": True, "hyphen": True, "wraps": True, "spaces": True},
 }
 
@@ -676,7 +676,7 @@ def generate(
     min_score: float = 0.0,
     template: str = DEFAULT_TEMPLATE,
     numbered: bool = True,
-    model: str = "gemini-flash-lite",
+    model: str = "gemini-38-flash",
     temp: float = 0.2,
     topp: float = 1.0,
     cap: int = 400,

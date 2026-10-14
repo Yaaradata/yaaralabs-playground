@@ -160,7 +160,7 @@ class Stages(unittest.TestCase):
 # ── copy ──────────────────────────────────────────────────────
 
 
-def source(stage="assistant", model="gemini-2.5-flash-lite"):
+def source(stage="assistant", model="gemini-3.8-flash"):
     return {
         "agent": {"agent_id": "SRC", "stage": stage, "project_name": "My Ex 6", "name": "Asha"},
         "persona": {"agent_id": "SRC", "name": "Asha", "role": "custody assistant", "tone": "professional",
@@ -187,7 +187,7 @@ class Copy(unittest.TestCase):
         plan = agent_stages.plan_copy(source(), "NEW", "rag", self.ids())
         self.assertEqual(plan["persona"]["agent_id"], "NEW")
         self.assertEqual(plan["persona"]["guidelines"], "Reply in under 80 words.")
-        self.assertEqual(plan["settings"]["model"], "gemini-2.5-flash-lite")
+        self.assertEqual(plan["settings"]["model"], "gemini-3.8-flash")
         self.assertEqual(plan["guardrails"]["agent_id"], "NEW")
         self.assertTrue(plan["guardrails"]["stay_on_topic"])
         self.assertEqual([r["rule_id"] for r in plan["rules"]], ["RULE_NEW1", "RULE_NEW2"])
@@ -206,9 +206,13 @@ class Copy(unittest.TestCase):
         self.assertIn(kb_action[len("File: "):], [d["short"] for d in plan["kb_documents"]])
 
     def test_model_default_upgrades_but_a_choice_is_kept(self):
-        self.assertEqual(agent_stages.plan_copy(source("rag"), "N", "agent", self.ids())["settings"]["model"], "gemini-2.5-flash")
+        self.assertEqual(agent_stages.plan_copy(source("rag"), "N", "agent", self.ids())["settings"]["model"], "gemini-3.8-flash")
+        # a model the participant chose is kept (here one through OpenRouter)
+        self.assertEqual(agent_stages.plan_copy(source("rag", "anthropic/claude-haiku-5.5"), "N", "agent", self.ids())["settings"]["model"],
+                         "anthropic/claude-haiku-5.5")
+        # an old Gemini id saved before the picker changed becomes the default
         self.assertEqual(agent_stages.plan_copy(source("rag", "gemini-2.5-pro"), "N", "agent", self.ids())["settings"]["model"],
-                         "gemini-2.5-pro")
+                         "gemini-3.8-flash")
 
     def test_tool_state_is_never_copied(self):
         src = source("rag")

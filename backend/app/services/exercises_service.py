@@ -20,6 +20,7 @@ from ..models import (
     ExercisesWorkspaceState,
 )
 from .exercises_vertex_models import (
+    DEFAULT_VERTEX_MODEL,
     VERTEX_CHAT_MODELS,
     resolve_vertex_model,
     vertex_chat_service,
@@ -305,7 +306,7 @@ class ExercisesService:
     ) -> Dict[str, Any]:
         chosen = resolve_vertex_model(model)
         if chosen not in VALID_MODELS:
-            chosen = "gemini-2.5-flash-lite"
+            chosen = DEFAULT_VERTEX_MODEL
         outputs: List[str] = []
         simulated = False
         try:

@@ -837,7 +837,7 @@ export function mountExercise10(host: HTMLElement, opts: MountOptions): () => vo
           pushUndo();
           const used = new Set(S.lanes.map((l) => l.prov));
           const next =
-            Object.keys(models).find((k) => !used.has(k)) || Object.keys(models)[0] || 'gemini-flash-lite';
+            Object.keys(models).find((k) => !used.has(k)) || Object.keys(models)[0] || 'gemini-38-flash';
           addLane(next);
           renderAll();
         }
@@ -1021,7 +1021,7 @@ export function mountExercise10(host: HTMLElement, opts: MountOptions): () => vo
       S.maxLanes = catalog.defaults.maxLanes;
       catalog.defaults.lanes.forEach((prov) => addLane(prov));
       while (S.lanes.length < S.minLanes) {
-        addLane(Object.keys(models)[S.lanes.length] || 'gemini-flash-lite');
+        addLane(Object.keys(models)[S.lanes.length] || 'gemini-38-flash');
       }
 
       host.innerHTML = TEMPLATE;

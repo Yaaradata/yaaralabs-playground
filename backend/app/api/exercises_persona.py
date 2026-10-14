@@ -23,7 +23,7 @@ class PersonaRunBody(BaseModel):
     examples: List[ExamplePair] = Field(default_factory=list, max_length=5)
     question: str = Field(..., min_length=1, max_length=2000)
     condition: str = Field(default="zero", max_length=8)
-    model: Optional[str] = Field(default="gemini-flash-lite", max_length=64)
+    model: Optional[str] = Field(default="gemini-38-flash", max_length=64)
     temp: float = Field(default=0.3, ge=0.0, le=2.0)
     topp: float = Field(default=1.0, ge=0.05, le=1.0)
     cap: int = Field(default=300, ge=50, le=1000)
@@ -62,7 +62,7 @@ def register_persona_routes(
                 examples=[ex.model_dump() for ex in body.examples],
                 question=body.question,
                 condition=body.condition,
-                model=body.model or "gemini-flash-lite",
+                model=body.model or "gemini-38-flash",
                 temp=body.temp,
                 topp=body.topp,
                 cap=body.cap,

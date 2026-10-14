@@ -45,6 +45,8 @@ from google.cloud import firestore
 from ..config import gcp_clients
 from . import agent_tools
 from .exercises_vertex_models import catalog_models, normalize_family_id, resolve_vertex_model, vertex_max_output_tokens
+from .openrouter_service import OpenRouterError, is_openrouter_model
+from .openrouter_service import generate_rest as openrouter_generate_rest
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +167,14 @@ def generate(model: str, system: str, contents: List[Dict[str, Any]], tools: Lis
            f"models/{vertex_model}:generateContent")
     t0 = time.perf_counter()
     for attempt in (1, 2):  # Flash-Lite sometimes returns an empty or malformed reply: ask once more, never invent one
-        out = _post(url, body, meta.get("name") or vertex_model)
+        if is_openrouter_model(vertex_model):  # OpenAI / Anthropic models: the same call through OpenRouter
+            try:
+                out = openrouter_generate_rest(vertex_model, system, contents, decls, body["generationConfig"]["temperature"],
+                                               body["generationConfig"]["maxOutputTokens"], final=final)
+            except OpenRouterError as e:
+                raise AgentModelError(str(e))
+        else:
+            out = _post(url, body, meta.get("name") or vertex_model)
         if out["text"] or out["calls"] or attempt == 2:
             break
         logger.info("Agent %s gave an empty reply (%s); retrying once", vertex_model, out["finish"])

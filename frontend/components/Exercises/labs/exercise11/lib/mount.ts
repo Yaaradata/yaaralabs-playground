@@ -150,7 +150,7 @@ export function mountExercise11(host: HTMLElement, opts: MountOptions): () => vo
   let tickTimer: ReturnType<typeof setInterval> | null = null;
 
   const S = {
-    prov: 'gemini-flash-lite',
+    prov: 'gemini-38-flash',
     ver: '',
     temp: 0.2,
     topp: 1,
@@ -1129,7 +1129,7 @@ export function mountExercise11(host: HTMLElement, opts: MountOptions): () => vo
       S.minScore = catalog.defaults.minScore ?? 0;
       S.strict = catalog.defaults.strict !== false;
       S.useDoc = catalog.defaults.useDoc !== false;
-      S.prov = catalog.defaults.prov || models[0]?.id || 'gemini-flash-lite';
+      S.prov = catalog.defaults.prov || models[0]?.id || 'gemini-38-flash';
       S.ver = defaultVersionOf(P());
       $('#settingsBtn').innerHTML = IC.gear;
       if (!document.documentElement.requestFullscreen) ($('#fsBtn') as HTMLElement).hidden = true;

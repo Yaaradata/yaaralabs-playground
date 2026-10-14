@@ -81,7 +81,7 @@ export function mountExercise12(host: HTMLElement, opts: MountOptions): () => vo
   const $$ = (s: string) => [...host.querySelectorAll(s)] as any[];
 
   let catalog: BuildRagCatalog | null = null;
-  let defaultProv = 'gemini-flash-lite';
+  let defaultProv = 'gemini-38-flash';
   let completed = false;
   let unbindFs: (() => void) | null = null;
   let aborted = false;
@@ -201,7 +201,7 @@ let STAGES = [
 /* ============ State ============ */
 let UID=1;
 const S = {
-  stage:0, prov:"gemini-flash-lite", temp:DEFAULTS.temp, topp:DEFAULTS.topp, cap:DEFAULTS.cap, py:"stage",
+  stage:0, prov:"gemini-38-flash", temp:DEFAULTS.temp, topp:DEFAULTS.topp, cap:DEFAULTS.cap, py:"stage",
   src:null, parsing:false,
   clean:{headers:true, hyphen:true, wraps:true, spaces:true},
   mode:"sentences", size:60, overlap:10, openTile:null,
@@ -1434,7 +1434,7 @@ let rsT=null; const onWinResize=()=>{ clearTimeout(rsT); rsT=setTimeout(()=>{ sc
       catalog = await loadBuildRagCatalog(sessionId, projectId);
       if (aborted) return;
       PROVIDERS = Object.fromEntries((catalog.models || []).map((m) => [m.id, m]));
-      defaultProv = catalog.defaults?.prov || catalog.models?.[0]?.id || 'gemini-flash-lite';
+      defaultProv = catalog.defaults?.prov || catalog.models?.[0]?.id || 'gemini-38-flash';
       DEFAULTS = {
         temp: catalog.defaults?.temp ?? 0.2,
         topp: catalog.defaults?.topp ?? 1,

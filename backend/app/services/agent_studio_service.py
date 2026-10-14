@@ -297,6 +297,20 @@ def rest_generate(model: str, system: str, contents: List[Dict[str, Any]], tools
         raise StudioModelError(str(e))
 
 
+def model_web_search(model: str, query: str) -> Dict[str, Any]:
+    """The web_search tool, with the search that belongs to the chosen model: Google Search grounding
+    for Gemini (Vertex), the provider's own search for OpenAI / Anthropic models (OpenRouter)."""
+    from .openrouter_service import OpenRouterError, is_openrouter_model, web_search
+
+    if not is_openrouter_model(model):
+        return google_web_search(query)
+    try:
+        out = web_search(model, query, WEB_PROMPT.format(query=query))
+    except OpenRouterError as e:
+        return {"summary": "", "sources": [], "note": f"Web search failed ({e}). Nothing was made up."}
+    return shape_web_result(out.get("response") or "", out.get("sources") or [])
+
+
 def google_web_search(query: str) -> Dict[str, Any]:
     from ..config import gcp_clients
     from .vertex_ai_service import VertexAIService
@@ -354,7 +368,8 @@ class AgentStudioService:
         self._generate_stream = generate_stream or (
             (lambda system, contents, model: iter([self._generate(system, contents, model)["text"]])) if generate else genai_generate_stream)
         self._agent_generate = agent_generate or rest_generate
-        self._web = web_search or google_web_search
+        # tests inject web_search; otherwise the search follows the chosen model (model_web_search)
+        self._web = web_search
         self._tools_state = tools_state
 
     # lazy defaults (real services need GCP)
@@ -590,7 +605,8 @@ class AgentStudioService:
                               "how_to_cite": "Cite a passage you use by its number in square brackets, like [2]."}
                     step.update(group="lookup", passages=[h["n"] for h in hits], query=str(args.get("query") or ""))
                 elif name == "web_search":
-                    result = self._web(str(args.get("query") or message))
+                    query = str(args.get("query") or message)
+                    result = self._web(query) if self._web else model_web_search(model, query)
                     for s in result.get("sources") or []:
                         if not any(x["uri"] == s["uri"] for x in web_sources):
                             web_sources.append(s)

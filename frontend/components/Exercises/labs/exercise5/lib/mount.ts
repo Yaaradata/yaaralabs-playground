@@ -215,7 +215,7 @@ export function mountExercise5(host: HTMLElement, opts: MountOptions): () => voi
   cleanups.push(bindHostFullscreen(host, $('#fsBtn')));
 
   const S: LabState = {
-    models: ['gemini-flash-lite', 'gemini-38-flash', 'gemini-pro'],
+    models: ['gemini-38-flash', 'gpt-6-luna', 'claude-haiku-55'],
     versions: {},
     q: '',
     words: 100,
@@ -243,7 +243,7 @@ export function mountExercise5(host: HTMLElement, opts: MountOptions): () => voi
     /* ignore */
   }
   // Soft-validate persisted state so a corrupt localStorage blob cannot crash the lab.
-  if (!Array.isArray(S.models)) S.models = ['gemini-flash-lite', 'gemini-38-flash', 'gemini-pro'];
+  if (!Array.isArray(S.models)) S.models = ['gemini-38-flash', 'gpt-6-luna', 'claude-haiku-55'];
   if (!Array.isArray(S.langs)) S.langs = ['en', 'ta'];
   if (!Array.isArray(S.edges) || !S.edges.every((e) => Array.isArray(e) && e.length === 2)) {
     S.edges = DEFAULT_EDGES.map((e) => [...e] as [string, string]);
@@ -778,7 +778,7 @@ export function mountExercise5(host: HTMLElement, opts: MountOptions): () => voi
 </div>`;
         })
         .join('') +
-      `<div class="meta price-note"><span>${S.models.length} selected</span><span>Input / output rates are Vertex list prices in USD per 1M tokens.</span></div>`;
+      `<div class="meta price-note"><span>${S.models.length} selected</span><span>Input / output rates are list prices in USD per 1M tokens.</span></div>`;
   };
 
   const renderLen = () => {

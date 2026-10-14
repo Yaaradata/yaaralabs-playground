@@ -54,7 +54,7 @@ class AgentStepBody(BaseModel):
     system: str = Field(default="", max_length=8000)
     messages: List[AgentMessage] = Field(..., min_length=1, max_length=60)
     tools: List[ToolDef] = Field(default_factory=list, max_length=12)
-    model: Optional[str] = Field(default="gemini-flash-lite", max_length=64)
+    model: Optional[str] = Field(default="gemini-38-flash", max_length=64)
     temp: float = Field(default=0.2, ge=0.0, le=2.0)
     topp: float = Field(default=1.0, ge=0.05, le=1.0)
     cap: int = Field(default=800, ge=100, le=2000)
@@ -100,7 +100,7 @@ def register_agent_routes(
                 system=body.system,
                 messages=[m.model_dump(exclude_none=True) for m in body.messages],
                 tools=tools,
-                model=body.model or "gemini-flash-lite",
+                model=body.model or "gemini-38-flash",
                 temp=body.temp,
                 topp=body.topp,
                 cap=body.cap,

@@ -184,7 +184,7 @@ export function mountExercise13(host: HTMLElement, opts: MountOptions): () => vo
     'e.g. Convert 250 psi to MPa, then multiply the result by 1.5.',
   ];
   let OWN_EXAMPLE = '';
-  let DEFAULTS = { temp: 0.2, topp: 1, cap: 800, maxSteps: 5, prov: 'gemini-flash-lite' };
+  let DEFAULTS = { temp: 0.2, topp: 1, cap: 800, maxSteps: 5, prov: 'gemini-38-flash' };
   let maxTools = 8;
   let maxOwnCodeChars = 8000;
   let UID = 1;
@@ -196,7 +196,7 @@ export function mountExercise13(host: HTMLElement, opts: MountOptions): () => vo
   let ownCodeUndoPushed = false;
 
   const S = {
-    prov: 'gemini-flash-lite',
+    prov: 'gemini-38-flash',
     ver: '',
     temp: 0.2,
     topp: 1,
@@ -1085,7 +1085,7 @@ export function mountExercise13(host: HTMLElement, opts: MountOptions): () => vo
         topp: catalog.defaults?.topp ?? 1,
         cap: catalog.defaults?.cap ?? 800,
         maxSteps: catalog.defaults?.maxSteps ?? 5,
-        prov: catalog.defaults?.prov || models[0]?.id || 'gemini-flash-lite',
+        prov: catalog.defaults?.prov || models[0]?.id || 'gemini-38-flash',
       };
       maxTools = catalog.maxTools ?? 8;
       maxOwnCodeChars = catalog.maxOwnCodeChars ?? 8000;

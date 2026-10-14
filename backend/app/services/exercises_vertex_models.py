@@ -1,8 +1,12 @@
-"""Real Vertex AI chat models available to the Exercises labs.
+"""The chat models in every model picker (Exercises labs, Agent Studio, agents).
 
-The classroom stack calls Vertex through the google-genai client. Only Gemini
-publisher models that answer on this project are offered — no fake GPT/Claude
-labels.
+    gemini-3.8-flash            Google, on Vertex AI (google-genai client, global endpoint)
+    openai/gpt-6-luna           OpenAI, through OpenRouter
+    anthropic/claude-haiku-5.5  Anthropic, through OpenRouter
+
+The keys below are the ids the code passes as `model`. Ids with a "/" go to OpenRouter (see
+openrouter_service.RoutedClient); the rest go to Vertex. Older saved ids (Gemini 2.5 / 3.5, old
+family ids) still work: they map to Gemini 3.8 Flash.
 """
 
 from __future__ import annotations
@@ -12,120 +16,96 @@ from typing import Any, Dict, List, Optional, Tuple
 # Newer Gemini 3.x ids need the global endpoint; 2.5 also works there.
 VERTEX_CHAT_LOCATION = "global"
 
-# Vertex model resource ids accepted by google-genai on this project.
-DEFAULT_VERTEX_MODEL = "gemini-2.5-flash-lite"
+DEFAULT_VERTEX_MODEL = "gemini-3.8-flash"
 
-# Top 5 for classroom labs: cost ladder + a strong Pro.
+# id -> picker metadata. Prices are list prices, USD per 1M tokens (input / output).
 VERTEX_CHAT_MODELS: Dict[str, Dict[str, Any]] = {
-    "gemini-2.5-flash-lite": {
-        "id": "gemini-flash-lite",
-        "name": "Gemini 2.5 Flash-Lite",
-        "short": "2.5 Lite",
-        "vendor": "Google Vertex AI",
-        "vertexModel": "gemini-2.5-flash-lite",
-        "enc": "o200k",
-        # Vertex list price (USD / 1M tokens), text input / output.
-        "pin": 0.10,
-        "pout": 0.40,
-        "est": False,
-        "tempMax": 2.0,
-        "topk": True,
-        "hint": "Classroom Vertex · global",
-        "label": "2.5 Flash-Lite",
-        "thinking": False,
-        "thinkingOverhead": 0,
-    },
-    "gemini-3.5-flash-lite": {
-        "id": "gemini-35-flash-lite",
-        "name": "Gemini 3.5 Flash-Lite",
-        "short": "3.5 Lite",
-        "vendor": "Google Vertex AI",
-        "vertexModel": "gemini-3.5-flash-lite",
-        "enc": "o200k",
-        # Vertex global list price (USD / 1M tokens): https://cloud.google.com/products/gemini/pricing
-        "pin": 0.30,
-        "pout": 2.50,
-        "est": False,
-        "tempMax": 2.0,
-        "topk": True,
-        "hint": "Classroom Vertex · global",
-        "label": "3.5 Flash-Lite",
-        "thinking": False,
-        "thinkingOverhead": 0,
-    },
-    "gemini-2.5-flash": {
-        "id": "gemini-flash",
-        "name": "Gemini 2.5 Flash",
-        "short": "2.5 Flash",
-        "vendor": "Google Vertex AI",
-        "vertexModel": "gemini-2.5-flash",
-        "enc": "o200k",
-        "pin": 0.30,
-        "pout": 2.50,
-        "est": False,
-        "tempMax": 2.0,
-        "topk": True,
-        "hint": "Classroom Vertex · global",
-        "label": "2.5 Flash",
-        "thinking": True,
-        # Internal reasoning counts against max_output_tokens before visible text.
-        "thinkingOverhead": 512,
-    },
     "gemini-3.8-flash": {
         "id": "gemini-38-flash",
         "name": "Gemini 3.8 Flash",
         "short": "3.8 Flash",
-        "vendor": "Google Vertex AI",
+        "vendor": "Google · Vertex AI",
+        "provider": "vertex",
         "vertexModel": "gemini-3.8-flash",
         "enc": "o200k",
-        # Global promo rate through 2026-12-31; then $1.50 / $7.50.
         "pin": 0.75,
         "pout": 3.75,
         "est": False,
         "tempMax": 2.0,
         "topk": True,
-        "hint": "Classroom Vertex · global",
+        "hint": "Vertex AI · Google Search grounding",
         "label": "3.8 Flash",
+        "webSearch": "Google Search grounding",
         "thinking": True,
+        # Internal reasoning counts against max_output_tokens before visible text.
         "thinkingOverhead": 1024,
     },
-    "gemini-2.5-pro": {
-        "id": "gemini-pro",
-        "name": "Gemini 2.5 Pro",
-        "short": "2.5 Pro",
-        "vendor": "Google Vertex AI",
-        "vertexModel": "gemini-2.5-pro",
+    "openai/gpt-6-luna": {
+        "id": "gpt-6-luna",
+        "name": "GPT-6 Luna",
+        "short": "GPT-6 Luna",
+        "vendor": "OpenAI · OpenRouter",
+        "provider": "openrouter",
+        "vertexModel": "openai/gpt-6-luna",
         "enc": "o200k",
-        # ≤200K prompt tier; longer prompts are $2.50 / $15.00.
-        "pin": 1.25,
-        "pout": 10.0,
+        "pin": 0.10,
+        "pout": 0.50,
         "est": False,
         "tempMax": 2.0,
-        "topk": True,
-        "hint": "Classroom Vertex · global",
-        "label": "2.5 Pro",
-        "thinking": True,
-        "thinkingOverhead": 2048,
+        "topk": False,
+        "hint": "OpenRouter · OpenAI's own web search",
+        "label": "GPT-6 Luna",
+        "webSearch": "OpenAI's own search, through OpenRouter",
+        "thinking": False,
+        "thinkingOverhead": 0,
+    },
+    "anthropic/claude-haiku-5.5": {
+        "id": "claude-haiku-55",
+        "name": "Claude Haiku 5.5",
+        "short": "Haiku 5.5",
+        "vendor": "Anthropic · OpenRouter",
+        "provider": "openrouter",
+        "vertexModel": "anthropic/claude-haiku-5.5",
+        # no public tokenizer: o200k is the classroom estimate
+        "enc": "o200k",
+        "pin": 0.10,
+        "pout": 0.50,
+        "est": True,
+        "tempMax": 1.0,
+        "topk": False,
+        "hint": "OpenRouter · Anthropic's own web search",
+        "label": "Haiku 5.5",
+        "webSearch": "Anthropic's own search, through OpenRouter",
+        "thinking": False,
+        "thinkingOverhead": 0,
     },
 }
 
 _CATALOG_ORDER = (
-    "gemini-2.5-flash-lite",
-    "gemini-3.5-flash-lite",
-    "gemini-2.5-flash",
     "gemini-3.8-flash",
-    "gemini-2.5-pro",
+    "openai/gpt-6-luna",
+    "anthropic/claude-haiku-5.5",
 )
 
 # Older saved lab state used fake multi-vendor family ids.
 _LEGACY_FAMILY_ALIASES: Dict[str, str] = {
-    "gpt": "gemini-flash-lite",
-    "claude": "gemini-flash",
-    "gemini": "gemini-flash-lite",
-    "deepseek": "gemini-pro",
+    # fake multi-vendor family ids from early labs
+    "gpt": "gpt-6-luna",
+    "claude": "claude-haiku-55",
+    "gemini": "gemini-38-flash",
+    "deepseek": "gemini-38-flash",
     "grok": "gemini-38-flash",
-    "phi": "gemini-35-flash-lite",
-    "qwen": "gemini-flash",
+    "phi": "gemini-38-flash",
+    "qwen": "gemini-38-flash",
+    # the Gemini models these pickers used to offer
+    "gemini-flash-lite": "gemini-38-flash",
+    "gemini-35-flash-lite": "gemini-38-flash",
+    "gemini-flash": "gemini-38-flash",
+    "gemini-pro": "gemini-38-flash",
+    "gemini-2.5-flash-lite": "gemini-38-flash",
+    "gemini-3.5-flash-lite": "gemini-38-flash",
+    "gemini-2.5-flash": "gemini-38-flash",
+    "gemini-2.5-pro": "gemini-38-flash",
 }
 
 _FAMILY_BY_ID: Dict[str, Dict[str, Any]] = {}
@@ -172,6 +152,8 @@ def catalog_models() -> List[Dict[str, Any]]:
                 "hint": meta.get("hint") or "",
                 "model": vertex_id,
                 "vertexModel": vertex_id,
+                "provider": meta.get("provider") or "vertex",
+                "webSearch": meta.get("webSearch") or "",
             }
         )
     return rows
@@ -181,9 +163,9 @@ DEFAULT_FAMILY_IDS: List[str] = [row["id"] for row in catalog_models()]
 DEFAULT_FAMILY_ID = DEFAULT_FAMILY_IDS[0]
 # Default selections for side-by-side labs (keep call count reasonable).
 DEFAULT_SELECTED_FAMILY_IDS: List[str] = [
-    "gemini-flash-lite",
     "gemini-38-flash",
-    "gemini-pro",
+    "gpt-6-luna",
+    "claude-haiku-55",
 ]
 
 

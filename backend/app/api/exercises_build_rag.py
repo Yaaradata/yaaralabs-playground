@@ -64,7 +64,7 @@ class GenerateBody(BaseModel):
     size: int = Field(default=60, ge=20, le=400)
     overlap: int = Field(default=10, ge=0, le=100)
     embedModel: str = Field(default="minilm", max_length=16)
-    model: Optional[str] = Field(default="gemini-flash-lite", max_length=64)
+    model: Optional[str] = Field(default="gemini-38-flash", max_length=64)
     k: int = Field(default=3, ge=1, le=10)
     minScore: float = Field(default=0.0, ge=0.0, le=0.9)
     template: str = Field(default=build_rag.DEFAULT_TEMPLATE, max_length=8000)
@@ -93,7 +93,7 @@ class EvaluateBody(BaseModel):
     size: int = Field(default=60, ge=20, le=400)
     overlap: int = Field(default=10, ge=0, le=100)
     embedModel: str = Field(default="minilm", max_length=16)
-    model: Optional[str] = Field(default="gemini-flash-lite", max_length=64)
+    model: Optional[str] = Field(default="gemini-38-flash", max_length=64)
     k: int = Field(default=3, ge=1, le=10)
     minScore: float = Field(default=0.0, ge=0.0, le=0.9)
     template: str = Field(default=build_rag.DEFAULT_TEMPLATE, max_length=8000)
@@ -256,7 +256,7 @@ def register_build_rag_routes(
                 min_score=body.minScore,
                 template=body.template,
                 numbered=body.numbered,
-                model=body.model or "gemini-flash-lite",
+                model=body.model or "gemini-38-flash",
                 temp=body.temp,
                 topp=body.topp,
                 cap=body.cap,
@@ -296,7 +296,7 @@ def register_build_rag_routes(
                 numbered=body.numbered,
                 tests=[t.model_dump() for t in body.tests],
                 eval_gen=body.evalGen,
-                model=body.model or "gemini-flash-lite",
+                model=body.model or "gemini-38-flash",
                 temp=body.temp,
                 topp=body.topp,
                 cap=body.cap,
