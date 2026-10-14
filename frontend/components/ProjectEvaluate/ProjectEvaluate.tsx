@@ -298,12 +298,14 @@ export default function ProjectEvaluate({ sessionId, projectId, learnHref, kind 
 
 /* ───────────────────────── results ───────────────────────── */
 
-/** A scientific term with its business words: [Accuracy] overall hit rate. */
+/** A scientific term with its business words: "Accuracy · overall hit rate". A plain label (no
+ *  outline or fill) so it doesn't read as a toggle or tabs. */
 function Term({ sci, biz }: { sci: string; biz: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 h-7 rounded-full border border-purple-brand/30 bg-purple-brand/10 pl-[3px] pr-3 text-[13px] font-medium text-fg/70 whitespace-nowrap">
-      <b className="rounded-full bg-purple-brand px-2.5 py-0.5 text-[12.5px] font-semibold text-white">{sci}</b>
-      {biz}
+    <span className="inline-flex items-baseline gap-1.5 text-sm whitespace-nowrap">
+      <b className="font-bold text-purple-brand">{sci}</b>
+      <span className="text-fg/40" aria-hidden="true">·</span>
+      <span className="text-fg/60">{biz}</span>
     </span>
   );
 }
