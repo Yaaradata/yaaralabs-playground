@@ -178,6 +178,27 @@ def source(stage="assistant", model="gemini-3.8-flash"):
     }
 
 
+class Streaming(unittest.TestCase):
+    def test_masked_answer_streams_without_leaking_split_numbers(self):
+        svc, _ = service(guardrails=CUSTODY)
+        text = "Your account 1234 5678 9012 3456 and PAN ABCDE1234F are on file. Anything else today?"
+        pieces = [text[i:i + 5] for i in range(0, len(text), 5)]  # cuts through the numbers
+        svc._generate_stream = lambda system, contents, model: iter(pieces)
+        events = list(svc.answer_events(AGENT("assistant"), "What is on file?", "s", stream=True))
+        deltas = [e["text"] for e in events if e["type"] == "delta"]
+        streamed = "".join(deltas)
+        self.assertGreater(len(deltas), 1)  # sent in pieces, not all at the end
+        for secret in ("1234", "5678", "ABCDE1234F"):
+            self.assertNotIn(secret, streamed)
+        self.assertEqual(streamed.strip(), events[-1]["response"])
+        self.assertIn("timings", events[-1]["trace"])
+
+    def test_safe_cut_never_splits_digits(self):
+        self.assertEqual(studio.safe_cut("call 1234 5678", 0), 5)
+        self.assertEqual(studio.safe_cut("hello there friend", 0), 12)
+        self.assertEqual(studio.safe_cut("12 34", 0), 0)
+
+
 class Copy(unittest.TestCase):
     def ids(self):
         n = iter(range(1, 100))

@@ -382,12 +382,29 @@ class ImageRecognitionTrainer:
             order = np.random.RandomState(self.seed).permutation(len(x))
             x, y = x[order], labels[order]
 
-            # Single phase training for speed
-            logger.info("🎯 Training with frozen base model (single phase for speed)...")
-            history = self.model.fit(
-                x,
+            # The base model is frozen, so each image's features are the same in every epoch: compute them
+            # once, then train only the classifier on top (Dropout + Dense) and copy its weights into the
+            # full model. Same model as fitting the whole network, but EfficientNet runs once per image
+            # instead of once per image per epoch (about 80 s -> a few seconds on the sample).
+            logger.info("🎯 Training the classifier on frozen-base features...")
+            pooled = next(l for l in self.model.layers if isinstance(l, layers.GlobalAveragePooling2D))
+            features = keras.Model(self.model.inputs, pooled.output).predict(x, batch_size=32, verbose=0)
+            dense = self.model.get_layer('predictions')
+            head = keras.Sequential([
+                keras.Input(shape=(features.shape[1],)),
+                layers.Dropout(0.2),
+                layers.Dense(num_classes, activation="softmax"),
+            ])
+            head.layers[-1].set_weights(dense.get_weights())  # the same starting weights as the full model
+            head.compile(
+                optimizer=keras.optimizers.Adam(learning_rate=self.learning_rate),
+                loss="sparse_categorical_crossentropy",
+                metrics=["accuracy"],
+            )
+            history = head.fit(
+                features,
                 y,
-                epochs=self.epochs,  # Only 20 epochs for speed
+                epochs=self.epochs,
                 batch_size=self.batch_size,
                 verbose=0,
                 shuffle=True,
@@ -396,6 +413,7 @@ class ImageRecognitionTrainer:
                     keras.callbacks.ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, min_lr=1e-4)  # More stable LR reduction
                 ]
             )
+            dense.set_weights(head.layers[-1].get_weights())
 
             # Get final accuracy
             final_accuracy = history.history['accuracy'][-1] if 'accuracy' in history.history else 0.0

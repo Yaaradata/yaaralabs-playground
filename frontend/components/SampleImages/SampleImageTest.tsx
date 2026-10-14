@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { loadSampleImages, readLabelNames, readRegion, SAMPLE_REGIONS, sampleImageFile, sampleImageUrl, type SampleImageSet } from './sampleImages';
+import { loadDeepTest, loadSampleImages, readLabelNames, readRegion, SAMPLE_REGIONS, sampleImageFile, sampleImageUrl, type SampleImageSet, type SampleImageTestItem } from './sampleImages';
 
 export interface ImagePrediction {
   label: string;
@@ -28,6 +28,15 @@ type TestSet = 'standard' | 'deep';
 export default function SampleImageTest({ projectLabels, namesKey, predict }: Props) {
   const [region, setRegion] = useState(() => readRegion(namesKey)); // starts on the region the project was built from
   const [data, setData] = useState<SampleImageSet | null>(null);
+  // the deep test is the same on every region tab (only the India set has one)
+  const [deep, setDeep] = useState<SampleImageTestItem[]>([]);
+  useEffect(() => {
+    let alive = true;
+    loadDeepTest().then((d) => alive && setDeep(d));
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
   const [set, setSet] = useState<TestSet>('standard');
@@ -64,7 +73,6 @@ export default function SampleImageTest({ projectLabels, namesKey, predict }: Pr
   };
 
   if (!show || !data) return null;
-  const deep = data.deepTest ?? [];
   const items = set === 'deep' && deep.length ? deep : data.test;
   const all = [...data.test, ...deep];
   const itemOf = (file: string) => all.find((t) => t.file === file);

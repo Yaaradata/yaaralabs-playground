@@ -15,10 +15,18 @@
  * per sample, so training only fits the small head.
  */
 
-import { loadBrowserUmdScript } from '../LiveObjectDetection/engines/runtime';
+import {
+  TFJS_URL,
+  backendLabel,
+  loadTfRuntime,
+  similarity,
+  switchToBestBackend,
+  switchToProcessorBackend,
+  wasmFeatures,
+} from '../LiveObjectDetection/engines/tfBackend';
 
 export const IMAGE_SIZE = 224;
-export const TFJS_URL = '/models/runtime/tfjs/tf.min.js';
+export { TFJS_URL };
 export const CHECKPOINT_URL = '/models/runtime/tm-mobilenet-v2-035/model.json';
 export const TRAINING_LAYER = 'out_relu';
 export const VALIDATION_FRACTION = 0.15;
@@ -50,30 +58,41 @@ export interface TrainResult {
 }
 
 type Tf = any;
-const tfGlobal = (): Tf => (window as any).tf;
 
 let tfReady: Promise<Tf> | null = null;
 let extractorReady: Promise<any> | null = null;
+/** Where the model runs on this computer, and why (shown in the console and kept for support). */
+export const computeInfo: { backend: string; note: string } = { backend: '', note: '' };
 
-/** Load the self-hosted TensorFlow.js once (no CDN fallback: the office network may block it). */
+/**
+ * Load the self-hosted TensorFlow.js once (no CDN fallback: the office network may block it) and pick where it
+ * runs: the graphics card (WebGL) when it starts, else WebAssembly on the processor, else plain JavaScript.
+ * checkGraphics() later moves off WebGL if it computes wrong numbers on this laptop.
+ */
 export function loadTf(): Promise<Tf> {
-  if (!tfReady) {
-    tfReady = (async () => {
-      await loadBrowserUmdScript([TFJS_URL], () => Boolean(tfGlobal()?.loadLayersModel));
-      const tf = tfGlobal();
-      try {
-        await tf.setBackend('webgl');
-      } catch {
-        await tf.setBackend('cpu');
-      }
-      await tf.ready();
-      return tf;
-    })().catch((e) => {
-      tfReady = null;
-      throw e;
-    });
-  }
+  if (tfReady) return tfReady.then(keepBackend);
+  tfReady = (async () => {
+    const tf = await loadTfRuntime();
+    await switchToBestBackend(tf);
+    return tf;
+  })().catch((e) => {
+    tfReady = null;
+    throw e;
+  });
   return tfReady;
+}
+
+/** The pretrained COCO detector shares window.tf and may have switched the backend: switch back to ours. */
+async function keepBackend(tf: Tf): Promise<Tf> {
+  const want = computeInfo.backend;
+  if (want && tf.getBackend() !== want) {
+    try {
+      await tf.setBackend(want);
+    } catch {
+      /* keep whatever runs */
+    }
+  }
+  return tf;
 }
 
 /** TM's truncated MobileNet: base model up to 'out_relu', then GlobalAveragePooling2D. Loaded once. */
@@ -89,6 +108,7 @@ export function loadExtractor(): Promise<any> {
       extractor.add(tf.layers.globalAveragePooling2d({}));
       // warm up: the first predict compiles the shaders
       tf.tidy(() => extractor.predict(tf.zeros([1, IMAGE_SIZE, IMAGE_SIZE, 3])));
+      await checkGraphics(tf, extractor);
       return extractor;
     })().catch((e) => {
       extractorReady = null;
@@ -97,6 +117,98 @@ export function loadExtractor(): Promise<any> {
   }
   return extractorReady;
 }
+
+/**
+ * Some laptops start WebGL but compute wrong numbers (low-precision textures, driver bugs): every frame then
+ * gives the same features and the model sticks on one class. Run the model on a fixed test picture on the
+ * graphics card and on the processor (WebAssembly, else plain JavaScript); if the two disagree, or the result
+ * is broken, keep the processor.
+ */
+let graphicsChecked = false;
+async function checkGraphics(tf: Tf, model: any) {
+  if (graphicsChecked) return;
+  graphicsChecked = true;
+  const current = tf.getBackend();
+  if (current !== 'webgl') {
+    const extra = current === 'wasm' ? ` (${await wasmFeatures(tf)})` : '';
+    computeInfo.backend = current;
+    computeInfo.note = `WebGL is not available: the model runs on ${backendLabel(current)}${extra}.`;
+    console.info('[live-object-detection]', computeInfo.note);
+    return;
+  }
+  // a smooth colour pattern in [-1, 1], the same on every computer
+  const px = new Float32Array(IMAGE_SIZE * IMAGE_SIZE * 3);
+  for (let y = 0; y < IMAGE_SIZE; y++) {
+    for (let x = 0; x < IMAGE_SIZE; x++) {
+      const k = (y * IMAGE_SIZE + x) * 3;
+      px[k] = Math.sin(x / 17) * 0.9;
+      px[k + 1] = Math.cos(y / 23) * 0.9;
+      px[k + 2] = ((x + y) / IMAGE_SIZE) - 1;
+    }
+  }
+  const picture = () => tf.tensor4d(px, [1, IMAGE_SIZE, IMAGE_SIZE, 3]);
+  const run = () => tf.tidy(() => model.predict(picture()).dataSync() as Float32Array).slice();
+  let reason = '';
+  let score = '';
+  let reference = 'cpu';
+  try {
+    const gpu = run();
+    reference = await switchToProcessorBackend(tf);
+    const ref = run();
+    let ng = 0;
+    for (let i = 0; i < gpu.length; i++) ng += gpu[i] * gpu[i];
+    const sim = similarity(gpu, ref);
+    score = sim.toFixed(4);
+    if (Number.isNaN(sim)) reason = 'the graphics card gave broken numbers';
+    else if (ng === 0) reason = 'the graphics card gave all zeros';
+    else if (sim < 0.98) reason = `the graphics card's result differs from the processor's (similarity ${sim.toFixed(3)})`;
+  } catch (e) {
+    reason = `the graphics check failed (${e instanceof Error ? e.message : String(e)})`;
+  }
+  if (reason) {
+    const name = await switchToProcessorBackend(tf);
+    computeInfo.backend = name;
+    const extra = name === 'wasm' ? ` (${await wasmFeatures(tf)})` : '';
+    computeInfo.note = `On this computer ${reason}, so the model runs on ${backendLabel(name)}${extra}: slower, but correct.`;
+    console.warn('[live-object-detection]', computeInfo.note);
+  } else {
+    await tf.setBackend('webgl');
+    computeInfo.backend = 'webgl';
+    computeInfo.note = `The model runs on the graphics card (check: similarity ${score} with ${reference}).`;
+    console.info('[live-object-detection]', computeInfo.note);
+  }
+}
+
+/**
+ * True when the camera picture is blank: black, one flat colour, or covered (a privacy shutter, or another app
+ * such as Teams holding the camera). The model then sees the same picture every time and sticks on one class.
+ */
+export function blankFrame(source: HTMLVideoElement | HTMLCanvasElement, canvas = document.createElement('canvas')): boolean {
+  const w = source instanceof HTMLVideoElement ? source.videoWidth : source.width;
+  const h = source instanceof HTMLVideoElement ? source.videoHeight : source.height;
+  if (!w || !h) return true;
+  canvas.width = 32;
+  canvas.height = 32;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return false;
+  ctx.drawImage(source, 0, 0, 32, 32);
+  const d = ctx.getImageData(0, 0, 32, 32).data;
+  let sum = 0, sq = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    const l = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+    sum += l;
+    sq += l * l;
+  }
+  const n = d.length / 4;
+  const mean = sum / n;
+  const std = Math.sqrt(Math.max(0, sq / n - mean * mean));
+  return std < 3 || mean < 8;
+}
+
+export const BLANK_CAMERA =
+  'The camera picture is blank or covered. Open the camera shutter, close other apps using the camera (Teams, Zoom), then try again.';
+export const PREDICT_FAILING =
+  'The model stopped working on this computer (often the graphics card ran out of memory). Reload the page (Ctrl + Shift + R).';
 
 type Drawable = HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap;
 
@@ -392,9 +504,11 @@ export async function buildMetadata(
 /** Load a saved combined model; `urlFor` maps each file name (model.json, weights.bin) to its URL. */
 export async function loadCombined(urlFor: (name: string) => string): Promise<any> {
   const tf = await loadTf();
-  return tf.loadLayersModel(urlFor('model.json'), {
+  const model = await tf.loadLayersModel(urlFor('model.json'), {
     weightUrlConverter: async (weightFileName: string) => urlFor(weightFileName.split('/').pop() || weightFileName),
   });
+  await checkGraphics(tf, model);
+  return model;
 }
 
 export async function tensorCount(): Promise<number> {

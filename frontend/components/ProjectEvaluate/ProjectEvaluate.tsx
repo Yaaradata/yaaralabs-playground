@@ -16,6 +16,7 @@ import config from '../../lib/config';
 import { SAMPLE_SOURCES, validateDataset } from '../SampleLabelling/sample';
 import {
   labelNamesKey,
+  loadDeepTest,
   loadSampleImages,
   readRegion,
   readLabelNames,
@@ -99,7 +100,7 @@ export default function ProjectEvaluate({ sessionId, projectId, learnHref, kind 
           const sample = await loadSampleImages(readRegion(labelNamesKey(sessionId, projectId)));
           const renamed = readLabelNames(labelNamesKey(sessionId, projectId));
           const standard = imageExam(sample.test, 'Test', labels, renamed);
-          const deep = imageExam(sample.deepTest ?? [], 'Deep', labels, renamed);
+          const deep = imageExam(sample.deepTest?.length ? sample.deepTest : await loadDeepTest(), 'Deep', labels, renamed);
           const inSampleOrder = [
             ...sample.labels.map((l) => renamed[l.label] ?? l.label).filter((l) => labels.includes(l)),
             ...labels.filter((l) => !sample.labels.some((s) => (renamed[s.label] ?? s.label) === l)),

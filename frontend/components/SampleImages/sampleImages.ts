@@ -64,6 +64,22 @@ export async function loadSampleImages(regionId: string = DEFAULT_REGION): Promi
   };
 }
 
+/**
+ * The deep test (handwriting plus several defects per image). Only the India set has one, and it uses the same
+ * four labels as every region, so it is offered whichever region the project was built from.
+ */
+export async function loadDeepTest(): Promise<SampleImageTestItem[]> {
+  for (const r of SAMPLE_REGIONS) {
+    try {
+      const d = await loadSampleImages(r.id);
+      if (d.deepTest?.length) return d.deepTest;
+    } catch {
+      /* try the next region */
+    }
+  }
+  return [];
+}
+
 /** Download a sample image as a File, ready for the same upload call as a learner's own image. */
 export async function sampleImageFile(file: string): Promise<File> {
   const r = await fetch(sampleImageUrl(file));

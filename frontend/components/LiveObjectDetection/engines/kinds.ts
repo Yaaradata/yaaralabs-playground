@@ -25,7 +25,7 @@ export const DETECTOR_OPTIONS: DetectorOption[] = [
   {
     id: 'coco',
     title: 'COCO',
-    blurb: 'TensorFlow.js MobileNet SSD on WebGL. Local, quick, and stable.',
+    blurb: 'TensorFlow.js MobileNet SSD on WebGL (WebAssembly without a GPU). Local, quick, and stable.',
     speed: 'Fast',
   },
   {

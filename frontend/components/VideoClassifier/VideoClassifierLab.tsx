@@ -11,7 +11,9 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { ClassCard } from './ClassCard';
 import { PreviewCard, type PreviewModel } from './PreviewCard';
 import {
+  BLANK_CAMERA,
   DEFAULT_PARAMS,
+  blankFrame,
   buildMetadata,
   combinedModel,
   disposeModel,
@@ -58,6 +60,7 @@ export default function VideoClassifierLab({ sessionId, projectId, useHref }: Pr
   const [classes, setClasses] = useState<ClassData[]>(() => [blankClass(0), blankClass(1)]);
   const [version, setVersion] = useState(0);
   const [busy, setBusy] = useState<Record<string, string>>({});
+  const [camWarn, setCamWarn] = useState<Record<string, string>>({}); // class id -> blank camera message
   const [engine, setEngine] = useState<'loading' | 'ready' | 'error'>('loading');
   const [restore, setRestore] = useState<string | null>('Opening your project…');
   const [params, setParams] = useState<TrainParams>(DEFAULT_PARAMS);
@@ -172,8 +175,19 @@ export default function VideoClassifierLab({ sessionId, projectId, useHref }: Pr
       });
     });
 
-  const addFrame = (id: string, video: HTMLVideoElement) =>
-    embed(video, true).then((s) => update(id, (c) => ({ ...c, samples: [...c.samples, { id: newId(), ...s }] })));
+  // a blank camera picture (shutter closed, camera used by another app) teaches the model nothing: say so
+  const addFrame = (id: string, video: HTMLVideoElement) => {
+    const blank = blankFrame(video);
+    setCamWarn((w) => {
+      if (Boolean(w[id]) === blank) return w;
+      const n = { ...w };
+      if (blank) n[id] = BLANK_CAMERA;
+      else delete n[id];
+      return n;
+    });
+    if (blank) return Promise.resolve();
+    return embed(video, true).then((s) => update(id, (c) => ({ ...c, samples: [...c.samples, { id: newId(), ...s }] })));
+  };
 
   const nameError = (id: string) => (name: string) => {
     if (!name) return 'Give the class a name.';
@@ -350,7 +364,7 @@ export default function VideoClassifierLab({ sessionId, projectId, useHref }: Pr
               }}
               data={c}
               readOnly={!!restore}
-              busyText={busy[c.id] ?? null}
+              busyText={busy[c.id] ?? camWarn[c.id] ?? null}
               nameError={nameError(c.id)}
               onRename={(name) => update(c.id, (x) => ({ ...x, name }))}
               onFiles={(f) => addFiles(c.id, f)}

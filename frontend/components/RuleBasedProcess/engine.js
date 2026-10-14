@@ -300,14 +300,14 @@ export function mountRuleBasedProcess(root, options) {
       tests: [],
       solution: function () {
         // if answer contains any of <keywords> then set Desk to <label>: one keyword to start, the
-        // learner types more, comma separated, in the same block. The last match wins, so
-        // Complaint / escalation (checked last) beats the others
-        var rules = DESK_RULES.map(function (r) {
+        // learner types more, comma separated, in the same block. Checked top to bottom with
+        // "else": the first desk whose keyword matches wins, even if a later desk has it too
+        var rules = chainDeskRules(DESK_RULES.map(function (r) {
           return mk("if_then", {
             i: { COND: mk("op_contains_any", { i: { A: mk("answer"), B: r.keyword } }) },
             body: [mk("set_var", { f: { VAR: "Desk" }, i: { VAL: r.label } })],
           });
-        });
+        }));
         return [
           mk("when_flag"),
           mk("forever", { body: [
@@ -342,6 +342,32 @@ export function mountRuleBasedProcess(root, options) {
       return String(v == null ? "" : v).split(",").map(function (k) { return k.trim().toLowerCase(); })
         .filter(function (k) { return k; });
     }
+    /** One desk rule: if answer contains any of <keywords> then set Desk to <label> (and nothing else). */
+    function isDeskRule(b) {
+      return !!(b && b.op === "if_then" && b.inputs && b.inputs.COND && b.inputs.COND.op === "op_contains_any" &&
+        b.inputs.COND.inputs && b.inputs.COND.inputs.A && b.inputs.COND.inputs.A.op === "answer" &&
+        b.body && b.body.length === 1 && b.body[0].op === "set_var" && b.body[0].fields && b.body[0].fields.VAR === "Desk");
+    }
+    /**
+     * Desk rules one after another, rebuilt as if ... else (if ... else ...): checked top to bottom, the first
+     * match wins. Separate ifs let a later rule overwrite an earlier one (the last match won). Each run of two or
+     * more desk rules in a list is chained; anything else is kept as it is.
+     */
+    function chainDeskRules(blocks) {
+      var out = [];
+      for (var i = 0; i < blocks.length; i++) {
+        if (!isDeskRule(blocks[i])) { out.push(blocks[i]); continue; }
+        var run = [];
+        while (i < blocks.length && isDeskRule(blocks[i])) run.push(blocks[i++]);
+        i--;
+        var node = run[run.length - 1];
+        for (var k = run.length - 2; k >= 0; k--) {
+          node = mk("if_else", { i: { COND: run[k].inputs.COND }, body: run[k].body, body2: [node] });
+        }
+        out.push(node);
+      }
+      return out;
+    }
     /** Desk-routing workspaces saved by an older starter: answer contains X becomes answer contains any of X. */
     function upgradeDeskRules(stacks) {
       function walk(b) {
@@ -353,6 +379,8 @@ export function mountRuleBasedProcess(root, options) {
         Object.keys(b.inputs || {}).forEach(function (k) { walk(b.inputs[k]); });
         (b.body || []).forEach(walk);
         (b.body2 || []).forEach(walk);
+        // separate desk ifs (the last match won) become an if / else chain (the first match wins)
+        if (b.body) b.body = chainDeskRules(b.body);
       }
       (stacks || []).forEach(function (s) { (s.blocks || []).forEach(walk); });
     }

@@ -84,7 +84,8 @@ const BACKGROUND = new Set([
   'tv',
 ]);
 const CLOTHING = new Set(['tie']);
-const SMALL_MODEL = { url: '/models/yolo/yolov8n.onnx', size: 512 };
+// The self-hosted exports have a FIXED input size (yolov8n 416, yolov8s 640): any other size fails in run().
+const SMALL_MODEL = { url: '/models/yolo/yolov8n.onnx', size: 416 };
 const ACCURATE_MODEL = { url: '/models/yolo/yolov8s.onnx', size: 640 };
 
 let cocoPromise: Promise<ObjectDetectorModel> | null = null;
@@ -282,13 +283,9 @@ export function createYoloDetector(): Promise<ObjectDetectorModel> {
       else if (BACKGROUND.has(key)) floors[index] = 0.4;
       else floors[index] = SCORE_THRESHOLD;
     });
-    // Prefer yolov8s for sharper boxes whenever the device can take it.
-    const preferred =
-      tier === 'low'
-        ? { ...SMALL_MODEL, size: 416 }
-        : useWebGpu || tier === 'high'
-          ? ACCURATE_MODEL
-          : { ...SMALL_MODEL, size: 640 };
+    // yolov8s (sharper boxes) only on the graphics card: on the processor (WASM) it takes ~1 s per frame,
+    // yolov8n ~0.1 s.
+    const preferred = useWebGpu ? ACCURATE_MODEL : SMALL_MODEL;
     let inputSize = preferred.size;
     let session: OrtSession;
     try {
@@ -317,6 +314,30 @@ export function createYoloDetector(): Promise<ObjectDetectorModel> {
       canvas.getContext('2d', { alpha: false });
     if (!ctx) throw new Error('Could not create a YOLO preprocessing canvas');
     let input = new Float32Array(3 * inputSize * inputSize);
+    // Warm up, learn the size the model really takes (fixed-size exports reject any other), and whether it
+    // accepts other sizes (only then may the loop below shrink the input when frames are slow).
+    const tryRun = async (size: number): Promise<number | null> => {
+      try {
+        await pack.session.run({ [pack.inputName]: new ort.Tensor('float32', new Float32Array(3 * size * size), [1, 3, size, size]) });
+        return size;
+      } catch (error) {
+        const expected = /Expected:\s*(\d+)/.exec(error instanceof Error ? error.message : String(error));
+        return expected ? Number(expected[1]) : null;
+      }
+    };
+    const accepted = await tryRun(inputSize);
+    if (accepted && accepted !== inputSize) {
+      inputSize = accepted;
+      canvas.width = inputSize;
+      canvas.height = inputSize;
+      input = new Float32Array(3 * inputSize * inputSize);
+      await tryRun(inputSize);
+    }
+    const resizable = !useWebGpu && (await tryRun(inputSize === 320 ? 416 : 320)) === (inputSize === 320 ? 416 : 320);
+    console.info(
+      '[live-object-detection]',
+      `YOLO runs on ${useWebGpu ? 'the graphics card (WebGPU)' : `the processor (WASM, SIMD ${ort.env.wasm.simd ? 'on' : 'off'}, ${ort.env.wasm.numThreads} thread${ort.env.wasm.numThreads === 1 ? '' : 's'})`}, input ${inputSize} px${resizable ? ', adaptive' : ''}.`
+    );
     let inferEma = 40;
     let lastAdaptAt = 0;
     let last: Detection[] = [];
@@ -334,7 +355,15 @@ export function createYoloDetector(): Promise<ObjectDetectorModel> {
         const started = performance.now();
         const { scale, padX, padY } = letterboxVideo(video, ctx, input, inputSize);
         const tensor = new ort.Tensor('float32', input, [1, 3, inputSize, inputSize]);
-        const results = await pack.session.run({ [pack.inputName]: tensor });
+        let results: Record<string, OrtTensor>;
+        try {
+          results = await pack.session.run({ [pack.inputName]: tensor });
+        } catch (error) {
+          // a fixed-size model rejected this size: switch to the size it names
+          const expected = /Expected:\s*(\d+)/.exec(error instanceof Error ? error.message : String(error));
+          if (expected) setInputSize(Number(expected[1]));
+          throw error;
+        }
         const decoded = decodeYoloOutput(
           results[pack.outputName],
           pack.names,
@@ -346,7 +375,7 @@ export function createYoloDetector(): Promise<ObjectDetectorModel> {
           padY
         );
         inferEma = inferEma * 0.72 + (performance.now() - started) * 0.28;
-        if (!useWebGpu && performance.now() - lastAdaptAt > 1400) {
+        if (resizable && performance.now() - lastAdaptAt > 1400) {
           const minSize = tier === 'low' ? 320 : 416;
           if (inferEma > 58 && inputSize > minSize) {
             setInputSize(inputSize === 640 ? 512 : inputSize === 512 ? 416 : 320);

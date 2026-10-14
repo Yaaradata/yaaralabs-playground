@@ -15,7 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import BlockStudioShell from '../BlockStudio/BlockStudioShell';
 import RuleBasedProcess, { type MlOptions } from '../RuleBasedProcess/RuleBasedProcess';
 import { openSavedModel } from '../VideoClassifier/api';
-import { disposeModel, loadCombined, loadTf, predict } from '../VideoClassifier/engine';
+import { BLANK_CAMERA, PREDICT_FAILING, blankFrame, disposeModel, loadCombined, loadTf, predict } from '../VideoClassifier/engine';
 import { PALETTE } from '../VideoClassifier/types';
 import { useCamera } from '../VideoClassifier/useCamera';
 
@@ -216,22 +216,33 @@ function VideoStage({ video, transparency, loaded, status, probs, bubble, onProb
   const { videoRef, error: camError, ready } = useCamera(video !== 'off');
   const onProbsRef = useRef(onProbs);
   onProbsRef.current = onProbs;
+  const [warn, setWarn] = useState<string | null>(null); // blank camera / model stopped
+  useEffect(() => {
+    if (video === 'off' || !loaded) setWarn(null);
+  }, [video, loaded]);
 
   // predict on every frame while the video is on and a model is loaded
   useEffect(() => {
     if (video === 'off' || !ready || !loaded) return;
     let stop = false;
     let raf = 0;
+    let frames = 0;
+    let failures = 0;
+    const probe = document.createElement('canvas');
     const loop = async () => {
       if (stop) return;
       const v = videoRef.current;
       if (v && v.readyState >= 2) {
+        // every ~15 frames: is the camera picture blank (shutter closed, another app holding the camera)?
+        if (++frames % 15 === 1) setWarn(blankFrame(v, probe) ? BLANK_CAMERA : null);
         try {
           // the model was trained on mirrored webcam frames (as the training preview shows them)
           const p = await predict(v, { combined: loaded.model }, true);
+          failures = 0;
           if (!stop) onProbsRef.current(p);
         } catch {
-          /* a frame can fail while the model changes */
+          // one frame can fail while the model changes; many in a row means the model stopped working
+          if (++failures === 10 && !stop) setWarn(PREDICT_FAILING);
         }
       }
       raf = requestAnimationFrame(loop);
@@ -287,6 +298,7 @@ function VideoStage({ video, transparency, loaded, status, probs, bubble, onProb
       <div className="text-xs text-fg/70" role="status">
         {status.kind === 'loading' && <span>Loading the model from its URL…</span>}
         {status.kind === 'error' && <span className="text-pink-brand">{status.message}</span>}
+        {warn && status.kind !== 'error' && <span className="block text-pink-brand" role="alert">{warn}</span>}
         {status.kind !== 'loading' && status.kind !== 'error' && loaded && (
           <span className="flex items-center gap-1.5 min-w-0">
             <span className={`w-2 h-2 rounded-full ${status.kind === 'ready' ? 'bg-[var(--success)]' : 'bg-fg/30'}`} aria-hidden="true" />

@@ -42,8 +42,9 @@ def handoff_message(g: Any) -> str:
     return (_get(g, "handoff_message", "") or "").strip() or DEFAULT_HANDOFF
 
 
-def build_guardrail_prompt(g: Any, persona: Any = None) -> str:
-    """The GUARDRAILS prompt block, or "" when nothing is set."""
+def build_guardrail_prompt(g: Any, persona: Any = None, scope: str = "") -> str:
+    """The GUARDRAILS prompt block, or "" when nothing is set. `scope` widens "stay on topic" (RAG: the documents,
+    AI Agent: the documents and tools), so a topic list carried over from Exercise 6 doesn't block them."""
     on = active_switches(g)
     never = [r.strip() for r in (_get(g, "never_rules", []) or []) if r and r.strip()]
     custom_handoff = (_get(g, "handoff_message", "") or "").strip()
@@ -52,8 +53,8 @@ def build_guardrail_prompt(g: Any, persona: Any = None) -> str:
 
     role = (getattr(persona, "role", None) or "an assistant") if persona is not None else "an assistant"
     lines = {
-        "stay_on_topic": f"Only answer questions within your role as {role}. For anything else, politely say you can't "
-                         "help with that and give the hand-off message.",
+        "stay_on_topic": f"Only answer questions within your role as {role}{scope}. For anything else, politely say you "
+                         "can't help with that and give the hand-off message.",
         "no_made_up_facts": "If the information you were given doesn't contain the answer and you are not certain, say "
                             "you don't know. Never invent a regulation, circular, date, number or policy. When you use a "
                             "web or document source, say which.",

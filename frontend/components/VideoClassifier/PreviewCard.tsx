@@ -6,7 +6,7 @@
  */
 
 import { forwardRef, useEffect, useRef, useState } from 'react';
-import { predict } from './engine';
+import { BLANK_CAMERA, PREDICT_FAILING, blankFrame, predict } from './engine';
 import { SAMPLE_NOTE } from './types';
 import { useCamera } from './useCamera';
 
@@ -31,6 +31,7 @@ export const PreviewCard = forwardRef<HTMLDivElement, Props>(function PreviewCar
   const [probs, setProbs] = useState<number[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [warn, setWarn] = useState<string | null>(null); // blank camera / model stopped
   const [drag, setDrag] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -67,15 +68,22 @@ export const PreviewCard = forwardRef<HTMLDivElement, Props>(function PreviewCar
     if (!live || !ready || !preview) return;
     let stop = false;
     let raf = 0;
+    let frames = 0;
+    let failures = 0;
+    const probe = document.createElement('canvas');
     const loop = async () => {
       if (stop) return;
       const v = videoRef.current;
       if (v && v.readyState >= 2) {
+        // every ~15 frames: is the camera picture blank (shutter closed, another app holding the camera)?
+        if (++frames % 15 === 1) setWarn(blankFrame(v, probe) ? BLANK_CAMERA : null);
         try {
           const p = await predict(v, preview.model, true);
+          failures = 0;
           if (!stop) setProbs(p);
         } catch {
-          /* a frame can fail while the model changes */
+          // one frame can fail while the model changes; many in a row means the model stopped working
+          if (++failures === 10 && !stop) setWarn(PREDICT_FAILING);
         }
       }
       raf = requestAnimationFrame(loop);
@@ -84,6 +92,7 @@ export const PreviewCard = forwardRef<HTMLDivElement, Props>(function PreviewCar
     return () => {
       stop = true;
       cancelAnimationFrame(raf);
+      setWarn(null);
     };
   }, [live, ready, preview, videoRef]);
 
@@ -205,6 +214,7 @@ export const PreviewCard = forwardRef<HTMLDivElement, Props>(function PreviewCar
           )}
 
           {error && <p className="text-sm text-pink-brand" role="alert">{error}</p>}
+          {warn && <p className="text-sm text-pink-brand" role="alert">{warn}</p>}
 
           <div>
             <p className="text-xs font-semibold text-fg/70 mb-1.5">Output</p>

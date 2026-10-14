@@ -38,7 +38,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from google.cloud import firestore
 
@@ -144,8 +144,19 @@ def _declarations(tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return [{"functionDeclarations": decls}] if decls else []
 
 
+def gemini_thinking(vertex_model: str) -> Optional[Dict[str, Any]]:
+    """A short think for chat answers: Gemini 3 at LOW (MINIMAL is not supported), Gemini 2.5 Flash without
+    thinking. Measured on gemini-3.8-flash: LOW answered in about 4 s every time, the default took 3.5-18 s."""
+    m = (vertex_model or "").lower()
+    if m.startswith("gemini-3"):
+        return {"thinkingLevel": "LOW"}
+    if m.startswith("gemini-2.5-flash"):
+        return {"thinkingBudget": 0}
+    return None
+
+
 def generate(model: str, system: str, contents: List[Dict[str, Any]], tools: List[Dict[str, Any]], temperature: float,
-             final: bool = False) -> Dict[str, Any]:
+             final: bool = False, quick: bool = False) -> Dict[str, Any]:
     from ..config import gcp_clients as clients
     from .exercises_compare_service import _model_meta, cost_of
 
@@ -158,6 +169,9 @@ def generate(model: str, system: str, contents: List[Dict[str, Any]], tools: Lis
         "generationConfig": {"temperature": max(0.0, min(float(meta.get("tempMax") or 1.0), float(temperature))),
                              "maxOutputTokens": vertex_max_output_tokens(vertex_model, ANSWER_CAP)},
     }
+    thinking = gemini_thinking(vertex_model) if quick else None
+    if thinking:
+        body["generationConfig"]["thinkingConfig"] = thinking
     decls = _declarations(tools)
     if decls:
         body["tools"] = decls
@@ -191,6 +205,47 @@ def generate(model: str, system: str, contents: List[Dict[str, Any]], tools: Lis
 def _tool_name(raw: str) -> str:
     """Gemini sometimes prefixes a namespace: default_api.validate_gstin -> validate_gstin."""
     return (raw or "").split(".")[-1].strip()
+
+
+def stream_text(vertex_model: str, system: str, contents: List[Dict[str, str]], temperature: float,
+                max_tokens: int) -> Iterator[str]:
+    """A Vertex Gemini answer streamed over REST (streamGenerateContent, server-sent events), with a short think
+    (gemini_thinking): the installed google-genai SDK cannot set a thinking level."""
+    from ..config import gcp_clients as clients
+
+    body: Dict[str, Any] = {
+        "systemInstruction": {"parts": [{"text": system}]},
+        "contents": [{"role": m["role"], "parts": [{"text": m["text"]}]} for m in contents],
+        "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens},
+    }
+    thinking = gemini_thinking(vertex_model)
+    if thinking:
+        body["generationConfig"]["thinkingConfig"] = thinking
+    url = (f"https://aiplatform.googleapis.com/v1/projects/{clients.project_id}/locations/global/publishers/google/"
+           f"models/{vertex_model}:streamGenerateContent?alt=sse")
+    try:
+        r = _session().post(url, json=body, timeout=120, stream=True)
+    except Exception as e:
+        raise AgentModelError(f"{vertex_model} didn't answer ({type(e).__name__}). Nothing was made up: try again.")
+    with r:
+        if r.status_code != 200:
+            try:
+                msg = r.json().get("error", {}).get("message", "")
+            except Exception:
+                msg = r.text[:200]
+            logger.warning("Stream %s failed %s: %s", vertex_model, r.status_code, msg)
+            raise AgentModelError(f"{vertex_model} returned an error ({r.status_code}). Try again. {msg[:160]}")
+        for raw in r.iter_lines(decode_unicode=True):
+            if not raw or not raw.startswith("data:"):
+                continue
+            try:
+                data = json.loads(raw[5:].strip())
+            except ValueError:
+                continue
+            for cand in data.get("candidates") or []:
+                for p in (cand.get("content") or {}).get("parts") or []:
+                    if p.get("text") and not p.get("thought"):
+                        yield p["text"]
 
 
 def _post(url: str, body: Dict[str, Any], label: str) -> Dict[str, Any]:

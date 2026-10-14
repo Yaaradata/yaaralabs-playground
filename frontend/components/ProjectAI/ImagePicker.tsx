@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useCamera } from '../VideoClassifier/useCamera';
-import { fileName, loadSampleImages, readLabelNames, readRegion, sampleImageFile, sampleImageUrl, type SampleImageSet } from '../SampleImages/sampleImages';
+import { fileName, loadDeepTest, loadSampleImages, readLabelNames, readRegion, sampleImageFile, sampleImageUrl, type SampleImageSet } from '../SampleImages/sampleImages';
 
 export interface PickedImage {
   file: File;
@@ -42,7 +42,7 @@ export default function ImagePicker({ labels, namesKey, busy, error, onPick, onC
         const used = d.labels.filter((l) => have.has(renamed[l.label] ?? l.label)).length;
         if (alive && used >= 2) {
           setTests(d.test);
-          setDeep(d.deepTest ?? []);
+          loadDeepTest().then((deepTest) => alive && setDeep(deepTest)); // the same on every region
         }
       })
       .catch(() => undefined);

@@ -760,7 +760,7 @@ class DistilBERTTrainer:
                         text,
                         truncation=True,
                         padding='max_length',
-                        max_length=128,  # Keep 128 for better accuracy (standard for DistilBERT)
+                        max_length=64,  # client messages are short (under ~40 words); 64 halves the compute of 128
                         return_tensors='pt'
                     )
                     return {
@@ -1041,7 +1041,7 @@ class DistilBERTTrainer:
                     text,
                     truncation=True,
                     padding='max_length',
-                    max_length=128,  # Keep 128 for accuracy (matches training)
+                    max_length=64,  # matches training
                     return_tensors='pt'
                 )
                 

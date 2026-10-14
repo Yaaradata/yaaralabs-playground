@@ -43,6 +43,12 @@ MAX_ROUNDS = 5
 MAX_TOOLS = 12
 RESULT_CHARS = 4000
 WEB_MODEL = "gemini-2.5-flash"
+# Google Search grounding, tried in this order: a model whose quota is used up (429) does not leave the agent
+# without web results.
+WEB_MODELS = (WEB_MODEL, "gemini-3.8-flash", "gemini-2.5-flash-lite")
+WEB_QUOTA_PAUSE = 600  # seconds a web model is skipped after a 429 (quota used up)
+WEB_TIMEOUT = 25  # seconds one web search may take before the next model is tried
+_web_paused: Dict[str, float] = {}
 
 # Every stage answers in the same order: (1) the instructions, guardrails and action constraints above,
 # (2) the documents, (3) the model's own knowledge. Steps 1-2 of answer_events (guardrail pre-check,
@@ -51,15 +57,25 @@ ANSWER_ORDER = ("Decide how to answer in this order: 1) your INSTRUCTIONS, guard
                 "first: if they say how to answer, or not to answer, do exactly that. 2) Otherwise use the documents "
                 "when they cover the question. 3) Otherwise answer from your own general knowledge, as yourself, "
                 "without mentioning documents.")
-RAG_RULE = (ANSWER_ORDER + "\nThe numbered passages below come from the documents and match the question. Answer from "
+# The documents and tools widen the role: an instruction carried over from Exercise 6 such as "Answer only
+# questions about corporate actions, fees and billing..." must not stop the RAG bot or the agent from using them.
+DOCS_IN_SCOPE = ("A question your documents cover is always within your role, even if your INSTRUCTIONS list fewer "
+                 "topics: answer it from the documents. Other guardrails still apply.")
+TOOLS_IN_SCOPE = ("A question your documents or tools can answer (dates, settlement, ISIN, PAN, IFSC, web search) is "
+                  "always within your role, even if your INSTRUCTIONS list fewer topics: use them and answer. "
+                  "Other guardrails still apply.")
+DOCS_SCOPE = ", or any question your documents cover"
+TOOLS_SCOPE = ", or any question your documents or tools can answer (web search, dates, settlement, ISIN, PAN, IFSC)"
+RAG_RULE = (ANSWER_ORDER + "\n" + DOCS_IN_SCOPE + "\nThe numbered passages below come from the documents and match the question. Answer from "
             "them and cite every passage you use with its number in square brackets, right after the sentence it "
             "supports. If they only cover part of the question, answer the rest from your own knowledge without a "
             "citation.")
 NO_KB_RULE = (ANSWER_ORDER + "\nThe documents don't cover this question, so step 2 does not apply: follow step 1, "
               "then answer from your own knowledge. Greetings and small talk are answered normally.")
-TOOL_RULE = (ANSWER_ORDER + "\nUse your tools when they help: search_knowledge_base for SEBI or company documents, "
+TOOL_RULE = (ANSWER_ORDER + "\n" + TOOLS_IN_SCOPE + "\nUse your tools when they help: search_knowledge_base for SEBI or company documents, "
              "web_search for anything current or not in the documents, and the calculators for any date or number. "
-             "Say which source you used. If no tool helps, answer from your own knowledge.\n"
+             "Say which source you used, and cite every document passage you use with its number in square brackets, like [2]. "
+             "If no tool helps, answer from your own knowledge.\n"
              "Indian equity trades settle T+1 (one business day after the trade) unless the user says otherwise.")
 FORCE_KB_RULE = "An action requires it: call search_knowledge_base before you answer, and answer from what it returns."
 EMPTY_KB_REPLY = "Add documents in Knowledge Base first."
@@ -155,7 +171,7 @@ def _get(obj: Any, name: str, default: Any = None) -> Any:
 
 
 def system_instruction(persona: Any, guardrails: Any, rule_constraints: Optional[Dict[str, Any]] = None,
-                       stage_rule: str = "") -> str:
+                       stage_rule: str = "", scope: str = "") -> str:
     name, role = _get(persona, "name", "Assistant"), _get(persona, "role", "assistant")
     tone = (_get(persona, "tone") or "friendly").lower()
     length = _get(persona, "response_length") or "short"
@@ -167,7 +183,7 @@ def system_instruction(persona: Any, guardrails: Any, rule_constraints: Optional
     if guidelines:
         out += ["", "=== INSTRUCTIONS ===", guidelines]
     text = "\n".join(out) + "\n"
-    text += agent_guardrails.build_guardrail_prompt(guardrails, persona)
+    text += agent_guardrails.build_guardrail_prompt(guardrails, persona, scope)
     text += rule_constraints_block(rule_constraints)
     if stage_rule:
         text += f"\n=== HOW TO ANSWER ===\n{stage_rule}\n"
@@ -261,6 +277,22 @@ def genai_generate_stream(system: str, contents: List[Dict[str, str]], model: st
     from .exercises_vertex_models import resolve_vertex_model, thinking_config, vertex_chat_service, vertex_max_output_tokens
 
     vertex_model = resolve_vertex_model(model)
+    from .openrouter_service import is_openrouter_model
+
+    if not is_openrouter_model(vertex_model):
+        from .ai_agent_service import AgentModelError, stream_text
+
+        wrote = False
+        try:
+            for text in stream_text(vertex_model, system, contents, TEMPERATURE,
+                                    vertex_max_output_tokens(vertex_model, ANSWER_CAP)):
+                wrote = True
+                yield text
+        except AgentModelError as e:
+            raise StudioModelError(str(e))
+        if not wrote:
+            raise StudioModelError(f"{vertex_model} returned an empty answer. Try again.")
+        return
     cfg: Dict[str, Any] = {"temperature": TEMPERATURE, "max_output_tokens": vertex_max_output_tokens(vertex_model, ANSWER_CAP),
                            "system_instruction": system}
     tc = thinking_config(types)
@@ -294,7 +326,7 @@ def _chunk_text(chunk: Any) -> str:
     return "".join(out)
 
 
-def typed(text: str, words: int = 2, pause: float = 0.03) -> Iterator[Dict[str, Any]]:
+def typed(text: str, words: int = 4, pause: float = 0.008) -> Iterator[Dict[str, Any]]:
     """A finished answer as delta events, a couple of words at a time (it reads like it is being written)."""
     parts = re.findall(r"\S+\s*|\s+", text)
     for i in range(0, len(parts), words):
@@ -302,11 +334,20 @@ def typed(text: str, words: int = 2, pause: float = 0.03) -> Iterator[Dict[str, 
         time.sleep(pause)
 
 
+def safe_cut(text: str, start: int) -> int:
+    """The end of the longest part of text[start:] that can be masked on its own: up to and including the last
+    space that is not between two digits (the masked numbers only span spaces between digits). start if none yet."""
+    for i in range(len(text) - 2, start - 1, -1):
+        if text[i].isspace() and not (text[i - 1:i].isdigit() and text[i + 1].isdigit()):
+            return i + 1
+    return start
+
+
 def rest_generate(model: str, system: str, contents: List[Dict[str, Any]], tools: List[Dict[str, Any]], final: bool) -> Dict[str, Any]:
     from .ai_agent_service import AgentModelError, generate
 
     try:
-        return generate(model, system, contents, tools, TEMPERATURE, final=final)
+        return generate(model, system, contents, tools, TEMPERATURE, final=final, quick=True)
     except AgentModelError as e:
         raise StudioModelError(str(e))
 
@@ -320,21 +361,53 @@ def model_web_search(model: str, query: str) -> Dict[str, Any]:
         return google_web_search(query)
     try:
         out = web_search(model, query, WEB_PROMPT.format(query=query))
-    except OpenRouterError as e:
-        return {"summary": "", "sources": [], "note": f"Web search failed ({e}). Nothing was made up."}
+    except OpenRouterError:
+        return google_web_search(query)  # the provider's search failed: Google's still answers
     return shape_web_result(out.get("response") or "", out.get("sources") or [])
 
 
 def google_web_search(query: str) -> Dict[str, Any]:
-    from ..config import gcp_clients
-    from .vertex_ai_service import VertexAIService
+    """Google Search grounding over REST: a short think (gemini_thinking) and a WEB_TIMEOUT cap per model, so one
+    search can't hold the agent for minutes. A model that returns 429 is skipped for WEB_QUOTA_PAUSE seconds."""
+    from ..config import gcp_clients as clients
+    from .ai_agent_service import _session, gemini_thinking
 
-    try:
-        out = VertexAIService(gcp_clients.get_project_id(), location="global").generate_text_with_search(
-            WEB_PROMPT.format(query=query), enable_search=True, model_name=WEB_MODEL)
-    except Exception as e:
-        return {"summary": "", "sources": [], "note": f"Web search failed ({type(e).__name__}). Nothing was made up."}
-    return shape_web_result(out.get("response") or "", out.get("sources") or [])
+    now = time.time()
+    names = [n for n in WEB_MODELS if _web_paused.get(n, 0) <= now] or list(WEB_MODELS)
+    error = ""
+    for name in names:
+        config: Dict[str, Any] = {"temperature": 0.2, "maxOutputTokens": 1024}
+        thinking = gemini_thinking(name)
+        if thinking:
+            config["thinkingConfig"] = thinking
+        body = {"contents": [{"role": "user", "parts": [{"text": WEB_PROMPT.format(query=query)}]}],
+                "tools": [{"googleSearch": {}}], "generationConfig": config}
+        url = (f"https://aiplatform.googleapis.com/v1/projects/{clients.project_id}/locations/global/publishers/google/"
+               f"models/{name}:generateContent")
+        try:
+            r = _session().post(url, json=body, timeout=WEB_TIMEOUT)
+        except Exception as e:  # e.g. the timeout: try the next model
+            error = type(e).__name__
+            logger.warning("Web search with %s failed: %s", name, error)
+            continue
+        if r.status_code != 200:
+            error = f"HTTP {r.status_code}"
+            if r.status_code == 429:
+                _web_paused[name] = time.time() + WEB_QUOTA_PAUSE
+            logger.warning("Web search with %s failed: %s %s", name, r.status_code, r.text[:200])
+            continue
+        cand = (r.json().get("candidates") or [{}])[0]
+        text = "".join(p.get("text", "") for p in (cand.get("content") or {}).get("parts") or []
+                       if p.get("text") and not p.get("thought"))
+        sources = []
+        for chunk in (cand.get("groundingMetadata") or {}).get("groundingChunks") or []:
+            web = chunk.get("web") or {}
+            if web.get("uri") and not any(s["uri"] == web["uri"] for s in sources):
+                sources.append({"title": web.get("title") or web.get("domain") or web["uri"], "uri": web["uri"]})
+        if sources:
+            return shape_web_result(text, sources)
+        error = "no sources"
+    return {"summary": "", "sources": [], "note": f"Web search failed ({error}). Nothing was made up."}
 
 
 # ── sample questions ───────────────────────────────────────────
@@ -442,6 +515,12 @@ class AgentStudioService:
             raise ValueError("Legacy agents answer through ChatService.chat.")
         agent_id = _get(agent, "agent_id")
         t0 = time.perf_counter()
+        timings: Dict[str, int] = {}
+
+        def mark(name: str) -> None:
+            if name not in timings:
+                timings[name] = int((time.perf_counter() - t0) * 1000)
+
         trace: Dict[str, Any] = {"agent_id": agent_id, "stage": stage, "message": message, "rule_matched": None,
                                  "kb_used": [], "llm_used": False, "response": "", "images": [], "conditions_detected": []}
 
@@ -456,6 +535,7 @@ class AgentStudioService:
             logger.warning("Could not load guardrails for %s: %s", agent_id, e)
             guardrails = None
         trace["guardrails_on"] = agent_guardrails.active_switches(guardrails)
+        mark("loaded")
         # masking needs the whole answer, so a masked answer is written out after it is complete
         masking = "protect_client_data" in trace["guardrails_on"]
 
@@ -467,6 +547,8 @@ class AgentStudioService:
                     trace["guardrail_masked"] = masked
             trace["response"] = response
             trace["ms"] = int((time.perf_counter() - t0) * 1000)
+            trace["timings"] = {**timings, "total": trace["ms"]}
+            logger.info("Agent Studio %s %s timings %s", stage, model, trace["timings"])
             log = self.chat._log_chat(_Req(agent_id, session_id, message), response, trace)
             return {"type": "done", "response": response, "trace": trace, "chat_id": getattr(log, "chat_id", None)}
 
@@ -480,17 +562,29 @@ class AgentStudioService:
         def generated(system: str, contents: List[Dict[str, str]], after=None) -> Iterator[Dict[str, Any]]:
             """One model call: streamed as it is written, unless the answer must be masked first."""
             trace["llm_used"] = True
-            if not stream or masking:
+            if not stream:
                 text = self._generate(system, contents, model)["text"]
                 if after:
                     after(text)
                 yield from whole(text)
                 return
             pieces: List[str] = []
+            sent = 0  # masking: how much of the text has been sent (masked)
             for piece in self._generate_stream(system, contents, model):
                 pieces.append(piece)
-                yield {"type": "delta", "text": piece}
-            text = "".join(pieces).strip()
+                mark("first_text")
+                if not masking:
+                    yield {"type": "delta", "text": piece}
+                    continue
+                so_far = "".join(pieces)
+                cut = safe_cut(so_far, sent)
+                if cut > sent:
+                    yield {"type": "delta", "text": agent_guardrails.mask_client_data(so_far[sent:cut])[0]}
+                    sent = cut
+            text = "".join(pieces)
+            if masking and sent < len(text):
+                yield {"type": "delta", "text": agent_guardrails.mask_client_data(text[sent:])[0]}
+            text = text.strip()
             if after:
                 after(text)
             yield finish(text)
@@ -516,7 +610,9 @@ class AgentStudioService:
         if stage == "assistant" and constraints:
             constraints = {**constraints, "use_kb": False, "kb_source": None}  # no knowledge base in Ex 6
 
+        mark("actions_checked")
         history = history_turns(self.chat._get_recent_conversation(agent_id, session_id, limit=HISTORY_TURNS * 2))
+        mark("history")
 
         # 4 + 5 stage
         if stage == "assistant":
@@ -529,6 +625,7 @@ class AgentStudioService:
                 yield from whole(EMPTY_KB_REPLY)
                 return
             hits = self.kb.search(agent_id, message, k=KB_K, doc_title=kb_doc_filter(constraints))
+            mark("kb_searched")
             # the documents only count when they match the question (an action may require them anyway)
             relevant = bool(hits) and (hits[0].get("score", 0) >= KB_RELEVANT or bool((constraints or {}).get("use_kb")))
             if stream:
@@ -538,7 +635,7 @@ class AgentStudioService:
                 yield from generated(system, history + [{"role": "user", "text": message}])
                 return
             trace["kb_used"] = [f"{h['doc_id']}#{h['label']}" for h in hits]
-            system = system_instruction(persona, guardrails, constraints, RAG_RULE)
+            system = system_instruction(persona, guardrails, constraints, RAG_RULE, DOCS_SCOPE)
             user = f"Passages:\n\n{agent_kb_format(hits)}\n\nQuestion: {message}"
             yield from generated(system, history + [{"role": "user", "text": user}],
                                  after=lambda text: trace.update(mark_citations(text, hits)))
@@ -548,6 +645,7 @@ class AgentStudioService:
         if not stream:
             yield finish(self._agent_loop(agent_id, persona, guardrails, constraints, history, message, model, trace))
             return
+        yield {"type": "status", "text": "Thinking..."}
         events: "queue.Queue[Any]" = queue.Queue()
         box: Dict[str, Any] = {}
 
@@ -578,7 +676,8 @@ class AgentStudioService:
         enabled = self.enabled(agent_id)
         force_kb = bool((constraints or {}).get("use_kb")) and "search_knowledge_base" in enabled
         rule = TOOL_RULE + ("\n" + FORCE_KB_RULE if force_kb else "")
-        system = system_instruction(persona, guardrails, {**(constraints or {}), "use_kb": False} if constraints else None, rule)
+        system = system_instruction(persona, guardrails, {**(constraints or {}), "use_kb": False} if constraints else None, rule,
+                                    TOOLS_SCOPE)
         tools = declarations_for(enabled)
         guard = "block_instruction_changes" in agent_guardrails.active_switches(guardrails)
         doc_filter = kb_doc_filter(constraints)

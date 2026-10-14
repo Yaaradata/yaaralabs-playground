@@ -2,7 +2,8 @@ import type { Detection } from '../types';
 import { boxCoverage } from '../tracker';
 import { canonicalClass } from '../labels';
 import { finalizeDetections } from '../detectionQuality';
-import { loadBrowserUmdScript, smoothDetections, type ObjectDetectorModel } from './runtime';
+import { smoothDetections, type ObjectDetectorModel } from './runtime';
+import { backendLabel, loadTfRuntime, similarity, switchToBestBackend, switchToProcessorBackend, wasmFeatures } from './tfBackend';
 
 type TfTensor = {
   shape: number[];
@@ -171,6 +172,10 @@ async function resourceExists(url: string): Promise<boolean> {
   }
 }
 
+/**
+ * Pick where COCO-SSD runs: the graphics card (WebGL) when it starts, else WebAssembly on the processor, else
+ * plain JavaScript. The WebGL flags below (packed, half-precision textures) only apply to WebGL.
+ */
 async function prepareTfBackend(): Promise<TfNamespace> {
   const tf = tfGlobal();
   if (!tf?.setBackend || !tf.ready || !tf.loadGraphModel || !tf.browser?.fromPixels || !tf.expandDims || !tf.tidy) {
@@ -182,12 +187,67 @@ async function prepareTfBackend(): Promise<TfNamespace> {
   } catch {
     // Optional WebGL flags; detection still runs without them.
   }
-  const ok = await tf.setBackend('webgl');
-  await tf.ready();
-  if (!ok || tf.getBackend?.() !== 'webgl') {
-    throw new Error('COCO needs WebGL. Turn on hardware acceleration in Chrome or Edge.');
-  }
+  await switchToBestBackend(tf);
   return tf;
+}
+
+/**
+ * Run the model on a fixed test picture on WebGL and on the processor; if WebGL's scores disagree (half-precision
+ * textures, driver bugs) or are broken, stay on the processor. Leaves the chosen backend active.
+ */
+async function checkCocoGraphics(tf: TfNamespace, graph: TfGraph): Promise<string> {
+  const backend = tf.getBackend?.() || '';
+  if (backend !== 'webgl') {
+    const extra = backend === 'wasm' ? ` (${await wasmFeatures(tf)})` : '';
+    const note = `COCO-SSD: WebGL is not available, running on ${backendLabel(backend)}${extra}.`;
+    console.info('[live-object-detection]', note);
+    return backend;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = INPUT_SIZE;
+  canvas.height = INPUT_SIZE;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    for (let y = 0; y < INPUT_SIZE; y += 10) {
+      for (let x = 0; x < INPUT_SIZE; x += 10) {
+        ctx.fillStyle = `rgb(${Math.round(128 + 120 * Math.sin(x / 23))},${Math.round(128 + 120 * Math.cos(y / 31))},${Math.round(((x + y) / (2 * INPUT_SIZE)) * 255)})`;
+        ctx.fillRect(x, y, 10, 10);
+      }
+    }
+  }
+  const scoresOf = async (): Promise<Float32Array> => {
+    const input = tf.tidy!(() => tf.expandDims!(tf.browser!.fromPixels(canvas)));
+    let outputs: TfTensor[] = [];
+    try {
+      outputs = asTensorList(await graph.executeAsync(input));
+      const { scores } = splitOutputs(outputs);
+      return Float32Array.from(await scores.data());
+    } finally {
+      disposeTensor(input);
+      outputs.forEach(disposeTensor);
+    }
+  };
+  let reason = '';
+  let score = '';
+  try {
+    const gpu = await scoresOf();
+    await switchToProcessorBackend(tf);
+    const ref = await scoresOf();
+    const sim = similarity(gpu, ref);
+    score = sim.toFixed(4);
+    if (Number.isNaN(sim)) reason = 'WebGL gave broken numbers';
+    else if (sim < 0.98) reason = `WebGL's scores differ from the processor's (similarity ${sim.toFixed(3)})`;
+  } catch (error) {
+    reason = `the WebGL check failed (${error instanceof Error ? error.message : String(error)})`;
+  }
+  if (reason) {
+    const name = await switchToProcessorBackend(tf);
+    console.warn('[live-object-detection]', `COCO-SSD: ${reason}, so it runs on ${backendLabel(name)}.`);
+    return name;
+  }
+  await tf.setBackend!('webgl');
+  console.info('[live-object-detection]', `COCO-SSD runs on the graphics card (check: similarity ${score} with the processor).`);
+  return 'webgl';
 }
 
 function asTensorList(value: TfTensor | TfTensor[]): TfTensor[] {
@@ -317,20 +377,22 @@ function letterboxCoco(
 export function createCocoSsdDetector(): Promise<ObjectDetectorModel> {
   if (cocoPromise) return cocoPromise;
   cocoPromise = (async () => {
-    await loadBrowserUmdScript(
-      [
-        '/models/runtime/tfjs/tf.min.js',
-        'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js',
-        'https://unpkg.com/@tensorflow/tfjs@4.22.0/dist/tf.min.js',
-      ],
-      () => Boolean(tfGlobal()?.loadGraphModel && tfGlobal()?.browser?.fromPixels)
-    );
+    await loadTfRuntime();
     await yieldToUi();
     const tf = await prepareTfBackend();
     await yieldToUi();
     const graph = await loadLiteGraph(tf);
     await yieldToUi();
-    await warmup(tf, graph);
+    try {
+      await warmup(tf, graph);
+    } catch (error) {
+      // WebGL started but cannot run this graph (out of memory, missing extension): use the processor.
+      if (tf.getBackend?.() !== 'webgl') throw error;
+      const name = await switchToProcessorBackend(tf);
+      console.warn('[live-object-detection]', `COCO-SSD failed on WebGL, running on ${backendLabel(name)}.`, error);
+      await warmup(tf, graph);
+    }
+    const backend = await checkCocoGraphics(tf, graph);
     const canvas = document.createElement('canvas');
     canvas.width = INPUT_SIZE;
     canvas.height = INPUT_SIZE;
@@ -343,6 +405,8 @@ export function createCocoSsdDetector(): Promise<ObjectDetectorModel> {
       detect: async (video: HTMLVideoElement) => {
         if (busy || video.readyState < 2 || video.videoWidth < 8) return last;
         busy = true;
+        // the custom model shares window.tf and may have switched the backend
+        if (backend && tf.getBackend?.() !== backend) await tf.setBackend!(backend).catch(() => false);
         let batched: TfTensor | undefined;
         let outputs: TfTensor[] = [];
         try {

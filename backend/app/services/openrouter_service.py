@@ -23,6 +23,7 @@ are accepted too (the AI Agent tool loop builds those); see generate_rest().
 from __future__ import annotations
 
 import json
+import re
 import logging
 import uuid
 from collections import defaultdict, deque
@@ -294,12 +295,23 @@ def _grounding(annotations: Any) -> Optional[SimpleNamespace]:
     return SimpleNamespace(grounding_chunks=chunks, grounding_supports=None, search_entry_point=None, web_search_queries=None)
 
 
+_MARKER = re.compile("\ue200.*?\ue201", re.S)
+_PRIVATE = re.compile("[\ue000-\uf8ff]")
+
+
+def clean_text(text: str) -> str:
+    """OpenAI models can leave their own citation markers (private-use characters, e.g. U+E200 cite U+E202 turn0search0
+    U+E201) in the text: remove them."""
+    return _PRIVATE.sub("", _MARKER.sub("", text or ""))
+
+
 def _response(data: Dict[str, Any], model: str) -> SimpleNamespace:
     choice = (data.get("choices") or [{}])[0]
     msg = choice.get("message") or {}
     text = msg.get("content") or ""
     if isinstance(text, list):  # some providers send content parts
         text = "".join(p.get("text", "") for p in text if isinstance(p, dict))
+    text = clean_text(text)
     parts = [_part(text=text)] if text else []
     calls = []
     for tc in msg.get("tool_calls") or []:
@@ -338,6 +350,7 @@ def generate_content_stream(model: str, contents: Any, config: Any = None) -> It
     body.pop("tool_choice", None)
     body["stream"] = True
     r = _post(body, stream=True)
+    held = ""  # text that may hold the start of a citation marker split across chunks
     with r:
         for raw in r.iter_lines(decode_unicode=True):
             if not raw or not raw.startswith("data:"):
@@ -351,7 +364,13 @@ def generate_content_stream(model: str, contents: Any, config: Any = None) -> It
                 continue
             if data.get("error"):
                 raise OpenRouterError(f"{model} returned an error. {str(data['error'])[:200]}")
-            delta = ((data.get("choices") or [{}])[0].get("delta") or {}).get("content") or ""
+            delta = held + (((data.get("choices") or [{}])[0].get("delta") or {}).get("content") or "")
+            open_at = delta.rfind("\ue200")
+            if open_at > -1 and "\ue201" not in delta[open_at:]:
+                delta, held = delta[:open_at], delta[open_at:]  # wait for the marker's end
+            else:
+                held = ""
+            delta = clean_text(delta)
             if delta:
                 yield SimpleNamespace(text=delta, candidates=[SimpleNamespace(
                     content=SimpleNamespace(role="model", parts=[_part(text=delta)]), finish_reason=None,
