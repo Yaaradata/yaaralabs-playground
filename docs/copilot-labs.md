@@ -12,3 +12,19 @@ did. The Playground makes no AI calls in these labs and stores only ticks, choic
 
 - The projects list no longer shows "Model Trained" for Day 2 projects (changed on main before this work). Copilot
   cards show "Result saved: Yes / Not yet" instead, true once the lab has a saved, completed step.
+- Where the spec and the design preview differ, the spec's wording is used (for example Step 2's hint "Then paste
+  Copilot's redacted email from Step 1 under it.", Ex 9 Step 3 "Ask about the circular directly", Ex 10's
+  "Another date or none" and the payment-date answer text).
+- A prompt card shows its own hint when the step gives one; otherwise the default "Paste this into Copilot. Start a
+  **new chat** first." (Showing both would contradict "Send this in the same chat".)
+- `CopilotLab.preview.jsx` is kept as the design reference (not routed). Its inline CSS string was replaced by an
+  import of `copilotLab.css`, which holds the same rules scoped under `.cpl`, so the two can't drift apart.
+- The notice PDF was not in the repo, so it was generated with `frontend/scripts/make_seabird_notice.py` (reportlab).
+  The script tries DejaVu (Linux), then Arial (Windows, macOS), since the spec's DejaVu path doesn't exist on Windows.
+  Replace the PDF with Usha's when it arrives; the download card says "1 page · PDF · 74 KB".
+- Scoring lives in `scoring.ts` (pure), shared by the UI and `scripts/test-copilot-lab.ts`. The result row for the
+  field check reads "Got N of 10"; under the table: "Copilot got N of 10. The misses are what a person must check."
+- Saving: 800 ms after the last change, on every step change and when leaving the page. If the backend can't be
+  reached, the answers stay in localStorage (`copilot-lab:{projectId}`) and the top bar says "Saved on this device";
+  the next change retries, and a later visit pushes those answers to the server.
+- Commits B and C don't build on their own: `activities/index.ts` imports both labs' content, which lands in C and D.
