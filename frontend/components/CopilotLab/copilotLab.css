@@ -199,7 +199,13 @@
     --act: #9333ea; --acs: rgba(147, 51, 234, .07); --acl: rgba(147, 51, 234, .32);
     --ok: #3f6212; --oks: rgba(63, 98, 18, .09); --bad: #be185d; --bads: rgba(190, 24, 93, .08); --warn: #b45309; --warns: rgba(245, 158, 11, .12);
   }
+  html, body { background: #fff !important; }
   body * { visibility: hidden !important; }
+  /* the page around the card prints as blank paper, not the dark app background */
+  body *:not(.print-area):not(.print-area *) { background: transparent !important; border-color: transparent !important; box-shadow: none !important; }
+  /* A4 is narrower than the 900px small-screen layout: keep the full card layout on paper */
+  .cpl .print-area .rtext { display: block; }
+  .cpl .print-area .checks6 { grid-template-columns: 1fr 1fr; }
   .cpl .print-area, .cpl .print-area * { visibility: visible !important; }
   .cpl .print-area {
     position: absolute; left: 0; top: 0; width: 100%; border: none; box-shadow: none; padding: 0;

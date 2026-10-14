@@ -28,3 +28,17 @@ did. The Playground makes no AI calls in these labs and stores only ticks, choic
   reached, the answers stay in localStorage (`copilot-lab:{projectId}`) and the top bar says "Saved on this device";
   the next change retries, and a later visit pushes those answers to the server.
 - Commits B and C don't build on their own: `activities/index.ts` imports both labs' content, which lands in C and D.
+- Print: only the result card or the AI check is printed, with the light theme's colours on white paper, and the
+  full card layout is kept even though A4 is narrower than the app's 900 px small-screen breakpoint. Both fit one
+  A4 page (checked by printing to PDF: `docs/copilot-labs-screens/print-*.pdf`).
+- On Windows the clipboard stores line breaks as CRLF, so a pasted prompt has CRLF line endings; the text is
+  otherwise exactly the prompt (checked in headless Chrome).
+
+## Tests
+
+- Backend: `cd backend && .venv/Scripts/python.exe -m unittest test_copilot_lab -v` (10 tests, offline).
+- Frontend: `npm run test:copilot-lab` (9 tests: step-done rules, chip colours, field-check scoring, Copy result
+  text, every choice has a verdict, every field row a key, AI-check ids). `npm run lint` and `npx tsc --noEmit` pass.
+- The full backend suite has 11 failures in the exercise-lab tests on `main` too; `test_exercises_vision`'s
+  subfolder test errors only in the full run (it passes alone).
+- Screenshots (1366×768, every step of both labs, dark and light): `docs/copilot-labs-screens/`.
