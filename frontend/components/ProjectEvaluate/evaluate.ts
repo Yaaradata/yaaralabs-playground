@@ -2,7 +2,8 @@
  * Evaluate step for Text Recognition projects: everything the page shows, computed from the
  * endpoint's scored items. Pure functions (no React), tested in scripts/test-evaluate.ts.
  *
- * Plain words for senior learners: accuracy, precision, recall. Nothing else.
+ * Plain words for senior learners: each scientific term is shown with its business words
+ * (termRows). No F1, no averages, no ROC.
  */
 
 import { STANDARD_LABELS, projectLabelName, type SampleDataset } from '../SampleLabelling/sample';
@@ -59,11 +60,17 @@ export const shortName = (label: string) => SHORT[label] ?? label;
 /** What one test item is: a message (Text Recognition) or an image (Image Recognition). */
 export type Unit = 'messages' | 'images';
 
-/** "complaints", "KYC messages", "Invoice images": how a desk's items are named in a sentence. */
+/** "Complaint" -> "complaint"; acronyms such as "KYC" stay in capitals. */
+export const lowerName = (label: string) => {
+  const s = shortName(label);
+  return s === s.toUpperCase() ? s : s.toLowerCase();
+};
+
+/** "complaint messages", "KYC messages", "Invoice images": how a desk's items are named in a sentence. */
 export function deskNoun(label: string, n = 2, unit: Unit = 'messages'): string {
   const s = shortName(label);
-  if (s === 'Complaint' && unit === 'messages') return n === 1 ? 'complaint' : 'complaints';
-  return `${s} ${n === 1 ? unit.slice(0, -1) : unit}`;
+  const noun = n === 1 ? unit.slice(0, -1) : unit;
+  return s === 'Complaint' && unit === 'messages' ? `complaint ${noun}` : `${s} ${noun}`;
 }
 
 export function defaultDesk(labels: string[]): string {
@@ -116,7 +123,14 @@ export function mostMissesLine(items: EvalItem[], labels: string[], unit: Unit =
   return `Most mistakes: ${shortName(best.label)} ${unit} sent to other desks (${best.missed} of ${best.total}).`;
 }
 
-const sure = (i: EvalItem) => Math.round((i.scores[i.predicted] ?? 0) * 100);
+const score = (i: EvalItem) => i.scores[i.predicted] ?? 0;
+const sure = (i: EvalItem) => Math.round(score(i) * 100);
+
+/** How sure, for display: "under 1%" below 0.01 (rounding would show a misleading "0%"), else "N%". */
+export function surePct(x: EvalItem | number): string {
+  const v = typeof x === 'number' ? x : score(x);
+  return v < 0.01 ? 'under 1%' : `${Math.round(v * 100)}%`;
+}
 
 /** Below this the bot is unsure (the same line as the training page's test table). */
 export const LOW_CONFIDENCE = 50;
@@ -125,24 +139,24 @@ const andList = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, 
 
 /**
  * One line about the off-topic messages. When the bot was unsure about all of them (below 50%) the
- * desk it picked means nothing, so the line says how sure it was instead, e.g. 2 off-topic messages
- * ("What's the weather in Mumbai?", "Hello"): the bot has no 'none of these' answer, so it still had
- * to pick a desk, but it was only 0% and 0% sure. Otherwise: ... so it still sent them to Corporate
- * action (41%, 24% sure).
+ * desk it picked means nothing, so the line says how sure it was: 2 off-topic messages ("What's the
+ * weather in Mumbai?", "Hello"): it was only under 1% and under 1% sure, so they go to a person.
+ * Otherwise: ... the bot has no 'none of these' answer, so it still sent them to Corporate action
+ * (62%, 70% sure).
  */
 export function offTopicLine(items: EvalItem[]): string | null {
   const off = items.filter((i) => i.expected === NONE);
   if (!off.length) return null;
   const quoted = off.map((i) => `“${i.text}”`).join(', ');
-  const them = off.length === 1 ? 'it' : 'them';
-  const intro = `${off.length} off-topic ${off.length === 1 ? 'message' : 'messages'} (${quoted}): the bot has no ‘none of these’ answer, so it still`;
+  const one = off.length === 1;
+  const head = `${off.length} off-topic ${one ? 'message' : 'messages'} (${quoted}):`;
   if (off.every((i) => sure(i) < LOW_CONFIDENCE)) {
-    return `${intro} had to pick a desk, but it was only ${andList(off.map((i) => `${sure(i)}%`))} sure. Below ${LOW_CONFIDENCE}% means it doesn’t recognise ${them}.`;
+    return `${head} it was only ${andList(off.map(surePct))} sure, so ${one ? 'it goes' : 'they go'} to a person.`;
   }
-  const head = `${intro} sent ${them} to`;
+  const sent = `${head} the bot has no ‘none of these’ answer, so it still sent ${one ? 'it' : 'them'} to`;
   const desks = [...new Set(off.map((i) => i.predicted))];
-  if (desks.length === 1) return `${head} ${desks[0]} (${off.map((i) => `${sure(i)}%`).join(', ')} sure).`;
-  return `${head} ${off.map((i) => `${i.predicted} (${sure(i)}% sure)`).join(', ')}.`;
+  if (desks.length === 1) return `${sent} ${desks[0]} (${off.map(surePct).join(', ')} sure).`;
+  return `${sent} ${off.map((i) => `${i.predicted} (${surePct(i)} sure)`).join(', ')}.`;
 }
 
 /* ───────── blocks 4-5: one desk, and the lean slider ───────── */
