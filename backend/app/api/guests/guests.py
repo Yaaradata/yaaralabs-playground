@@ -21,6 +21,7 @@ from ...services.scratch_project_service import ScratchProjectService, EDITOR_BL
 from ...services.rules_bot_service import RulesBotService
 from ...services.confusion_matrix_service import ConfusionMatrixService
 from ...services.rag_chatbot_service import RagChatbotService
+from ...services.copilot_lab_service import CopilotLabService
 from ...services.ai_agent_service import AiAgentService
 from ...services.image_model_service import ImageModelService
 from ...services.exercises_service import ExercisesService
@@ -504,6 +505,12 @@ async def delete_guest_project(
                 ConfusionMatrixService().delete(project_id, session_id)
             except Exception as e:
                 logger.warning("Confusion matrix cleanup failed for %s: %s", project_id, e)
+
+        if str(getattr(project.type, "value", project.type)) in ("copilot-ethics", "copilot-document-ai"):
+            try:
+                CopilotLabService().delete(project_id, session_id)
+            except Exception as e:
+                logger.warning("Copilot lab cleanup failed for %s: %s", project_id, e)
 
         if project.type == ProjectType.RAG_CHATBOT or str(project.type) == "rag-chatbot":
             try:
@@ -2979,6 +2986,8 @@ async def delete_guest_session(
                         RagChatbotService().delete(p.id, session_id)
                     elif kind == "ai-agent":
                         AiAgentService().delete(p.id, session_id)
+                    elif kind in ("copilot-ethics", "copilot-document-ai"):
+                        CopilotLabService().delete(p.id, session_id)
                 except Exception as e:
                     logger.warning("Cleanup of %s project %s failed: %s", kind, p.id, e)
             try:

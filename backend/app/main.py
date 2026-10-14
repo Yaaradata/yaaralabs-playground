@@ -26,6 +26,7 @@ from .api import (
     rules_bot,
     confusion_matrix,
     rag_chatbot,
+    copilot_lab,
     ai_agent,
     image_models,
     live_object_detection,
@@ -180,6 +181,7 @@ app.include_router(rule_based_process.router)
 app.include_router(rules_bot.router)
 app.include_router(confusion_matrix.router)
 app.include_router(rag_chatbot.router)
+app.include_router(copilot_lab.router)
 app.include_router(ai_agent.router)
 app.include_router(image_models.router)
 app.include_router(live_object_detection.router)
