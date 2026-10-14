@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { getPersona, getSettings, savePersona, saveSettings } from './api';
 import { DEFAULT_MODEL, MODEL_OPTIONS, type Stage } from './stages';
-import { Notice, PanelHeader, PrimaryButton } from './ui';
+import { PanelHeader, SaveBar } from './ui';
 
 const TONES: [string, string, string][] = [
   ['friendly', '😊', 'Friendly'],
@@ -20,6 +20,16 @@ const LENGTHS: [string, string][] = [
 const input =
   'w-full px-4 py-3 bg-card border border-magenta-brand/20 text-fg rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-brand focus:border-transparent';
 
+interface Fields {
+  name: string;
+  role: string;
+  tone: string;
+  length: string;
+  model: string;
+  embedding: string;
+  similarity: string;
+}
+
 /** AI PERSONA: name, role, tone, length, and the model (saved through the settings endpoint). */
 export default function PersonaPanel({ agentId, stage, onSaved }: { agentId: string; stage: Stage; onSaved?: (name: string) => void }) {
   const [name, setName] = useState('');
@@ -32,19 +42,36 @@ export default function PersonaPanel({ agentId, stage, onSaved }: { agentId: str
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  // what is saved, to tell "Unsaved changes" and to Discard back to it
+  const [saved, setSaved] = useState<Fields | null>(null);
+  const fields: Fields = { name, role, tone, length, model, embedding, similarity };
+  const dirty = saved !== null && JSON.stringify(fields) !== JSON.stringify(saved);
+  const apply = (f: Fields) => {
+    setName(f.name);
+    setRole(f.role);
+    setTone(f.tone);
+    setLength(f.length);
+    setModel(f.model);
+    setEmbedding(f.embedding);
+    setSimilarity(f.similarity);
+  };
 
   useEffect(() => {
     let live = true;
     Promise.all([getPersona(agentId), getSettings(agentId)])
       .then(([p, s]) => {
         if (!live) return;
-        setName(p.name || '');
-        setRole(p.role || '');
-        setTone((p.tone || 'friendly').toLowerCase());
-        setLength(p.response_length || 'short');
-        setModel(MODEL_OPTIONS.some(([v]) => v === s.model) ? s.model : DEFAULT_MODEL[stage]);
-        setEmbedding(s.embedding_model || 'text-embedding-005');
-        setSimilarity(s.similarity || 'Cosine similarity');
+        const f: Fields = {
+          name: p.name || '',
+          role: p.role || '',
+          tone: (p.tone || 'friendly').toLowerCase(),
+          length: p.response_length || 'short',
+          model: MODEL_OPTIONS.some(([v]) => v === s.model) ? s.model : DEFAULT_MODEL[stage],
+          embedding: s.embedding_model || 'text-embedding-005',
+          similarity: s.similarity || 'Cosine similarity',
+        };
+        apply(f);
+        setSaved(f);
       })
       .catch((e: Error) => live && setMsg({ type: 'error', text: e.message }))
       .finally(() => live && setLoading(false));
@@ -59,6 +86,7 @@ export default function PersonaPanel({ agentId, stage, onSaved }: { agentId: str
     try {
       await savePersona(agentId, { name, role, tone, response_length: length });
       await saveSettings(agentId, { model, embedding_model: embedding, similarity });
+      setSaved(fields);
       setMsg({ type: 'success', text: 'Persona saved.' });
       onSaved?.(name);
       setTimeout(() => setMsg(null), 3000);
@@ -70,14 +98,12 @@ export default function PersonaPanel({ agentId, stage, onSaved }: { agentId: str
   };
 
   return (
-    <div>
+    <div className="flex-1 flex flex-col">
       <PanelHeader
         icon="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
         title="AI PERSONA"
         subtitle="How the agent talks"
-        action={<PrimaryButton onClick={save} busy={saving} disabled={loading}>Save Persona</PrimaryButton>}
       />
-      <Notice msg={msg} />
       <div className="space-y-6">
         <div>
           <label htmlFor="as-name" className="block text-sm font-semibold text-fg mb-1">Agent Name</label>
@@ -99,10 +125,10 @@ export default function PersonaPanel({ agentId, stage, onSaved }: { agentId: str
                 role="radio"
                 aria-checked={tone === v}
                 onClick={() => setTone(v)}
-                className={`px-4 py-3 rounded-lg text-center transition-all ${tone === v ? 'border-2 border-magenta-brand bg-purple-brand/10' : 'border border-magenta-brand/20 hover:border-magenta-brand/40'}`}
+                className={`min-w-[8.5rem] px-6 py-4 rounded-xl text-center transition-all ${tone === v ? 'border-2 border-magenta-brand bg-purple-brand/10' : 'border border-magenta-brand/20 hover:border-magenta-brand/40'}`}
               >
-                <span className="text-2xl mb-1 block" aria-hidden="true">{emoji}</span>
-                <span className="text-sm font-medium text-fg">{label}</span>
+                <span className="text-3xl mb-1.5 block" aria-hidden="true">{emoji}</span>
+                <span className="text-base font-medium text-fg">{label}</span>
               </button>
             ))}
           </div>
@@ -117,7 +143,7 @@ export default function PersonaPanel({ agentId, stage, onSaved }: { agentId: str
                 role="radio"
                 aria-checked={length === v}
                 onClick={() => setLength(v)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium text-fg transition-all ${length === v ? 'border-2 border-magenta-brand bg-purple-brand/10' : 'border border-magenta-brand/20 hover:border-magenta-brand/40'}`}
+                className={`min-w-[7rem] px-6 py-3 rounded-xl text-base font-medium text-fg transition-all ${length === v ? 'border-2 border-magenta-brand bg-purple-brand/10' : 'border border-magenta-brand/20 hover:border-magenta-brand/40'}`}
               >
                 {label}
               </button>
@@ -134,6 +160,20 @@ export default function PersonaPanel({ agentId, stage, onSaved }: { agentId: str
           </select>
         </div>
       </div>
+      <div className="h-8 flex-shrink-0" aria-hidden="true" />
+      <SaveBar
+        label="Save Persona"
+        dirty={dirty}
+        saving={saving}
+        msg={msg}
+        loading={saved === null && !msg}
+        disabled={loading}
+        onSave={save}
+        onDiscard={() => {
+          if (saved) apply(saved);
+          setMsg(null);
+        }}
+      />
     </div>
   );
 }

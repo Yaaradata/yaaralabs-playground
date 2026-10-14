@@ -44,8 +44,8 @@ def project_type(stage: Optional[str]) -> str:
 
 
 def start_from_options(agents: List[Dict[str, Any]], stage: str) -> List[Dict[str, Any]]:
-    """Agents a new stage can start from: the previous stage first (newest first); AI Agent also lists assistants."""
-    order = {"rag": ["assistant"], "agent": ["rag", "assistant"]}.get(stage, [])
+    """Agents a new stage can start from: only the previous stage (Ex 6 -> Ex 7 -> Ex 8), newest first."""
+    order = {"rag": ["assistant"], "agent": ["rag"]}.get(stage, [])
     out: List[Dict[str, Any]] = []
     for want in order:
         group = [a for a in agents if a.get("stage") == want]

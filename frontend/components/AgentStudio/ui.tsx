@@ -6,11 +6,14 @@ import type { ReactNode } from 'react';
 
 export function PanelHeader({ icon, title, subtitle, action }: { icon: string; title: string; subtitle: string; action?: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+    // scrolls with the panel; the Save button lives in the SaveBar at the bottom
+    <div className="-mx-6 px-6 py-5 mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-magenta-brand/15">
       <div className="flex items-center gap-3 min-w-0">
-        <svg className="w-6 h-6 text-purple-brand flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
-        </svg>
+        <span className="w-11 h-11 rounded-xl bg-purple-brand/15 flex items-center justify-center flex-shrink-0" aria-hidden="true">
+          <svg className="w-5 h-5 text-purple-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
+          </svg>
+        </span>
         <div className="min-w-0">
           <h2 className="text-2xl font-bold text-fg">{title}</h2>
           <p className="text-sm text-fg/60">{subtitle}</p>
@@ -57,6 +60,45 @@ export function SecondaryButton({ children, onClick, disabled, title }: { childr
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * The bar at the bottom of a panel that saves: where things stand on the left ("All changes saved",
+ * "Unsaved changes", or the last message), Discard and Save on the right. It stays at the bottom while
+ * the panel scrolls (sticky inside the panel's scroll area), so the Save button is always in reach.
+ */
+export function SaveBar({ dirty, saving, onSave, onDiscard, label, msg, disabled, loading }: {
+  dirty: boolean;
+  /** The saved values have not arrived yet: nothing to compare with. */
+  loading?: boolean;
+  saving: boolean;
+  onSave: () => void;
+  onDiscard: () => void;
+  label: string;
+  msg?: { type: 'success' | 'error'; text: string } | null;
+  disabled?: boolean;
+}) {
+  const status = loading ? 'Loading…' : saving ? 'Saving…' : msg ? msg.text : dirty ? 'Unsaved changes' : 'All changes saved';
+  const tone = msg?.type === 'error' ? 'text-red-500' : dirty && !msg ? 'text-pink-brand' : 'text-fg/60';
+  return (
+    <div className="sticky bottom-0 z-20 -mx-6 -mb-6 mt-auto px-6 py-3 flex flex-wrap items-center justify-between gap-3 bg-canvas border-t border-magenta-brand/15">
+      <p className={`text-sm min-w-0 flex items-center gap-2 ${tone}`} role={msg?.type === 'error' ? 'alert' : 'status'}>
+        {dirty && !msg && !saving && <span className="w-2 h-2 rounded-full bg-pink-brand flex-shrink-0" aria-hidden="true" />}
+        {status}
+      </p>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onDiscard}
+          disabled={loading || !dirty || saving}
+          className="px-3 py-2 text-sm font-medium text-fg/70 hover:text-fg disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Discard
+        </button>
+        <PrimaryButton onClick={onSave} busy={saving} disabled={loading || disabled || !dirty}>{label}</PrimaryButton>
+      </div>
+    </div>
   );
 }
 

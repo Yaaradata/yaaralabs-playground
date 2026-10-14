@@ -9,8 +9,9 @@ import ChatPanel from './ChatPanel';
 import GuardrailsPanel from './GuardrailsPanel';
 import KnowledgePanel from './KnowledgePanel';
 import PersonaPanel from './PersonaPanel';
-import { STAGE_BADGE, sidebarFor, type Section, type Stage } from './stages';
+import { sidebarFor, type Section, type Stage } from './stages';
 import ToolsPanel from './ToolsPanel';
+import { SamplesShortcut } from './samplesShortcut';
 
 export interface AgentStudioProps {
   agentId: string;
@@ -33,7 +34,8 @@ const ICONS: Record<Section, string> = {
 };
 
 /** Day 2 Agent Studio: one UI for Ex 6 (assistant), Ex 7 (RAG chatbot) and Ex 8 (AI agent). */
-export default function AgentStudio({ agentId, sessionId, stage, projectName, copiedFrom, backHref }: AgentStudioProps) {
+// projectName and copiedFrom stay in the props (the page passes them) but the header no longer shows them
+export default function AgentStudio({ agentId, sessionId, stage, backHref }: AgentStudioProps) {
   const [tab, setTab] = useState<'train' | 'use'>('train');
   const [section, setSection] = useState<Section>('persona');
   const [agentName, setAgentName] = useState('');
@@ -45,17 +47,12 @@ export default function AgentStudio({ agentId, sessionId, stage, projectName, co
 
   return (
     <div className="h-full flex flex-col min-h-0 bg-canvas">
-      <div className="flex-shrink-0 border-b border-magenta-brand/20 px-4 sm:px-6 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
-        <Link href={backHref} className="inline-flex items-center gap-1.5 text-sm text-fg/70 hover:text-fg whitespace-nowrap">
+      <SamplesShortcut />
+      {/* one row: back on the left, Train / Use AI in the centre */}
+      <div className="flex-shrink-0 border-b border-magenta-brand/20 px-4 sm:px-6 py-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <Link href={backHref} className="justify-self-start inline-flex items-center gap-1.5 text-sm text-fg/70 hover:text-fg whitespace-nowrap">
           <span aria-hidden="true">‹</span> Back to Projects
         </Link>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-lg font-bold text-fg truncate">{projectName}</h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-brand/15 text-purple-brand">{STAGE_BADGE[stage]}</span>
-          </div>
-          {copiedFrom?.name && <p className="text-xs text-fg/60">Built from: {copiedFrom.name}</p>}
-        </div>
         <div className="flex items-center gap-1 bg-card rounded-lg p-1 border border-magenta-brand/15" role="tablist" aria-label="Train or use">
           {(['train', 'use'] as const).map((t) => (
             <button
@@ -67,7 +64,7 @@ export default function AgentStudio({ agentId, sessionId, stage, projectName, co
                 setTab(t);
                 if (t === 'train') setSection('persona');
               }}
-              className={`px-5 py-2 text-sm font-semibold rounded-md transition-colors ${tab === t ? 'bg-purple-brand text-white' : 'text-fg/70 hover:text-fg hover:bg-raised'}`}
+              className={`px-5 py-1.5 text-sm font-semibold rounded-md transition-colors ${tab === t ? 'bg-purple-brand text-white' : 'text-fg/70 hover:text-fg hover:bg-raised'}`}
             >
               {t === 'train' ? 'TRAIN' : 'USE AI'}
             </button>
@@ -103,7 +100,8 @@ export default function AgentStudio({ agentId, sessionId, stage, projectName, co
             </ul>
           </nav>
           <div className="flex-1 min-w-0 overflow-y-auto dark-scrollbar">
-            <div className="max-w-5xl px-6 py-6">
+            {/* full height, so a short section still has its Save bar at the bottom of the screen */}
+            <div className="w-full min-h-full px-6 pb-6 flex flex-col">
               {section === 'persona' && <PersonaPanel agentId={agentId} stage={stage} onSaved={setAgentName} />}
               {section === 'guardrails' && <GuardrailsPanel agentId={agentId} />}
               {section === 'actions' && <ActionsPanel agentId={agentId} sessionId={sessionId} stage={stage} />}

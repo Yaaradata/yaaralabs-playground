@@ -23,16 +23,16 @@ export const TYPE_STAGE: Record<string, Stage> = {
 };
 
 export const STAGE_BADGE: Record<Stage, string> = {
-  assistant: 'Ex 6 · Custom AI Agent',
-  rag: 'Ex 7 · RAG Chatbot',
-  agent: 'Ex 8 · AI Agent',
+  assistant: 'Custom AI Agent',
+  rag: 'RAG Chatbot',
+  agent: 'AI Agent',
 };
 
 /** Day 2 options on the create screen, in order. */
 export const DAY2_OPTIONS: [string, string][] = [
-  ['custom-ai-agent', 'Custom AI Agent (Ex 6)'],
-  ['rag-chatbot', 'RAG Chatbot (Ex 7)'],
-  ['ai-agent', 'AI Agent (Ex 8)'],
+  ['custom-ai-agent', 'Custom AI Agent'],
+  ['rag-chatbot', 'RAG Chatbot'],
+  ['ai-agent', 'AI Agent'],
 ];
 
 export const DEFAULT_MODEL: Record<Stage, string> = {
@@ -75,9 +75,9 @@ export interface StagedAgentRef {
   created_at?: string;
 }
 
-/** Agents a new project can start from: previous stage first (newest first); AI Agent also lists assistants. */
+/** Agents a new project can start from: only the previous stage (Ex 6 -> Ex 7 -> Ex 8), newest first. */
 export function startFromOptions<T extends StagedAgentRef>(agents: T[], stage: Stage): T[] {
-  const order: Stage[] = stage === 'rag' ? ['assistant'] : stage === 'agent' ? ['rag', 'assistant'] : [];
+  const order: Stage[] = stage === 'rag' ? ['assistant'] : stage === 'agent' ? ['rag'] : [];
   const out: T[] = [];
   for (const want of order) {
     const group = agents.filter((a) => a.stage === want);

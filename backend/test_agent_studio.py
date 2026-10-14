@@ -153,7 +153,7 @@ class Stages(unittest.TestCase):
                   {"agent_id": "r1", "stage": "rag", "created_at": "2026-10-01"},
                   {"agent_id": "x", "stage": None, "created_at": "2026-10-03"}]
         self.assertEqual([a["agent_id"] for a in agent_stages.start_from_options(agents, "rag")], ["a2", "a1"])
-        self.assertEqual([a["agent_id"] for a in agent_stages.start_from_options(agents, "agent")], ["r1", "a2", "a1"])
+        self.assertEqual([a["agent_id"] for a in agent_stages.start_from_options(agents, "agent")], ["r1"])  # AI Agent starts from a RAG Chatbot only
         self.assertEqual(agent_stages.start_from_options(agents, "assistant"), [])
 
 

@@ -18,9 +18,12 @@ from __future__ import annotations
 
 import json
 import logging
+import queue
+import re
+import threading
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence
 
 from . import agent_guardrails, agent_stages, agent_tools, rag_text
 from .chat_service import RESPONSE_LENGTH_INSTRUCTIONS, TONE_INSTRUCTIONS, rule_constraints_block
@@ -237,6 +240,54 @@ def genai_generate(system: str, contents: List[Dict[str, str]], model: str) -> D
     return {"text": text, "model": vertex_model, "ms": int((time.perf_counter() - t0) * 1000)}
 
 
+def genai_generate_stream(system: str, contents: List[Dict[str, str]], model: str) -> Iterator[str]:
+    """genai_generate, streamed: the answer's text as the model writes it."""
+    from google.genai import types
+
+    from .exercises_vertex_models import resolve_vertex_model, thinking_config, vertex_chat_service, vertex_max_output_tokens
+
+    vertex_model = resolve_vertex_model(model)
+    cfg: Dict[str, Any] = {"temperature": TEMPERATURE, "max_output_tokens": vertex_max_output_tokens(vertex_model, ANSWER_CAP),
+                           "system_instruction": system}
+    tc = thinking_config(types)
+    if tc is not None:
+        cfg["thinking_config"] = tc
+    wrote = False
+    try:
+        stream = vertex_chat_service().client.models.generate_content_stream(
+            model=vertex_model,
+            contents=[types.Content(role=m["role"], parts=[types.Part.from_text(text=m["text"])]) for m in contents],
+            config=types.GenerateContentConfig(**cfg))
+        for chunk in stream:
+            text = _chunk_text(chunk)
+            if text:
+                wrote = True
+                yield text
+    except Exception as e:
+        logger.warning("Studio stream failed (%s): %s", vertex_model, e)
+        raise StudioModelError(f"{vertex_model} didn't answer ({type(e).__name__}). Nothing was made up: try again.")
+    if not wrote:
+        raise StudioModelError(f"{vertex_model} returned an empty answer. Try again.")
+
+
+def _chunk_text(chunk: Any) -> str:
+    """A streamed piece of the answer, spaces kept (a piece can start or end with one); thoughts skipped."""
+    out: List[str] = []
+    for cand in getattr(chunk, "candidates", None) or []:
+        for part in getattr(getattr(cand, "content", None), "parts", None) or []:
+            if getattr(part, "text", None) and not getattr(part, "thought", False):
+                out.append(part.text)
+    return "".join(out)
+
+
+def typed(text: str, words: int = 2, pause: float = 0.03) -> Iterator[Dict[str, Any]]:
+    """A finished answer as delta events, a couple of words at a time (it reads like it is being written)."""
+    parts = re.findall(r"\S+\s*|\s+", text)
+    for i in range(0, len(parts), words):
+        yield {"type": "delta", "text": "".join(parts[i:i + words])}
+        time.sleep(pause)
+
+
 def rest_generate(model: str, system: str, contents: List[Dict[str, Any]], tools: List[Dict[str, Any]], final: bool) -> Dict[str, Any]:
     from .ai_agent_service import AgentModelError, generate
 
@@ -290,6 +341,7 @@ class AgentStudioService:
 
     def __init__(self, agent_service=None, chat_service=None, rules_service=None, kb=None,
                  generate: Optional[Callable[..., Dict[str, Any]]] = None,
+                 generate_stream: Optional[Callable[..., Iterator[str]]] = None,
                  agent_generate: Optional[Callable[..., Dict[str, Any]]] = None,
                  web_search: Optional[Callable[[str], Dict[str, Any]]] = None,
                  tools_state: Optional[Callable[[str], Optional[List[str]]]] = None):
@@ -298,6 +350,9 @@ class AgentStudioService:
         self._rules = rules_service
         self._kb = kb
         self._generate = generate or genai_generate
+        # tests that inject `generate` keep it for streamed answers too (one chunk)
+        self._generate_stream = generate_stream or (
+            (lambda system, contents, model: iter([self._generate(system, contents, model)["text"]])) if generate else genai_generate_stream)
         self._agent_generate = agent_generate or rest_generate
         self._web = web_search or google_web_search
         self._tools_state = tools_state
@@ -340,6 +395,19 @@ class AgentStudioService:
         return enabled_tools((snap.to_dict() or {}).get("enabled") if snap.exists else None)
 
     def answer(self, agent: Any, message: str, session_id: str) -> Dict[str, Any]:
+        done: Dict[str, Any] = {}
+        for ev in self.answer_events(agent, message, session_id, stream=False):
+            if ev["type"] == "done":
+                done = ev
+        return {"response": done["response"], "trace": done["trace"], "chat_id": done.get("chat_id"), "images": []}
+
+    def answer_events(self, agent: Any, message: str, session_id: str, stream: bool = True) -> Iterator[Dict[str, Any]]:
+        """The answer as events (the /chat/stream route sends them as they come):
+             status  {"text"}   what the agent is doing ("Reading the documents...")
+             step    {"step"}   AI Agent: a model round or a tool call, as it happens
+             delta   {"text"}   the next piece of the answer
+             done    {"response", "trace", "chat_id"}   the whole answer (masked) and its trace
+        With stream=False only the done event matters (answer() above)."""
         stage = agent_stages.normalize_stage(_get(agent, "stage"))
         if stage is None:
             raise ValueError("Legacy agents answer through ChatService.chat.")
@@ -359,23 +427,51 @@ class AgentStudioService:
             logger.warning("Could not load guardrails for %s: %s", agent_id, e)
             guardrails = None
         trace["guardrails_on"] = agent_guardrails.active_switches(guardrails)
+        # masking needs the whole answer, so a masked answer is written out after it is complete
+        masking = "protect_client_data" in trace["guardrails_on"]
 
         def finish(response: str) -> Dict[str, Any]:
             # 6 mask, log, return
-            if "protect_client_data" in trace["guardrails_on"]:
+            if masking:
                 response, masked = agent_guardrails.mask_client_data(response)
                 if masked:
                     trace["guardrail_masked"] = masked
             trace["response"] = response
             trace["ms"] = int((time.perf_counter() - t0) * 1000)
             log = self.chat._log_chat(_Req(agent_id, session_id, message), response, trace)
-            return {"response": response, "trace": trace, "chat_id": getattr(log, "chat_id", None), "images": []}
+            return {"type": "done", "response": response, "trace": trace, "chat_id": getattr(log, "chat_id", None)}
+
+        def whole(response: str) -> Iterator[Dict[str, Any]]:
+            """An answer that is already complete: written out (streaming), then done."""
+            done = finish(response)
+            if stream:
+                yield from typed(done["response"])
+            yield done
+
+        def generated(system: str, contents: List[Dict[str, str]], after=None) -> Iterator[Dict[str, Any]]:
+            """One model call: streamed as it is written, unless the answer must be masked first."""
+            trace["llm_used"] = True
+            if not stream or masking:
+                text = self._generate(system, contents, model)["text"]
+                if after:
+                    after(text)
+                yield from whole(text)
+                return
+            pieces: List[str] = []
+            for piece in self._generate_stream(system, contents, model):
+                pieces.append(piece)
+                yield {"type": "delta", "text": piece}
+            text = "".join(pieces).strip()
+            if after:
+                after(text)
+            yield finish(text)
 
         # 2 guardrail pre-check: no model call at all
         blocked = agent_guardrails.check_blocked_request(guardrails, message)
         if blocked:
             trace["guardrail_blocked"] = "block_instruction_changes"
-            return finish(blocked)
+            yield from whole(blocked)
+            return
 
         # 3 actions (skipped entirely when no action is switched on: nothing could fire)
         constraints: Optional[Dict[str, Any]] = None
@@ -386,7 +482,8 @@ class AgentStudioService:
                 trace["rule_matched"] = {"rule_id": rule.rule_id, "name": rule.name}
                 constraints = self.rules.execute_actions(rule, message, rule_context)
                 if constraints.get("exact_response"):
-                    return finish(constraints["exact_response"])
+                    yield from whole(constraints["exact_response"])
+                    return
         if stage == "assistant" and constraints:
             constraints = {**constraints, "use_kb": False, "kb_source": None}  # no knowledge base in Ex 6
 
@@ -395,29 +492,55 @@ class AgentStudioService:
         # 4 + 5 stage
         if stage == "assistant":
             system = system_instruction(persona, guardrails, constraints)
-            out = self._generate(system, history + [{"role": "user", "text": message}], model)
-            trace["llm_used"] = True
-            return finish(out["text"])
+            yield from generated(system, history + [{"role": "user", "text": message}])
+            return
 
         if stage == "rag":
             if self.kb.is_empty(agent_id):
-                return finish(EMPTY_KB_REPLY)
+                yield from whole(EMPTY_KB_REPLY)
+                return
+            if stream:
+                yield {"type": "status", "text": "Reading the documents..."}
             hits = self.kb.search(agent_id, message, k=KB_K, doc_title=kb_doc_filter(constraints))
             trace["kb_used"] = [f"{h['doc_id']}#{h['label']}" for h in hits]
             system = system_instruction(persona, guardrails, constraints, RAG_RULE)
             passages = agent_kb_format(hits) or "(No passage matched the question.)"
             user = f"Passages:\n\n{passages}\n\nQuestion: {message}"
-            out = self._generate(system, history + [{"role": "user", "text": user}], model)
-            trace["llm_used"] = True
-            trace.update(mark_citations(out["text"], hits))
-            return finish(out["text"])
+            yield from generated(system, history + [{"role": "user", "text": user}],
+                                 after=lambda text: trace.update(mark_citations(text, hits)))
+            return
 
-        return finish(self._agent_loop(agent_id, persona, guardrails, constraints, history, message, model, trace))
+        # agent: the tool loop runs on a worker thread so each step can be sent while the next one runs
+        if not stream:
+            yield finish(self._agent_loop(agent_id, persona, guardrails, constraints, history, message, model, trace))
+            return
+        events: "queue.Queue[Any]" = queue.Queue()
+        box: Dict[str, Any] = {}
+
+        def work():
+            try:
+                box["answer"] = self._agent_loop(agent_id, persona, guardrails, constraints, history, message, model, trace,
+                                                 emit=lambda step: events.put({"type": "step", "step": step}))
+            except BaseException as e:  # sent to the generator below
+                box["error"] = e
+            finally:
+                events.put(None)
+
+        threading.Thread(target=work, daemon=True).start()
+        while True:
+            ev = events.get()
+            if ev is None:
+                break
+            yield ev
+        if "error" in box:
+            raise box["error"]
+        yield from whole(box["answer"])
 
     # ── stage agent: the tool loop ──
 
     def _agent_loop(self, agent_id: str, persona: Any, guardrails: Any, constraints: Optional[Dict[str, Any]],
-                    history: List[Dict[str, str]], message: str, model: str, trace: Dict[str, Any]) -> str:
+                    history: List[Dict[str, str]], message: str, model: str, trace: Dict[str, Any],
+                    emit: Optional[Callable[[Dict[str, Any]], None]] = None) -> str:
         enabled = self.enabled(agent_id)
         force_kb = bool((constraints or {}).get("use_kb")) and "search_knowledge_base" in enabled
         rule = TOOL_RULE + ("\n" + FORCE_KB_RULE if force_kb else "")
@@ -442,6 +565,8 @@ class AgentStudioService:
             steps.append({"kind": "model", "round": rounds + 1, "text": out.get("text") or "",
                           "calls": [{"name": c["name"], "args": clip(c.get("args") or {})} for c in calls],
                           "ms": out.get("ms", 0), "final": final})
+            if emit and calls:
+                emit(steps[-1])
             if not calls:
                 answer = out.get("text") or ""
                 break
@@ -478,6 +603,8 @@ class AgentStudioService:
                 step["result"] = result
                 step["ms"] = int((time.perf_counter() - st) * 1000)
                 steps.append(step)
+                if emit:
+                    emit(step)
                 fr: Dict[str, Any] = {"name": c.get("rawName") or name, "response": {"result": result}}
                 if c.get("geminiId"):
                     fr["id"] = c["geminiId"]

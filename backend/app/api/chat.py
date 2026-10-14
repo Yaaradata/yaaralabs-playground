@@ -1,4 +1,6 @@
+import json
 from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi.responses import StreamingResponse
 from typing import Optional, List
 
 from ..models import (
@@ -7,7 +9,7 @@ from ..models import (
 )
 from ..services.chat_service import ChatService
 from ..services.agent_service import AgentService
-from ..services.agent_studio_service import AgentStudioService, StudioModelError
+from ..services.agent_studio_service import AgentStudioService, StudioModelError, typed
 
 router = APIRouter(prefix="/chat", tags=["agent"])
 
@@ -59,6 +61,38 @@ async def chat(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/stream")
+async def chat_stream(
+    request: ChatRequest,
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    """The same answer as POST /chat, sent as it is written: one JSON event per line (NDJSON).
+    status / step / delta while it works, then done {response, trace, chat_id}, or error {detail}.
+    See AgentStudioService.answer_events."""
+    agent = AgentService().get_agent(request.agent_id)
+    if agent and agent.stage and agent.session_id != request.session_id:
+        raise HTTPException(status_code=403, detail="That agent belongs to another session.")
+
+    def events():
+        try:
+            if agent and agent.stage:
+                yield from AgentStudioService(chat_service=chat_service).answer_events(agent, request.message, request.session_id)
+            else:
+                result = chat_service.chat(request)  # legacy agents: whole answer, written out
+                yield from typed(result["response"])
+                yield {"type": "done", "response": result["response"], "trace": result["trace"], "chat_id": result.get("chat_id")}
+        except Exception as e:
+            yield {"type": "error", "detail": str(e) or "Something went wrong. Try again."}
+
+    def lines():
+        for ev in events():
+            yield json.dumps(ev, default=str) + "\n"
+
+    # a sync generator: Starlette runs it on a worker thread, so slow model calls never block the server
+    return StreamingResponse(lines(), media_type="application/x-ndjson",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @router.post("/teach", response_model=ChatTeachResponse)

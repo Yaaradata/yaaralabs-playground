@@ -5,6 +5,7 @@ import { deleteRule, kbDocuments, listRules, saveRule, setRuleStatus } from './a
 import type { Stage } from './stages';
 import type { KbDocument, RuleItem, SavedRule } from './types';
 import { Notice, PanelHeader, PrimaryButton, SecondaryButton, Spinner } from './ui';
+import { useSamplesShown } from './samplesShortcut';
 
 /** WHEN options: as in the original Actions screen. */
 export const WHEN_OPTIONS = [
@@ -54,6 +55,8 @@ const field =
 
 /** ACTIONS: WHEN conditions → DO actions, ANY/ALL matching, on/off, edit, clone, delete. */
 export default function ActionsPanel({ agentId, sessionId, stage }: { agentId: string; sessionId: string; stage: Stage }) {
+  // sample data stays hidden until Ctrl+Shift+Z is pressed in this section (see samplesShortcut.tsx)
+  const samplesShown = useSamplesShown(`${agentId}:actions`);
   const [rules, setRules] = useState<SavedRule[]>([]);
   const [docs, setDocs] = useState<KbDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -272,7 +275,7 @@ export default function ActionsPanel({ agentId, sessionId, stage }: { agentId: s
         icon="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"
         title="ACTIONS"
         subtitle="When a message matches, the action runs before the model replies."
-        action={<SecondaryButton onClick={loadCustody} disabled={busy || loading}>Load the custody actions</SecondaryButton>}
+        action={samplesShown ? <SecondaryButton onClick={loadCustody} disabled={busy || loading}>Load the custody actions</SecondaryButton> : undefined}
       />
       <Notice msg={msg} />
 
@@ -343,7 +346,8 @@ export default function ActionsPanel({ agentId, sessionId, stage }: { agentId: s
                   <div className="flex flex-wrap gap-1.5 text-xs">
                     <span className="font-semibold text-fg/70">DO</span>
                     {r.actions.map((a, i) => (
-                      <span key={i} className="as-tag as-tag-do">{a.type}: {a.value.length > 60 ? `${a.value.slice(0, 60)}…` : a.value}</span>
+                      // the whole action, wrapping onto more lines when long (no cut-off)
+                      <span key={i} className="as-tag as-tag-do whitespace-pre-wrap break-words">{a.type}: {a.value}</span>
                     ))}
                   </div>
                 </div>

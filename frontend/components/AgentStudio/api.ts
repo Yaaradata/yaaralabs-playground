@@ -9,6 +9,7 @@ import type {
   Persona,
   SampleGroup,
   SavedRule,
+  Step,
   ToolCatalog,
   Trace,
 } from './types';
@@ -69,7 +70,52 @@ export interface ChatReply {
 }
 export const sendChat = (agentId: string, sessionId: string, message: string) =>
   call<ChatReply>('/chat', json('POST', { agent_id: agentId, session_id: sessionId, message }));
-export const chatHistory = (agentId: string, sessionId: string) =>
+
+/** One event of a streamed answer (POST /chat/stream sends one JSON object per line). */
+export type ChatEvent =
+  | { type: 'status'; text: string }
+  | { type: 'step'; step: Step }
+  | { type: 'delta'; text: string }
+  | { type: 'done'; response: string; trace: Trace; chat_id?: string }
+  | { type: 'error'; detail: string };
+
+/** The answer as it is written: `onEvent` gets every event; resolves with the done event. */
+export async function streamChat(agentId: string, sessionId: string, message: string, onEvent: (ev: ChatEvent) => void) {
+  let res: Response;
+  try {
+    res = await fetch(`${base()}/chat/stream`, json('POST', { agent_id: agentId, session_id: sessionId, message }));
+  } catch {
+    throw new Error("Couldn't reach the server. Check your connection and try again.");
+  }
+  if (!res.ok || !res.body) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(typeof body?.detail === 'string' ? body.detail : `Request failed (${res.status})`);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let done: Extract<ChatEvent, { type: 'done' }> | null = null;
+  const handle = (line: string) => {
+    if (!line.trim()) return;
+    const ev = JSON.parse(line) as ChatEvent;
+    if (ev.type === 'error') throw new Error(ev.detail);
+    if (ev.type === 'done') done = ev;
+    onEvent(ev);
+  };
+  for (;;) {
+    const { value, done: end } = await reader.read();
+    if (end) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    lines.forEach(handle);
+  }
+  handle(buffer + decoder.decode());
+  if (!done) throw new Error('The answer stopped before it finished. Try again.');
+  return done as Extract<ChatEvent, { type: 'done' }>;
+}
+
+export const chatHistory =(agentId: string, sessionId: string) =>
   call<{ messages: { id: string; role: 'user' | 'assistant'; content: string; trace?: Trace | null }[] }>(
     `/chat/history?agent_id=${encodeURIComponent(agentId)}&${q(sessionId)}`,
   ).then((r) => r.messages || []);

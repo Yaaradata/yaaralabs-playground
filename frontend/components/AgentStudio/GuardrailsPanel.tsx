@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { getGuardrails, getPersona, saveGuardrails, savePersona } from './api';
 import type { Guardrails } from './types';
-import { Block, Notice, PanelHeader, PrimaryButton, SecondaryButton, Toggle } from './ui';
+import { Block, PanelHeader, SaveBar, SecondaryButton, Toggle } from './ui';
+import { useSamplesShown } from './samplesShortcut';
 
 export const EMPTY_GUARDRAILS: Guardrails = {
   stay_on_topic: false,
@@ -127,25 +128,35 @@ function LineList({ lines, onChange, placeholder, max, maxChars, label }: {
 
 /** RULES & GUARDRAILS: instructions (persona.guidelines), four switches, "Also never" lines, hand-off message. */
 export default function GuardrailsPanel({ agentId }: { agentId: string }) {
+  // sample data stays hidden until Ctrl+Shift+Z is pressed in this section (see samplesShortcut.tsx)
+  const samplesShown = useSamplesShown(`${agentId}:guardrails`);
   const [instructions, setInstructions] = useState<string[]>([]);
   const [g, setG] = useState<Guardrails>(EMPTY_GUARDRAILS);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  // what is saved, to tell "Unsaved changes" and to Discard back to it
+  const [saved, setSaved] = useState<{ instructions: string[]; g: Guardrails } | null>(null);
+  const dirty = saved !== null && JSON.stringify({ instructions, g }) !== JSON.stringify(saved);
 
   useEffect(() => {
     let live = true;
     Promise.all([getPersona(agentId), getGuardrails(agentId)])
       .then(([p, gr]) => {
         if (!live) return;
-        setInstructions((p.guidelines || '').split('\n').filter((l) => l.trim()));
-        setG({
-          stay_on_topic: Boolean(gr.stay_on_topic),
-          no_made_up_facts: Boolean(gr.no_made_up_facts),
-          protect_client_data: Boolean(gr.protect_client_data),
-          block_instruction_changes: Boolean(gr.block_instruction_changes),
-          never_rules: Array.isArray(gr.never_rules) ? gr.never_rules : [],
-          handoff_message: gr.handoff_message || '',
-        });
+        const loaded = {
+          instructions: (p.guidelines || '').split('\n').filter((l) => l.trim()),
+          g: {
+            stay_on_topic: Boolean(gr.stay_on_topic),
+            no_made_up_facts: Boolean(gr.no_made_up_facts),
+            protect_client_data: Boolean(gr.protect_client_data),
+            block_instruction_changes: Boolean(gr.block_instruction_changes),
+            never_rules: Array.isArray(gr.never_rules) ? gr.never_rules : [],
+            handoff_message: gr.handoff_message || '',
+          },
+        };
+        setInstructions(loaded.instructions);
+        setG(loaded.g);
+        setSaved(loaded);
       })
       .catch((e: Error) => live && setMsg({ type: 'error', text: e.message }));
     return () => {
@@ -162,6 +173,7 @@ export default function GuardrailsPanel({ agentId }: { agentId: string }) {
       await Promise.all([savePersona(agentId, { guidelines: lines.join('\n') }), saveGuardrails(agentId, body)]);
       setInstructions(lines);
       setG(body);
+      setSaved({ instructions: lines, g: body });
       setMsg({ type: 'success', text: 'Rules and guardrails saved. The agent uses them from the next message.' });
       setTimeout(() => setMsg(null), 4000);
     } catch (e) {
@@ -175,22 +187,17 @@ export default function GuardrailsPanel({ agentId }: { agentId: string }) {
     setInstructions([...CUSTODY_EXAMPLE.instructions]);
     setG({ ...CUSTODY_EXAMPLE.guardrails, never_rules: [...CUSTODY_EXAMPLE.guardrails.never_rules] });
     setMsg({ type: 'success', text: 'Custody example loaded. Press Save Rules & Guardrails to use it.' });
+    setTimeout(() => setMsg(null), 4000);
   };
 
   return (
-    <div>
+    <div className="flex-1 flex flex-col">
       <PanelHeader
         icon="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
         title="RULES & GUARDRAILS"
         subtitle="What it must always do, and never do"
-        action={
-          <>
-            <SecondaryButton onClick={loadExample}>Load the custody example</SecondaryButton>
-            <PrimaryButton onClick={save} busy={saving}>Save Rules &amp; Guardrails</PrimaryButton>
-          </>
-        }
+        action={samplesShown ? <SecondaryButton onClick={loadExample}>Load the custody example</SecondaryButton> : undefined}
       />
-      <Notice msg={msg} />
       <div className="space-y-4">
         <Block title="Instructions: what it should always do" subtitle="One instruction per line. The agent follows these in every reply.">
           <LineList lines={instructions} onChange={setInstructions} placeholder="e.g. Reply in under 80 words" label="Instruction" />
@@ -237,6 +244,22 @@ export default function GuardrailsPanel({ agentId }: { agentId: string }) {
           </p>
         </Block>
       </div>
+      <div className="h-8 flex-shrink-0" aria-hidden="true" />
+      <SaveBar
+        label="Save Rules & Guardrails"
+        dirty={dirty}
+        saving={saving}
+        msg={msg}
+        loading={saved === null && !msg}
+        onSave={save}
+        onDiscard={() => {
+          if (saved) {
+            setInstructions(saved.instructions);
+            setG(saved.g);
+          }
+          setMsg(null);
+        }}
+      />
     </div>
   );
 }

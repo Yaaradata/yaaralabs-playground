@@ -47,7 +47,7 @@ test('stage → project type, legacy agents stay Custom AI Agents', () => {
 });
 
 test('create screen: Day 2 options in order, each maps to a stage', () => {
-  assert.deepEqual(DAY2_OPTIONS.map(([, label]) => label), ['Custom AI Agent (Ex 6)', 'RAG Chatbot (Ex 7)', 'AI Agent (Ex 8)']);
+  assert.deepEqual(DAY2_OPTIONS.map(([, label]) => label), ['Custom AI Agent', 'RAG Chatbot', 'AI Agent']);
   assert.deepEqual(DAY2_OPTIONS.map(([type]) => TYPE_STAGE[type]), ['assistant', 'rag', 'agent']);
 });
 
@@ -62,14 +62,14 @@ test('routing: agents with a stage open the studio, old guest projects keep thei
   assert.equal(opens({ type: 'ai-agent' }), 'AiAgentLab');
 });
 
-test('start from: previous stage first, newest first; AI Agent also lists assistants', () => {
+test('start from: only the previous stage, newest first (AI Agent lists RAG chatbots only)', () => {
   const agents = [
     { agent_id: 'a1', stage: 'assistant', name: 'A1', created_at: '2026-10-01' },
     { agent_id: 'a2', stage: 'assistant', name: 'A2', created_at: '2026-10-02' },
     { agent_id: 'r1', stage: 'rag', name: 'R1', created_at: '2026-10-01' },
   ];
   assert.deepEqual(startFromOptions(agents, 'rag').map((a) => a.agent_id), ['a2', 'a1']);
-  assert.deepEqual(startFromOptions(agents, 'agent').map((a) => a.agent_id), ['r1', 'a2', 'a1']);
+  assert.deepEqual(startFromOptions(agents, 'agent').map((a) => a.agent_id), ['r1']);
   assert.equal(defaultStartFrom(agents, 'rag'), 'a2');
   assert.equal(defaultStartFrom(agents, 'agent'), 'r1');
   assert.equal(defaultStartFrom([agents[0]], 'agent'), ''); // no RAG chatbot yet: start fresh

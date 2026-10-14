@@ -5,12 +5,15 @@ import { kbAddLibrary, kbChunks, kbDelete, kbDocuments, kbLibrary, kbPdfUrl, kbU
 import PdfViewer from './PdfViewer';
 import type { KbChunk, KbDocument, LibraryDoc, PdfTarget } from './types';
 import { Notice, PanelHeader, PrimaryButton, SecondaryButton, Spinner } from './ui';
+import { useSamplesShown } from './samplesShortcut';
 
 const dateText = (iso?: string) =>
   iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 
 /** KNOWLEDGE BASE: the documents the agent answers from, cut into passages. */
 export default function KnowledgePanel({ agentId, sessionId }: { agentId: string; sessionId: string }) {
+  // sample data stays hidden until Ctrl+Shift+Z is pressed in this section (see samplesShortcut.tsx)
+  const samplesShown = useSamplesShown(`${agentId}:knowledge`);
   const [docs, setDocs] = useState<KbDocument[] | null>(null);
   const [library, setLibrary] = useState<LibraryDoc[]>([]);
   const [sample, setSample] = useState(false);
@@ -111,7 +114,7 @@ export default function KnowledgePanel({ agentId, sessionId }: { agentId: string
         action={
           docs && docs.length > 0 && !sample ? (
             <>
-              {library.some((d) => !have.has(d.id)) && <SecondaryButton onClick={() => setSample(true)}>Add sample data</SecondaryButton>}
+              {samplesShown && library.some((d) => !have.has(d.id)) && <SecondaryButton onClick={() => setSample(true)}>Add sample data</SecondaryButton>}
               <SecondaryButton onClick={() => fileRef.current?.click()} disabled={Boolean(busy)}>Upload a PDF</SecondaryButton>
             </>
           ) : undefined
@@ -127,7 +130,7 @@ export default function KnowledgePanel({ agentId, sessionId }: { agentId: string
 
       {docs === null ? (
         <div className="flex items-center gap-2 text-fg/60 text-sm"><Spinner /> Loading…</div>
-      ) : sample ? (
+      ) : sample && samplesShown ? (
         <div className="border border-magenta-brand/20 rounded-xl overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
             <div className="p-4 space-y-3 border-b lg:border-b-0 lg:border-r border-magenta-brand/15">
@@ -176,12 +179,21 @@ export default function KnowledgePanel({ agentId, sessionId }: { agentId: string
       ) : docs.length === 0 ? (
         <div className="bg-card rounded-xl border border-magenta-brand/15 p-8 text-center">
           <p className="text-fg text-lg mb-4">Give your assistant documents to answer from.</p>
-          <PrimaryButton onClick={() => setSample(true)} disabled={!library.length}>Use sample data</PrimaryButton>
-          <div className="mt-3">
-            <button type="button" onClick={() => fileRef.current?.click()} className="text-sm text-pink-brand hover:underline" disabled={Boolean(busy)}>
-              Upload your own PDF (public documents only)
-            </button>
-          </div>
+          {samplesShown ? (
+            <>
+              <PrimaryButton onClick={() => setSample(true)} disabled={!library.length}>Use sample data</PrimaryButton>
+              <div className="mt-3">
+                <button type="button" onClick={() => fileRef.current?.click()} className="text-sm text-pink-brand hover:underline" disabled={Boolean(busy)}>
+                  Upload your own PDF (public documents only)
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <PrimaryButton onClick={() => fileRef.current?.click()} disabled={Boolean(busy)}>Upload a PDF</PrimaryButton>
+              <p className="mt-3 text-sm text-fg/60">Public documents only.</p>
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-3">

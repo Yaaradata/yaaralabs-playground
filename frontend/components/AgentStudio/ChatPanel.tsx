@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { parseAnswer } from './answerText';
-import { chatHistory, clearChat, kbPdfUrl, sendChat } from './api';
+import { chatHistory, clearChat, kbPdfUrl, streamChat } from './api';
 import { GUARDRAIL_LABELS } from './GuardrailsPanel';
 import PdfViewer from './PdfViewer';
 import SampleQuestions from './SampleQuestions';
 import type { Stage } from './stages';
 import type { ChatMessage, Passage, PdfTarget, Step, Trace } from './types';
 import { Chip, Spinner } from './ui';
+import { useSamplesShown } from './samplesShortcut';
 
 const TOOL_LABEL: Record<string, string> = {
   today: "Today's date",
@@ -166,6 +167,31 @@ function Reply({ m, stage, onOpen }: { m: ChatMessage; stage: Stage; onOpen: (p:
     const p = passages.find((x) => x.n === n);
     if (p) onOpen(p);
   };
+  if (m.streaming) {
+    // still being written: the text so far with a caret, or what the agent is doing before the first words
+    const live = (m.liveSteps || []).filter((s) => s.kind === 'tool');
+    return (
+      <div className="as-bubble as-bubble-bot">
+        {live.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {live.map((s, i) => (
+              <Chip key={i}>🔧 {TOOL_LABEL[s.name || ''] || s.name}{s.ok === false ? ' ✕' : ' ✓'}</Chip>
+            ))}
+          </div>
+        )}
+        {m.content ? (
+          <div className="as-answer">
+            {m.content}
+            <span className="as-caret" aria-hidden="true" />
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-fg/60 text-sm">
+            <Spinner /> {m.status || (stage === 'agent' ? 'Working on it…' : stage === 'rag' ? 'Reading the documents…' : 'Thinking…')}
+          </div>
+        )}
+      </div>
+    );
+  }
   return (
     <div className={`as-bubble as-bubble-bot ${m.error ? 'as-bubble-error' : ''}`}>
       {m.error ? <p className="text-sm">{m.content}</p> : <AnswerText text={m.content} count={passages.length} onCite={openN} />}
@@ -209,6 +235,8 @@ function Reply({ m, stage, onOpen }: { m: ChatMessage; stage: Stage; onOpen: (p:
 
 /** USE AI: the chat, Reset Chat, sample questions, and the PDF drawer for passages. */
 export default function ChatPanel({ agentId, sessionId, stage, agentName }: { agentId: string; sessionId: string; stage: Stage; agentName: string }) {
+  // sample data stays hidden until Ctrl+Shift+Z is pressed in this section (see samplesShortcut.tsx)
+  const samplesShown = useSamplesShown(`${agentId}:chat`);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -238,12 +266,35 @@ export default function ChatPanel({ agentId, sessionId, stage, agentName }: { ag
     setInput('');
     setMessages((prev) => [...prev, { id: `u-${Date.now()}`, role: 'user', content: message }]);
     setSending(true);
+    // the answer appears as it is written (POST /chat/stream), like ChatGPT
+    const id = `s-${Date.now()}`;
+    const patch = (fn: (m: ChatMessage) => ChatMessage) => setMessages((prev) => prev.map((m) => (m.id === id ? fn(m) : m)));
+    setMessages((prev) => [...prev, { id, role: 'assistant', content: '', streaming: true, liveSteps: [] }]);
     try {
-      const r = await sendChat(agentId, sessionId, message);
-      setMessages((prev) => [...prev, { id: r.chat_id || `a-${Date.now()}`, role: 'assistant', content: r.response, trace: r.trace }]);
+      await streamChat(agentId, sessionId, message, (ev) => {
+        if (ev.type === 'delta') patch((m) => ({ ...m, content: m.content + ev.text }));
+        else if (ev.type === 'status') patch((m) => ({ ...m, status: ev.text }));
+        else if (ev.type === 'step') {
+          const s = ev.step;
+          patch((m) => ({
+            ...m,
+            liveSteps: [...(m.liveSteps || []), s],
+            status: s.kind === 'tool' ? `Used ${TOOL_LABEL[s.name || ''] || s.name}…` : m.status,
+          }));
+        } else if (ev.type === 'done') {
+          patch((m) => ({ ...m, id: ev.chat_id || id, content: ev.response, trace: ev.trace, streaming: false, status: undefined, liveSteps: undefined }));
+        }
+      });
     } catch (e) {
-      // No made-up answer: show what went wrong
-      setMessages((prev) => [...prev, { id: `e-${Date.now()}`, role: 'assistant', content: (e as Error).message, error: true }]);
+      // No made-up answer: show what went wrong (and keep any text that had already arrived)
+      patch((m) => ({
+        ...m,
+        streaming: false,
+        error: true,
+        content: m.content ? `${m.content}
+
+${(e as Error).message}` : (e as Error).message,
+      }));
     } finally {
       setSending(false);
     }
@@ -280,9 +331,11 @@ export default function ChatPanel({ agentId, sessionId, stage, agentName }: { ag
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => { setPdf(null); setSamples(!samples); }} className="as-head-btn" aria-expanded={samples}>
-              Sample questions
-            </button>
+            {samplesShown && (
+              <button type="button" onClick={() => { setPdf(null); setSamples(!samples); }} className="as-head-btn" aria-expanded={samples}>
+                Sample questions
+              </button>
+            )}
             <button type="button" onClick={reset} className="as-head-btn" disabled={sending}>
               Reset Chat
             </button>
@@ -294,7 +347,7 @@ export default function ChatPanel({ agentId, sessionId, stage, agentName }: { ag
             <div className="flex items-center gap-2 text-fg/60 text-sm"><Spinner /> Loading the conversation…</div>
           ) : messages.length === 0 ? (
             <div className="text-center text-fg/60 text-sm py-10">
-              Ask a question, or open <b>Sample questions</b>.
+              {samplesShown ? <>Ask a question, or open <b>Sample questions</b>.</> : 'Ask a question to try your agent.'}
             </div>
           ) : (
             messages.map((m) =>
@@ -308,11 +361,6 @@ export default function ChatPanel({ agentId, sessionId, stage, agentName }: { ag
                 </div>
               ),
             )
-          )}
-          {sending && (
-            <div className="flex items-center gap-2 text-fg/60 text-sm">
-              <Spinner /> {stage === 'agent' ? 'Working on it…' : stage === 'rag' ? 'Reading the documents…' : 'Thinking…'}
-            </div>
           )}
         </div>
 
@@ -336,7 +384,7 @@ export default function ChatPanel({ agentId, sessionId, stage, agentName }: { ag
         </form>
       </div>
 
-      {samples && (
+      {samples && samplesShown && (
         <SampleQuestions agentId={agentId} sessionId={sessionId} disabled={sending} onClose={() => setSamples(false)} onAsk={(q) => send(q)} />
       )}
       {pdf && (

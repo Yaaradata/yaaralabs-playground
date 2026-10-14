@@ -1737,9 +1737,9 @@ export default function ProjectDetailsPage() {
   const isAiAgent = selectedProject.type === 'ai-agent' && !selectedProject.agent_id;
   // 'live-video-classification' is the name this type had briefly; those projects open the same way
   const isLiveObjectDetection = selectedProject.type === 'live-object-detection' || selectedProject.type === 'live-video-classification';
-  const studioHeader = isRbp || isExercises || isConfusionMatrix || isRagChatbot || isAiAgent || isLiveObjectDetection;
+  const studioHeader = isRbp || isExercises || isConfusionMatrix || isRagChatbot || isAiAgent || isLiveObjectDetection || isAgentStudio;
   // These have their own back button in their header row (like "Use the AI"), so no back bar here
-  const ownBackButton = (isRbp && resolveRbpEditor(selectedProject.rbpEditor) === 'blocks') || isLiveObjectDetection;
+  const ownBackButton = (isRbp && resolveRbpEditor(selectedProject.rbpEditor) === 'blocks') || isLiveObjectDetection || isAgentStudio;
 
   return (
     <div className="h-screen overflow-hidden flex flex-col bg-canvas text-fg">

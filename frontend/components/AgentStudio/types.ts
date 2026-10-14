@@ -105,6 +105,10 @@ export interface ChatMessage {
   content: string;
   trace?: Trace | null;
   error?: boolean;
+  /** The answer is still being written (streamed): text so far, what the agent is doing, its tool steps. */
+  streaming?: boolean;
+  status?: string;
+  liveSteps?: Step[];
 }
 
 export interface KbDocument {

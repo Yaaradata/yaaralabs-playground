@@ -309,18 +309,12 @@ function CreateProjectPage() {
       // Load model status for each project in parallel
       const projectsWithStatus = await Promise.all(
         allProjects.map(async (project) => {
-          // Fetch model status for types that show the Model Trained tag
-          if (project.agent_id) {
-            // Agents: legacy ones show no status; Day 2 stages are ready once the persona is saved
-            if (!project.stage) return project;
-            return { ...project, modelStatus: await getAgentStatus(project.agent_id) };
-          }
+          // Fetch model status for the ML types that show the Model Trained tag (not the Day 2 agents)
+          if (project.agent_id) return project;
           if (
             project.type === 'text-recognition' ||
             project.type === 'image-recognition' ||
-            project.type === 'confusion-matrix' ||
-            project.type === 'rag-chatbot' ||
-            project.type === 'ai-agent'
+            project.type === 'confusion-matrix'
           ) {
             const modelStatus = await getProjectModelStatus(project.maskedId || project.id, project.type);
             return {
@@ -539,19 +533,6 @@ function CreateProjectPage() {
     } catch (error) {
       console.error('Error validating Teachable Machine URL:', error);
       return false;
-    }
-  };
-
-  // Day 2 staged agent: ready once its persona has been saved at least once
-  const getAgentStatus = async (agentId: string): Promise<'available' | 'unavailable'> => {
-    try {
-      const res = await fetch(`${config.apiBaseUrl}${config.api.agents.persona.get(agentId)}`);
-      if (!res.ok) return 'unavailable';
-      const persona = await res.json();
-      const saved = new Date(persona.updated_at).getTime() - new Date(persona.created_at).getTime() > 1000;
-      return saved ? 'available' : 'unavailable';
-    } catch {
-      return 'unavailable';
     }
   };
 
@@ -1364,8 +1345,8 @@ function CreateProjectPage() {
                        </span>
                      </div>
                      
-                     {/* Model Status - text / image recognition and confusion matrix */}
-                     {(project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'confusion-matrix' || project.type === 'rag-chatbot' || project.type === 'ai-agent' || (project.agent_id && project.stage)) && (
+                     {/* Model Status: ML projects only (text / image recognition, confusion matrix), not the Day 2 agents */}
+                     {(project.type === 'text-recognition' || project.type === 'image-recognition' || project.type === 'confusion-matrix') && (
                        <div className="text-fg mb-4">
                          <span className="text-sm">Model Trained: </span>
                          <span className={`font-medium ${
@@ -1376,8 +1357,8 @@ function CreateProjectPage() {
                        </div>
                      )}
                      
-                     {/* Spacer for custom-ai-agent to match Model Trained section height */}
-                     {project.type === 'custom-ai-agent' && !project.stage && (
+                     {/* Spacer for the Day 2 agents (Ex 6-8) to match the Model Trained line's height */}
+                     {(project.type === 'custom-ai-agent' || project.type === 'rag-chatbot' || project.type === 'ai-agent') && (
                        <div className="mb-4 h-6"></div>
                      )}
                     
