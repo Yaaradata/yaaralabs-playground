@@ -126,14 +126,8 @@ function StepsView({ steps, passages, onOpen }: { steps: Step[]; passages: Passa
           const srcs = s.sources || [];
           return (
             <li key={i} className="as-step">
+              {/* the sources themselves are listed once, under "Searched from web" */}
               🌐 Searched the web for “{s.query}” → {srcs.length} source{srcs.length === 1 ? '' : 's'}
-              {srcs.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                  {srcs.map((src, j) => (
-                    <a key={j} href={src.uri} target="_blank" rel="noopener noreferrer" className="as-source">{src.title || src.uri}</a>
-                  ))}
-                </div>
-              )}
             </li>
           );
         }
@@ -186,7 +180,7 @@ function Reply({ m, stage, onOpen }: { m: ChatMessage; stage: Stage; onOpen: (p:
           </div>
         ) : (
           <div className="flex items-center gap-2 text-fg/60 text-sm">
-            <Spinner /> {m.status || (stage === 'agent' ? 'Working on it…' : stage === 'rag' ? 'Reading the documents…' : 'Thinking…')}
+            <Spinner /> {m.status || (stage === 'agent' ? 'Working on it…' : 'Thinking…')}
           </div>
         )}
       </div>
@@ -326,7 +320,7 @@ ${(e as Error).message}` : (e as Error).message,
             <div className="min-w-0">
               <div className="font-semibold text-fg truncate">{agentName || 'Assistant'}</div>
               <div className="text-xs text-fg/60">
-                {stage === 'assistant' ? 'Answers from what the model knows' : stage === 'rag' ? 'Answers only from your documents' : 'Decides which tools to use'}
+                {stage === 'assistant' ? 'Answers from what the model knows' : stage === 'rag' ? 'Answers from your documents first' : 'Decides which tools to use'}
               </div>
             </div>
           </div>

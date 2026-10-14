@@ -5,15 +5,13 @@ import { kbAddLibrary, kbChunks, kbDelete, kbDocuments, kbLibrary, kbPdfUrl, kbU
 import PdfViewer from './PdfViewer';
 import type { KbChunk, KbDocument, LibraryDoc, PdfTarget } from './types';
 import { Notice, PanelHeader, PrimaryButton, SecondaryButton, Spinner } from './ui';
-import { useSamplesShown } from './samplesShortcut';
 
 const dateText = (iso?: string) =>
   iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 
 /** KNOWLEDGE BASE: the documents the agent answers from, cut into passages. */
 export default function KnowledgePanel({ agentId, sessionId }: { agentId: string; sessionId: string }) {
-  // sample data stays hidden until Ctrl+Shift+Z is pressed in this section (see samplesShortcut.tsx)
-  const samplesShown = useSamplesShown(`${agentId}:knowledge`);
+  // the sample documents are always offered here (no Ctrl+Shift+Z in this section)
   const [docs, setDocs] = useState<KbDocument[] | null>(null);
   const [library, setLibrary] = useState<LibraryDoc[]>([]);
   const [sample, setSample] = useState(false);
@@ -114,7 +112,7 @@ export default function KnowledgePanel({ agentId, sessionId }: { agentId: string
         action={
           docs && docs.length > 0 && !sample ? (
             <>
-              {samplesShown && library.some((d) => !have.has(d.id)) && <SecondaryButton onClick={() => setSample(true)}>Add sample data</SecondaryButton>}
+              {library.some((d) => !have.has(d.id)) && <SecondaryButton onClick={() => setSample(true)}>Add sample data</SecondaryButton>}
               <SecondaryButton onClick={() => fileRef.current?.click()} disabled={Boolean(busy)}>Upload a PDF</SecondaryButton>
             </>
           ) : undefined
@@ -130,7 +128,7 @@ export default function KnowledgePanel({ agentId, sessionId }: { agentId: string
 
       {docs === null ? (
         <div className="flex items-center gap-2 text-fg/60 text-sm"><Spinner /> Loading…</div>
-      ) : sample && samplesShown ? (
+      ) : sample ? (
         <div className="border border-magenta-brand/20 rounded-xl overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
             <div className="p-4 space-y-3 border-b lg:border-b-0 lg:border-r border-magenta-brand/15">
@@ -179,24 +177,17 @@ export default function KnowledgePanel({ agentId, sessionId }: { agentId: string
       ) : docs.length === 0 ? (
         <div className="bg-card rounded-xl border border-magenta-brand/15 p-8 text-center">
           <p className="text-fg text-lg mb-4">Give your assistant documents to answer from.</p>
-          {samplesShown ? (
-            <>
-              <PrimaryButton onClick={() => setSample(true)} disabled={!library.length}>Use sample data</PrimaryButton>
-              <div className="mt-3">
-                <button type="button" onClick={() => fileRef.current?.click()} className="text-sm text-pink-brand hover:underline" disabled={Boolean(busy)}>
-                  Upload your own PDF (public documents only)
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <PrimaryButton onClick={() => fileRef.current?.click()} disabled={Boolean(busy)}>Upload a PDF</PrimaryButton>
-              <p className="mt-3 text-sm text-fg/60">Public documents only.</p>
-            </>
-          )}
+          <PrimaryButton onClick={() => setSample(true)} disabled={!library.length}>Use sample data</PrimaryButton>
+          <div className="mt-3">
+            <button type="button" onClick={() => fileRef.current?.click()} className="text-sm text-pink-brand hover:underline" disabled={Boolean(busy)}>
+              Upload your own PDF (public documents only)
+            </button>
+          </div>
         </div>
       ) : (
-        <div className="space-y-3">
+        // View opens the PDF on the right of the document list (one column on narrow screens)
+        <div className={viewer ? 'grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] items-start' : undefined}>
+        <div className="space-y-3 min-w-0">
           <p className="text-sm text-fg/70">
             {docs.length} document{docs.length === 1 ? '' : 's'}, {totalPassages(docs)} passages. Each passage is one numbered paragraph with the heading above it.
           </p>
@@ -236,12 +227,13 @@ export default function KnowledgePanel({ agentId, sessionId }: { agentId: string
               )}
             </div>
           ))}
+        </div>
           {viewer && (
-            <div className="border border-magenta-brand/20 rounded-xl overflow-hidden">
+            <div className="border border-magenta-brand/20 rounded-xl overflow-hidden lg:sticky lg:top-4">
               <div className="flex justify-end px-3 py-1.5 bg-card border-b border-magenta-brand/15">
                 <button type="button" className="text-sm text-fg/60 hover:text-fg" onClick={() => setViewer(null)}>Close ✕</button>
               </div>
-              <div className="h-[65vh] min-h-[22rem]">
+              <div className="h-[75vh] min-h-[22rem]">
                 <PdfViewer target={viewer} agentId={agentId} sessionId={sessionId} />
               </div>
             </div>

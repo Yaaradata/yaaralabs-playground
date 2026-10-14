@@ -307,15 +307,26 @@ class Knowledge(unittest.TestCase):
         self.assertEqual(hits[0]["label"], "5.5.6")
         self.assertEqual([h["n"] for h in hits], [1, 2, 3, 4])
 
+    def test_rag_question_the_documents_do_not_cover_is_answered_from_own_knowledge(self):
+        svc, calls = service(kb=FakeKb())
+        with mock.patch.object(studio, "KB_RELEVANT", 1.01):  # nothing matches
+            out = svc.answer(AGENT("rag"), "What is AI?", "s")
+        system, contents, _ = calls["generate"][0]
+        self.assertIn("The documents don't cover this question", system)
+        self.assertNotIn("Passages:", contents[-1]["text"])
+        self.assertFalse(out["trace"].get("passages"))
+
     def test_document_filter(self):
         hits = FakeKb().search("A1", "trading hours", k=3, doc_title="T+0 beta circular")
         self.assertTrue(hits and all(h["doc_title"] == "T+0 beta circular" for h in hits))
 
     def test_rag_answer_uses_passages_and_empty_kb_needs_no_model(self):
         svc, calls = service(kb=FakeKb())
-        out = svc.answer(AGENT("rag"), "By when must a custodian put a wind-down framework in place?", "s")
+        with mock.patch.object(studio, "KB_RELEVANT", 0.0):  # the fake vectors score lower than real embeddings
+            out = svc.answer(AGENT("rag"), "By when must a custodian put a wind-down framework in place?", "s")
         system, contents, _ = calls["generate"][0]
-        self.assertIn("Answer using only the numbered passages", system)
+        self.assertIn("match the question. Answer from them", system)
+        self.assertIn("1) your INSTRUCTIONS", system)
         self.assertIn("Passages:", contents[-1]["text"])
         self.assertEqual(out["trace"]["citations"], [1])
         empty, calls2 = service(kb=FakeKb(rows=[]))
@@ -362,10 +373,11 @@ class Tools(unittest.TestCase):
         self.assertFalse([s for s in out["trace"]["steps"] if s["kind"] == "tool"][0]["blocked"])
 
     def test_loop_records_kb_and_web_steps(self):
-        out = self._loop(None, ["search_knowledge_base", "web_search"], [
-            {"id": "c1", "name": "search_knowledge_base", "args": {"query": "DR drill"}},
-            {"id": "c2", "name": "web_search", "args": {"query": "RBI repo rate"}},
-        ])
+        with mock.patch.object(studio, "KB_RELEVANT", 0.0):
+            out = self._loop(None, ["search_knowledge_base", "web_search"], [
+                {"id": "c1", "name": "search_knowledge_base", "args": {"query": "DR drill"}},
+                {"id": "c2", "name": "web_search", "args": {"query": "RBI repo rate"}},
+            ])
         t = out["trace"]
         self.assertEqual(t["tools_called"], ["search_knowledge_base", "web_search"])
         self.assertEqual(t["passages"][0]["label"], "5.5.6")

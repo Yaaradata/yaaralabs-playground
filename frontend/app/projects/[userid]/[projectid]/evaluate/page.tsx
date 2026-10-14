@@ -130,7 +130,13 @@ export default function EvaluatePage() {
               <h1 className="text-2xl md:text-3xl font-bold truncate text-center">
                 Evaluate <span className="text-fg/40">:</span> {project.name}
               </h1>
-              <span />
+              {/* the last step: straight back to the list of projects */}
+              <Link
+                href={`/projects/${urlUserId}`}
+                className="justify-self-end inline-flex items-center gap-2 whitespace-nowrap bg-purple-brand hover:bg-purple-brand/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+              >
+                Go back to project list
+              </Link>
             </div>
 
             {project.type === 'text-recognition' || project.type === 'image-recognition' ? (

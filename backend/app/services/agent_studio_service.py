@@ -36,17 +36,31 @@ HISTORY_CHARS = 500
 TEMPERATURE = 0.2
 ANSWER_CAP = 800
 KB_K = 4
+# Top passage score (dot product of normalised embeddings) from which a question counts as about the
+# documents: on the sample custody documents, questions they answer score 0.70-0.77, unrelated ones 0.38-0.56.
+KB_RELEVANT = 0.62
 MAX_ROUNDS = 5
 MAX_TOOLS = 12
 RESULT_CHARS = 4000
 WEB_MODEL = "gemini-2.5-flash"
 
-RAG_RULE = ("Answer using only the numbered passages. Cite every passage you use with its number in square brackets, "
-            "right after the sentence it supports. If the passages don't contain the answer, say: 'The documents don't "
-            "cover this.' and give the hand-off message. Greetings and small talk need no passages.")
-TOOL_RULE = ("Use your tools when they help. Use search_knowledge_base for SEBI or company documents, web_search for "
-             "anything current or not in the documents, and the calculators for any date or number. Say which source "
-             "you used.\nIndian equity trades settle T+1 (one business day after the trade) unless the user says otherwise.")
+# Every stage answers in the same order: (1) the instructions, guardrails and action constraints above,
+# (2) the documents, (3) the model's own knowledge. Steps 1-2 of answer_events (guardrail pre-check,
+# actions) run before any of this; the order below is what the model itself is told.
+ANSWER_ORDER = ("Decide how to answer in this order: 1) your INSTRUCTIONS, guardrails and any ACTION rules above come "
+                "first: if they say how to answer, or not to answer, do exactly that. 2) Otherwise use the documents "
+                "when they cover the question. 3) Otherwise answer from your own general knowledge, as yourself, "
+                "without mentioning documents.")
+RAG_RULE = (ANSWER_ORDER + "\nThe numbered passages below come from the documents and match the question. Answer from "
+            "them and cite every passage you use with its number in square brackets, right after the sentence it "
+            "supports. If they only cover part of the question, answer the rest from your own knowledge without a "
+            "citation.")
+NO_KB_RULE = (ANSWER_ORDER + "\nThe documents don't cover this question, so step 2 does not apply: follow step 1, "
+              "then answer from your own knowledge. Greetings and small talk are answered normally.")
+TOOL_RULE = (ANSWER_ORDER + "\nUse your tools when they help: search_knowledge_base for SEBI or company documents, "
+             "web_search for anything current or not in the documents, and the calculators for any date or number. "
+             "Say which source you used. If no tool helps, answer from your own knowledge.\n"
+             "Indian equity trades settle T+1 (one business day after the trade) unless the user says otherwise.")
 FORCE_KB_RULE = "An action requires it: call search_knowledge_base before you answer, and answer from what it returns."
 EMPTY_KB_REPLY = "Add documents in Knowledge Base first."
 WEB_PROMPT = "Search the web for: {query}. Reply with 3-6 short factual bullet points and nothing else."
@@ -514,13 +528,18 @@ class AgentStudioService:
             if self.kb.is_empty(agent_id):
                 yield from whole(EMPTY_KB_REPLY)
                 return
-            if stream:
-                yield {"type": "status", "text": "Reading the documents..."}
             hits = self.kb.search(agent_id, message, k=KB_K, doc_title=kb_doc_filter(constraints))
+            # the documents only count when they match the question (an action may require them anyway)
+            relevant = bool(hits) and (hits[0].get("score", 0) >= KB_RELEVANT or bool((constraints or {}).get("use_kb")))
+            if stream:
+                yield {"type": "status", "text": "Reading the documents..." if relevant else "Thinking..."}
+            if not relevant:
+                system = system_instruction(persona, guardrails, constraints, NO_KB_RULE)
+                yield from generated(system, history + [{"role": "user", "text": message}])
+                return
             trace["kb_used"] = [f"{h['doc_id']}#{h['label']}" for h in hits]
             system = system_instruction(persona, guardrails, constraints, RAG_RULE)
-            passages = agent_kb_format(hits) or "(No passage matched the question.)"
-            user = f"Passages:\n\n{passages}\n\nQuestion: {message}"
+            user = f"Passages:\n\n{agent_kb_format(hits)}\n\nQuestion: {message}"
             yield from generated(system, history + [{"role": "user", "text": user}],
                                  after=lambda text: trace.update(mark_citations(text, hits)))
             return
@@ -598,10 +617,12 @@ class AgentStudioService:
                     step.update(group="unknown", ok=False)
                 elif name == "search_knowledge_base":
                     hits = self.kb.search(agent_id, str(args.get("query") or message), k=KB_K, doc_title=doc_filter)
+                    if hits and hits[0].get("score", 0) < KB_RELEVANT and not force_kb:
+                        hits = []  # nothing in the documents matches: other tools or its own knowledge answer
                     for h in hits:
                         h["n"] = len(passages) + 1
                         passages.append(h)
-                    result = {"passages": agent_kb_format(hits) or "No passage matched.",
+                    result = {"passages": agent_kb_format(hits) or "The documents don't cover this. Use another tool or your own knowledge.",
                               "how_to_cite": "Cite a passage you use by its number in square brackets, like [2]."}
                     step.update(group="lookup", passages=[h["n"] for h in hits], query=str(args.get("query") or ""))
                 elif name == "web_search":

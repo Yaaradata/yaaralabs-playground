@@ -1710,7 +1710,7 @@ export default function LearnPage() {
           )}
 
             {/* Bottom section: training state, the test card, model details (text: the right column, scrolls inside the window) */}
-            <div className={isCompact ? 'min-w-0 space-y-4 lg:max-h-[calc(100dvh-14.5rem)] lg:overflow-y-auto lg:pr-1' : undefined}>
+            <div className={isCompact ? 'min-w-0 space-y-4 lg:max-h-[calc(100dvh-11rem)] lg:overflow-y-auto lg:pr-1' : undefined}>
 
              {/* Text: the right column before testing opens: an empty state, or the training stages */}
              {isCompact && !isInitializing && (!trainedModel || isTraining || trainPhase !== null) && (() => {
