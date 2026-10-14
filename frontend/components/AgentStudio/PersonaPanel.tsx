@@ -105,49 +105,55 @@ export default function PersonaPanel({ agentId, stage, onSaved }: { agentId: str
         subtitle="How the agent talks"
       />
       <div className="space-y-6">
-        <div>
-          <label htmlFor="as-name" className="block text-sm font-semibold text-fg mb-1">Agent Name</label>
-          <p className="text-sm text-fg/60 mb-2">The name shown in the conversation</p>
-          <input id="as-name" className={input} value={name} onChange={(e) => setName(e.target.value)} placeholder="Asha" />
-        </div>
-        <div>
-          <label htmlFor="as-role" className="block text-sm font-semibold text-fg mb-1">Agent Role</label>
-          <p className="text-sm text-fg/60 mb-2">Its job title</p>
-          <input id="as-role" className={input} value={role} onChange={(e) => setRole(e.target.value)} placeholder="Custody client-service assistant" />
-        </div>
-        <div>
-          <div className="block text-sm font-semibold text-fg mb-2">Tone of Voice</div>
-          <div className="flex flex-wrap gap-3" role="radiogroup" aria-label="Tone of voice">
-            {TONES.map(([v, emoji, label]) => (
-              <button
-                key={v}
-                type="button"
-                role="radio"
-                aria-checked={tone === v}
-                onClick={() => setTone(v)}
-                className={`min-w-[8.5rem] px-6 py-4 rounded-xl text-center transition-all ${tone === v ? 'border-2 border-magenta-brand bg-purple-brand/10' : 'border border-magenta-brand/20 hover:border-magenta-brand/40'}`}
-              >
-                <span className="text-3xl mb-1.5 block" aria-hidden="true">{emoji}</span>
-                <span className="text-base font-medium text-fg">{label}</span>
-              </button>
-            ))}
+        {/* name and role side by side (one column on narrow screens) */}
+        <div className="grid gap-x-6 gap-y-6 md:grid-cols-2">
+          <div>
+            <label htmlFor="as-name" className="block text-sm font-semibold text-fg mb-1">Agent Name</label>
+            <p className="text-sm text-fg/60 mb-2">The name shown in the conversation</p>
+            <input id="as-name" className={input} value={name} onChange={(e) => setName(e.target.value)} placeholder="Asha" />
+          </div>
+          <div>
+            <label htmlFor="as-role" className="block text-sm font-semibold text-fg mb-1">Agent Role</label>
+            <p className="text-sm text-fg/60 mb-2">Its job title</p>
+            <input id="as-role" className={input} value={role} onChange={(e) => setRole(e.target.value)} placeholder="Custody client-service assistant" />
           </div>
         </div>
-        <div>
-          <div className="block text-sm font-semibold text-fg mb-2">Chat Response Length</div>
-          <div className="flex flex-wrap gap-3" role="radiogroup" aria-label="Chat response length">
-            {LENGTHS.map(([v, label]) => (
-              <button
-                key={v}
-                type="button"
-                role="radio"
-                aria-checked={length === v}
-                onClick={() => setLength(v)}
-                className={`min-w-[7rem] px-6 py-3 rounded-xl text-base font-medium text-fg transition-all ${length === v ? 'border-2 border-magenta-brand bg-purple-brand/10' : 'border border-magenta-brand/20 hover:border-magenta-brand/40'}`}
-              >
-                {label}
-              </button>
-            ))}
+        {/* tone and length side by side (one column on narrow screens) */}
+        <div className="grid gap-x-6 gap-y-6 md:grid-cols-2">
+          <div>
+            <div className="block text-sm font-semibold text-fg mb-2">Tone of Voice</div>
+            <div className="grid grid-cols-3 gap-3" role="radiogroup" aria-label="Tone of voice">
+              {TONES.map(([v, emoji, label]) => (
+                <button
+                  key={v}
+                  type="button"
+                  role="radio"
+                  aria-checked={tone === v}
+                  onClick={() => setTone(v)}
+                  className={`h-28 w-full px-3 rounded-xl flex flex-col items-center justify-center text-center transition-all ${tone === v ? 'border-2 border-magenta-brand bg-purple-brand/10' : 'border border-magenta-brand/20 hover:border-magenta-brand/40'}`}
+                >
+                  <span className="text-3xl mb-1.5 block" aria-hidden="true">{emoji}</span>
+                  <span className="text-base font-medium text-fg">{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="block text-sm font-semibold text-fg mb-2">Chat Response Length</div>
+            <div className="grid grid-cols-4 gap-3" role="radiogroup" aria-label="Chat response length">
+              {LENGTHS.map(([v, label]) => (
+                <button
+                  key={v}
+                  type="button"
+                  role="radio"
+                  aria-checked={length === v}
+                  onClick={() => setLength(v)}
+                  className={`h-28 w-full px-3 rounded-xl flex items-center justify-center text-base font-medium text-fg transition-all ${length === v ? 'border-2 border-magenta-brand bg-purple-brand/10' : 'border border-magenta-brand/20 hover:border-magenta-brand/40'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
         <div>
