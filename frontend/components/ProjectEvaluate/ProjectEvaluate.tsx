@@ -17,6 +17,7 @@ import { SAMPLE_SOURCES, validateDataset } from '../SampleLabelling/sample';
 import {
   labelNamesKey,
   loadSampleImages,
+  readRegion,
   readLabelNames,
   sampleImageFile,
   sampleImageUrl,
@@ -95,7 +96,7 @@ export default function ProjectEvaluate({ sessionId, projectId, learnHref, kind 
         trained = d.status === 'trained';
         labels = (d.model?.labels?.length ? d.model.labels : d.dataset?.labels ?? []).map(String);
         if (kind === 'image') {
-          const sample = await loadSampleImages();
+          const sample = await loadSampleImages(readRegion(labelNamesKey(sessionId, projectId)));
           const renamed = readLabelNames(labelNamesKey(sessionId, projectId));
           const standard = imageExam(sample.test, 'Test', labels, renamed);
           const deep = imageExam(sample.deepTest ?? [], 'Deep', labels, renamed);

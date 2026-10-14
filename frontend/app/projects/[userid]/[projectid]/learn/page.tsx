@@ -952,15 +952,18 @@ export default function LearnPage() {
   // Text / Image Recognition "Export": the trained model's deployed URL
   const [showExport, setShowExport] = useState(false);
 
+  // Measured on the sample data with backend/scripts/measure_model_cards.py (trained on the 20 samples):
+  // accuracy = right on the unseen test set; unknown = off-topic inputs it is under 50% sure about,
+  // so it does not pass them off as a label; speed = time per prediction.
   const textModels = [
-    { id: 'logistic_regression' as const, name: 'Logistic Regression', hint: 'Fast, reads meaning' },
-    { id: 'distilbert' as const, name: 'DistilBERT', hint: 'Slower, bigger model' },
+    { id: 'logistic_regression' as const, name: 'Logistic Regression', accuracy: 83, unknown: 100, speedMs: 15 },
+    { id: 'distilbert' as const, name: 'DistilBERT', accuracy: 42, unknown: 100, speedMs: 33 },
   ];
   const imageModels = [
-    { id: 'mobilenet' as const, name: 'MobileNet', hint: 'Fast, small' },
-    { id: 'efficientnet' as const, name: 'EfficientNet', hint: 'Bigger, slower' },
+    { id: 'mobilenet' as const, name: 'MobileNet', accuracy: 58, unknown: 10, speedMs: 85 },
+    { id: 'efficientnet' as const, name: 'EfficientNet', accuracy: 75, unknown: 40, speedMs: 116 },
   ];
-  const choices: { id: string; name: string; hint: string }[] = isImageProject ? imageModels : textModels;
+  const choices: { id: string; name: string; accuracy: number; unknown: number; speedMs: number }[] = isImageProject ? imageModels : textModels;
   const chosen = isImageProject ? selectedImageModel : selectedTextModel;
   const choose = (id: string) =>
     isImageProject ? setSelectedImageModel(id as 'mobilenet' | 'efficientnet') : setSelectedTextModel(id as 'logistic_regression' | 'distilbert');
@@ -981,7 +984,14 @@ export default function LearnPage() {
             }`}
           >
             <span className="block text-sm font-semibold text-fg">{m.name}</span>
-            <span className="block text-xs text-fg/60">{m.hint}</span>
+            <dl className="mt-1 grid grid-cols-3 gap-1 text-xs">
+              {([['Accuracy', `${m.accuracy}%`], ['Unknown', `${m.unknown}%`], ['Speed', `${m.speedMs} ms`]] as const).map(([k, v]) => (
+                <div key={k}>
+                  <dt className="text-fg/50">{k}</dt>
+                  <dd className="font-semibold text-fg tabular-nums">{v}</dd>
+                </div>
+              ))}
+            </dl>
           </button>
         );
       })}
@@ -1014,9 +1024,9 @@ export default function LearnPage() {
     return { label: data.label, confidence: Math.round(data.confidence * 100) / 100 };
   };
 
-  // Text projects: after "Train model", step through training -> deploying -> ready for testing,
+  // Text projects: after "Train model", step through training -> checking -> ready for testing,
   // a few seconds each, before the test area opens (training itself is often near-instant)
-  const TRAIN_STEPS = ['Training model', 'Deploying model', 'Ready for testing'] as const;
+  const TRAIN_STEPS = ['Training model', 'Checking the model', 'Ready for testing'] as const;
   const STEP_MS = 2500;
   const [trainPhase, setTrainPhase] = useState<number | null>(null); // index into TRAIN_STEPS
   const phaseStartedAt = useRef(0);
@@ -1431,8 +1441,9 @@ export default function LearnPage() {
     console.log('Describe model clicked');
   };
 
-  // "Use the AI" opens once a trained model is ready (and the training steps have finished)
-  const canUseAI = trainedModel?.status === 'available' && !isTraining && trainPhase === null;
+  // "Use the AI" opens once a trained model is ready (and the training steps have finished).
+  // Text / Image Recognition reach it from Export ("Use it in AI" in the dialog), so no button here.
+  const canUseAI = !isCompact && trainedModel?.status === 'available' && !isTraining && trainPhase === null;
 
   // Check if training requirements are met
   const canTrainModel = trainingStats.totalExamples >= 5 && trainingStats.totalLabels >= 2;

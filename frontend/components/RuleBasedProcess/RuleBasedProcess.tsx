@@ -29,7 +29,7 @@ type RuleBasedProcessProps = {
   ml?: MlOptions;
   /** "desk-routing": open on the keyword-rules starter (Rule Based Process projects). */
   starter?: 'desk-routing';
-  /** Replaces Sparky's stage on the right (Live Object Detection: the webcam). */
+  /** Replaces Aria's stage on the right (Live Object Detection: the webcam). */
   stage?: ReactNode;
 };
 
@@ -245,7 +245,7 @@ export default function RuleBasedProcess({
           }
         }
       }
-      // the host's stage takes Sparky's place in the Stage pane
+      // the host's stage takes Aria's place in the Stage pane
       const out = root.querySelector('#p-out');
       if (hasStageRef.current && out) {
         root.classList.add('rbp-video');

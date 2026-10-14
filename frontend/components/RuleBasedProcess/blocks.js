@@ -55,7 +55,8 @@ var CAT = {
     // model from its deployed URL, and a hat that runs when the model sees one of its labels
     ml_video_transp:  { cat: "ml", shape: "stack", parts: [L("set video transparency to"), N("T", 50)] },
     ml_video_turn:    { cat: "ml", shape: "stack", parts: [L("turn video"), { t: "fld", n: "STATE", opts: ["on", "off", "on flipped"] }] },
-    ml_use_model_url: { cat: "ml", shape: "stack", parts: [L("use model"), T("URL", "")] },
+    // The deployed model's URL (Export on the training page); Enter in the box loads its labels
+    ml_use_model_url: { cat: "ml", shape: "stack", parts: [L("use deployed model"), T("URL", "")] },
     ml_when_detects:  { cat: "ml", shape: "hat", parts: [L("when model detects"), { t: "fld", n: "LABEL", src: "labels" }] },
     ml_detected:      { cat: "ml", shape: "rep", parts: [L("detected object")] },
     ml_detected_conf: { cat: "ml", shape: "rep", parts: [L("detection confidence %")] },
@@ -404,15 +405,17 @@ var CAT = {
       : p.opts;
     var cur = b.fields[p.n];
     if (cur && opts.indexOf(cur) < 0) opts = opts.concat([cur]);
+    if (!cur && p.src === "labels" && ctx.labels && ctx.labels.length) opts = [""].concat(opts);
     opts.forEach(function (o) {
       var op = document.createElement("option");
-      op.value = o; op.textContent = o;
+      op.value = o; op.textContent = o === "" ? "pick a label" : o;
       op.style.color = "#010101";
       op.style.backgroundColor = "#ffffff";
       if (o === cur) op.selected = true;
       sel.appendChild(op);
     });
-    if (!cur && opts.length) b.fields[p.n] = opts[0];
+    // a label menu stays empty until the learner picks one (the labels come with the model)
+    if (!cur && opts.length && p.src !== "labels") b.fields[p.n] = opts[0];
     return sel;
   }
 

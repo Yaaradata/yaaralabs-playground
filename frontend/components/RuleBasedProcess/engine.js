@@ -32,18 +32,23 @@ export function mountRuleBasedProcess(root, options) {
     var mlImage = !!(ML && ML.kind === "image");
     // Live Object Detection: the host shows the webcam and runs the model (ML.connect / video / say / stop)
     var mlVideo = !!(ML && ML.kind === "video");
-    var mlReady = !!(ML && ML.trained && ML.labels && ML.labels.length &&
+    // URL mode (ML.load): the page opens with no model. The learner pastes the deployed URL into
+    // "use deployed model" and presses Enter; ML.load reads the model and its labels then appear.
+    var mlUrlMode = !!(ML && typeof ML.load === "function");
+    var mlReady = !!(ML && (mlUrlMode || (ML.trained && ML.labels && ML.labels.length)) &&
       typeof (mlImage ? ML.recogniseImage : mlVideo ? ML.connect : ML.recognise) === "function");
-    var mlLabels = mlReady ? ML.labels.map(String) : [];
+    var mlLabels = mlReady && !mlUrlMode ? ML.labels.map(String) : [];
     var mlModel = (ML && ML.model) || {};
     var mlModelName = String(mlModel.name || "My model");
+    var mlLoadedUrl = ""; // URL mode: the URL whose labels are shown
     // Chat view: Text / Image Recognition "Use the AI" and Rule Based Process projects. No task text
     // (the right column is the chat), one Run / Stop button on the canvas instead of the header
-    // toolbar, and one colour for every Sparky bubble (.rbp-ml in the CSS).
+    // toolbar, and one colour for every Aria bubble (.rbp-ml in the CSS).
     var CHAT_VIEW = !!ML || options.starter === "desk-routing";
     if (CHAT_VIEW) root.classList.add("rbp-ml");
     // Saved workspaces from before the current ML starter open on the new starter once
-    var ML_STATE_TAG = mlImage ? "image-2" : mlVideo ? "video-1" : "text-5";
+    var ML_STATE_TAG = mlUrlMode ? (mlImage ? "image-url-2" : mlVideo ? "video-url-2" : "text-url-2")
+      : mlImage ? "image-2" : mlVideo ? "video-1" : "text-5";
     function hiddenCat(cat) {
       if (cat === "ml") return !mlReady;
       if (cat === "model") return !!ML;
@@ -201,12 +206,12 @@ export function mountRuleBasedProcess(root, options) {
           mk("when_flag"),
           mk("ml_video_transp", { i: { T: "50" } }),
           mk("ml_video_turn", { f: { STATE: "on" } }),
-          mk("ml_use_model_url", { i: { URL: String(mlModel.url || "") } }),
+          mk("ml_use_model_url", { i: { URL: mlUrlMode ? "" : String(mlModel.url || "") } }),
         ] }];
-        mlLabels.forEach(function (l, i) {
+        (mlUrlMode ? ["", ""] : mlLabels).forEach(function (l, i) {
           stacks.push({ x: 30 + (i % 2) * 340, y: 250 + Math.floor(i / 2) * 150, blocks: [
             mk("ml_when_detects", { f: { LABEL: l } }),
-            mk("say_secs", { i: { MSG: l, SECS: "2" } }),
+            mk("say_secs", { i: { MSG: l || "I can see it!", SECS: "2" } }),
           ] });
         });
         return { stacks: stacks };
@@ -219,18 +224,20 @@ export function mountRuleBasedProcess(root, options) {
         answer: { type: "text" },
         brief: "Use your trained model.\n\n" +
                "Press Run and choose an image (upload, webcam or a test image). " +
-               "The model recognises it, then Sparky says what it found.\n\n" +
-               "Your labels: " + mlLabels.join(", ") + "\n\n" +
-               "Try: if recognised label = " + mlLabels[0] + " then say something special.",
+               "The model recognises it, then Aria says what it found.\n\n" +
+               (mlUrlMode ? "Paste your model\u2019s URL into \u201Cuse deployed model\u201D and press Enter: its labels appear on the left.\n\n"
+                 : "Your labels: " + mlLabels.join(", ") + "\n\n") +
+               "Try: if recognised label = (a label) then say something special.",
         tests: [],
         solution: function () {
           return [
             mk("when_flag"),
-            mk("ml_use_model", { f: { MODEL: mlModelName } }),
+            mlUrlMode ? mk("ml_use_model_url", { i: { URL: "" } }) : mk("ml_use_model", { f: { MODEL: mlModelName } }),
             mk("ml_recognise_image"),
             mk("set_var", { f: { VAR: "Label" }, i: { VAL: mk("ml_label") } }),
             mk("if_else", {
-              i: { COND: mk("op_eq", { i: { A: V("Label"), B: mk("ml_label_name", { f: { LABEL: mlLabels[0] } }) } }) },
+              // URL mode: the slot stays empty until the learner drags a label in
+              i: { COND: mk("op_eq", { i: { A: V("Label"), B: mlUrlMode ? "" : mk("ml_label_name", { f: { LABEL: mlLabels[0] } }) } }) },
               body: [mk("say", { i: { MSG: mk("op_join", { i: { A: "This looks like ", B: V("Label") } }) } })],
               body2: [mk("say", { i: { MSG: mk("op_join", { i: { A: "I think this is ", B: V("Label") } }) } })],
             }),
@@ -253,10 +260,16 @@ export function mountRuleBasedProcess(root, options) {
               body: [mk("say", { i: { MSG: deskFor(l) } })],
             });
           });
+          if (mlUrlMode) routes = ["Corporate action", "Fees and billing", "Onboarding and KYC", "Complaint or escalation"].map(function (l) {
+            return mk("if_then", {
+              i: { COND: mk("op_eq", { i: { A: mk("ml_text_label", { i: { TEXT: mk("answer") } }), B: "" } }) },
+              body: [mk("say", { i: { MSG: deskFor(l) } })],
+            });
+          });
           return [
             mk("when_flag"),
-            mk("ml_use_model", { f: { MODEL: mlModelName } }),
-            // no question text: Sparky just waits for the client message in the reply box
+            mlUrlMode ? mk("ml_use_model_url", { i: { URL: "" } }) : mk("ml_use_model", { f: { MODEL: mlModelName } }),
+            // no question text: Aria just waits for the client message in the reply box
             mk("forever", { body: [mk("ask", { i: { Q: "" } })].concat(routes) }),
           ];
         },
@@ -298,7 +311,7 @@ export function mountRuleBasedProcess(root, options) {
         return [
           mk("when_flag"),
           mk("forever", { body: [
-            // no question text: Sparky just waits for the client message in the reply box
+            // no question text: Aria just waits for the client message in the reply box
             mk("ask", { i: { Q: "" } }),
             mk("set_var", { f: { VAR: "Desk" }, i: { VAL: DESK_NONE } }),
           ].concat(rules, [
@@ -313,7 +326,7 @@ export function mountRuleBasedProcess(root, options) {
     } : null;
     if (DESK_CONCEPT) PRESETS.unshift(DESK_CONCEPT);
 
-    /** What Sparky says for each label in the text starter (the Nuvama sample desks, else generic). */
+    /** What Aria says for each label in the text starter (the Nuvama sample desks, else generic). */
     function deskFor(label) {
       var desks = {
         "corporate action": "Send this to the Corporate Actions desk.",
@@ -335,7 +348,7 @@ export function mountRuleBasedProcess(root, options) {
         if (!b || typeof b !== "object") return;
         if (b.op === "op_contains" && b.inputs && b.inputs.A && b.inputs.A.op === "answer" &&
             typeof b.inputs.B === "string") b.op = "op_contains_any";
-        // the starter used to ask "Type a client message"; Sparky now just waits, like a chat bot
+        // the starter used to ask "Type a client message"; Aria now just waits, like a chat bot
         if (b.op === "ask" && b.inputs && b.inputs.Q === "Type a client message") b.inputs.Q = "";
         Object.keys(b.inputs || {}).forEach(function (k) { walk(b.inputs[k]); });
         (b.body || []).forEach(walk);
@@ -625,8 +638,8 @@ export function mountRuleBasedProcess(root, options) {
       if (tab === "ml") {
         var onlyHere = mlVideo
           ? ["ml_video_transp", "ml_video_turn", "ml_use_model_url", "ml_when_detects", "ml_detected", "ml_detected_conf", "ml_label_name"]
-          : mlImage ? ["ml_use_model", "ml_recognise_image", "ml_label", "ml_confidence", "ml_label_name"]
-            : ["ml_use_model", "ml_text_label", "ml_text_conf", "ml_label_name"];
+          : mlImage ? [mlUrlMode ? "ml_use_model_url" : "ml_use_model", "ml_recognise_image", "ml_label", "ml_confidence", "ml_label_name"]
+            : [mlUrlMode ? "ml_use_model_url" : "ml_use_model", "ml_text_label", "ml_text_conf", "ml_label_name"];
         list = list.filter(function (it) { return !(it.kind === "op" && onlyHere.indexOf(it.op) < 0); });
         // drop section headers left with nothing under them
         list = list.filter(function (it, k) {
@@ -636,6 +649,7 @@ export function mountRuleBasedProcess(root, options) {
         for (var li = 0; li < list.length; li++) if (list[li].kind === "op" && list[li].op === "ml_label_name") at = li;
         if (at > -1) {
           var labelItems = mlLabels.map(function (l) { return { kind: "op", op: "ml_label_name", opts: { f: { LABEL: l } } }; });
+          if (!labelItems.length && mlUrlMode) labelItems = [{ kind: "hint", label: "Paste your model’s URL into “use deployed model” and press Enter: its labels appear here." }];
           list.splice.apply(list, [at, 1].concat(labelItems));
         }
       }
@@ -650,6 +664,13 @@ export function mountRuleBasedProcess(root, options) {
       }
 
       list.forEach(function (item) {
+        if (item.kind === "hint") {
+          var hint = document.createElement("p");
+          hint.className = "palhint";
+          hint.textContent = item.label;
+          host.appendChild(hint);
+          return;
+        }
         if (item.kind === "sec") {
           var h = document.createElement("div");
           h.className = "palsec" + (item.pin ? " pin" : "");
@@ -1155,6 +1176,34 @@ export function mountRuleBasedProcess(root, options) {
         if ($("#p-code").classList.contains("on")) renderCode();
       }
     });
+    // "use deployed model [URL]": Enter loads the model and shows its labels (URL mode)
+    on(document, "keydown", function (e) {
+      var t = e.target;
+      if (!mlUrlMode || e.key !== "Enter" || !t.classList || !t.classList.contains("fld")) return;
+      var b = findBlock(t.dataset.owner);
+      if (!b || b.op !== "ml_use_model_url") return;
+      e.preventDefault();
+      t.blur();
+      if (mlVideo) {
+        var url = String(t.value || "").trim();
+        if (!url) return;
+        setBuddyMood("think", "Loading your model\u2026");
+        ML.load(url).then(function (info) {
+          mlLabels = ((info && info.labels) || []).map(String);
+          mlLoadedUrl = url;
+          buildPalette();
+          render();
+          logLine("out", "\u2713", "Model loaded: \u201C" + ((info && info.name) || mlModelName) + "\u201D. Labels: " + mlLabels.join(", ") +
+            ". Drag \u201Cwhen model detects\u201D from the left and pick a label.");
+          setBuddyMood("idle", "Your model is ready. Press Run when your blocks are set.", { force: true });
+        }, function (err) {
+          logLine("warn", "!", (err && err.message) ? String(err.message) : "Could not load a model from that URL.");
+          setBuddyMood("idle", "Check the URL and press Enter again.", { force: true });
+        });
+      } else {
+        loadModelUrl(t.value, false);
+      }
+    });
     on(document, "change", function (e) {
       var t = e.target;
       if (t.classList.contains("dd")) {
@@ -1395,14 +1444,14 @@ export function mountRuleBasedProcess(root, options) {
       if (buddy) buddy.setAttribute("data-mood", m);
       if (speech && line != null) {
         if (m === "idle" && /Press Run/i.test(String(line))) {
-          speech.innerHTML = "Hi! Press <b>Run</b> and I\u2019ll act out your script.";
+          speech.innerHTML = "Hello, I\u2019m Aria. Press <b>Run</b> to start the conversation.";
         } else {
           speech.textContent = String(line);
         }
       }
       if (tag) {
         var tags = {
-          idle: "Sparky",
+          idle: "Aria",
           listen: "Waiting",
           type: "Listening",
           speak: "Saying",
@@ -1410,7 +1459,7 @@ export function mountRuleBasedProcess(root, options) {
           cheer: "Nice!",
           wait: "Hmm"
         };
-        tag.textContent = tags[m] || "Sparky";
+        tag.textContent = tags[m] || "Aria";
       }
     }
 
@@ -1472,10 +1521,10 @@ export function mountRuleBasedProcess(root, options) {
       if (kind === "ask") R._turn += 1;
 
       var roles = {
-        out: "Sparky",
-        ask: "Sparky",
+        out: "Aria",
+        ask: "Aria",
         in: "You",
-        think: "Sparky",
+        think: "Aria",
         sys: "",
         warn: "Note"
       };
@@ -1600,13 +1649,13 @@ export function mountRuleBasedProcess(root, options) {
       resetBuddyMoodQueue();
       if (c) {
         c.innerHTML =
-          '<div class="ph">Press <b>Run</b> to start chatting with Sparky.' +
+          '<div class="ph">Press <b>Run</b> to start chatting with Aria.' +
           '<span class="ph-sub">Questions on the left. Your replies on the right.</span></div>';
       }
       if (stage) {
         stage.classList.remove("is-live", "is-cue");
       }
-      setBuddyMood("idle", "Hi! Press Run and I\u2019ll act out your script.", { force: true });
+      setBuddyMood("idle", "Hello, I\u2019m Aria. Press Run to start the conversation.", { force: true });
     }
     function say(msg, secs) {
       R.outs.push(String(msg));
@@ -1736,6 +1785,47 @@ export function mountRuleBasedProcess(root, options) {
       }
     }
 
+    /** URL mode: read the model at `url` (ML.load), then show its labels in the palette and in the
+     *  label menus. Called on Enter in "use deployed model" and when the block runs. */
+    async function loadModelUrl(raw, quiet) {
+      var url = String(raw == null ? "" : raw).trim();
+      if (!url) {
+        if (!quiet) logLine("warn", "!", "Paste your model\u2019s URL into \u201Cuse deployed model\u201D (Export on the training page), then press Enter.");
+        return false;
+      }
+      if (url === mlLoadedUrl) return true;
+      if (!quiet) setBuddyMood("think", "Loading your model\u2026");
+      try {
+        var info = (await ML.load(url)) || {};
+        mlLabels = (info.labels || []).map(String);
+        mlModel = info;
+        mlModelName = String(info.name || "My model");
+        mlLoadedUrl = url;
+        buildPalette();
+        render();
+        if (!quiet) {
+          var bits = [info.type, info.trainedAt ? "trained " + info.trainedAt : ""].filter(Boolean).join(" \u00b7 ");
+          logLine("out", "\u2713", "Model loaded: \u201C" + mlModelName + "\u201D" + (bits ? " (" + bits + ")" : "") +
+            ". Labels: " + mlLabels.join(", ") + ". Drag them from the left into your blocks.");
+          setBuddyMood("idle", "Your model is ready. Press Run when your blocks are set.", { force: true });
+        }
+        return true;
+      } catch (err) {
+        if (!quiet) {
+          logLine("warn", "!", (err && err.message) ? String(err.message) : "Could not load a model from that URL.");
+          setBuddyMood("idle", "Check the URL and press Enter again.", { force: true });
+        }
+        return false;
+      }
+    }
+
+    /** URL mode, "use deployed model [URL]" in a run (text / image): load it if needed, then connect. */
+    async function connectModelUrl(raw) {
+      if (!(await loadModelUrl(raw, false))) return;
+      R.mlConnected = true;
+      if (!R.fast) logLine("out", "\u2713", "Connected to your deployed model \u201C" + mlModelName + "\u201D.");
+    }
+
     /** Live Object Detection, "use model [URL]": the host loads the model from its deployed URL and
      *  then reports every webcam prediction to onVideoPrediction. */
     async function connectVideoModel(raw) {
@@ -1747,6 +1837,12 @@ export function mountRuleBasedProcess(root, options) {
       try {
         var info = await ML.connect(url, onVideoPrediction);
         R.mlConnected = true;
+        if (mlUrlMode && url !== mlLoadedUrl && info && info.labels) {
+          mlLabels = info.labels.map(String);
+          mlLoadedUrl = url;
+          buildPalette();
+          render();
+        }
         logLine("out", "\u2713", "Connected to your deployed model \u201C" + ((info && info.name) || mlModelName) + "\u201D. URL: " + url);
       } catch (err) {
         logLine("warn", "!", (err && err.message) ? String(err.message) : "Could not load a model from that URL.");
@@ -2142,7 +2238,8 @@ export function mountRuleBasedProcess(root, options) {
           break;
         case "ml_use_model_url":
           highlight(b, false);
-          await connectVideoModel(evalIn(b, "URL"));
+          if (mlVideo) await connectVideoModel(evalIn(b, "URL"));
+          else await connectModelUrl(evalIn(b, "URL"));
           if (R.stop) { highlight(b, false); return "stop"; }
           highlight(b, true);
           break;
@@ -2350,8 +2447,9 @@ export function mountRuleBasedProcess(root, options) {
     $$(".ptab").forEach(function (t) {
       t.onclick = function () { showPane(t.dataset.p); };
     });
-    // "Use the AI" (ML mode) shows only the Stage: no Python tab
-    if (ML && $("#ptabs")) $("#ptabs").style.display = "none";
+    // Only the chat: no Stage / Python tabs
+    showPane("out");
+    if ($("#ptabs")) $("#ptabs").style.display = "none";
     // Chat view: no header toolbar (run, stop, restart, reset, undo, full screen): the canvas button
     // runs it. The buttons stay in the page, hidden, because the canvas button clicks #run / #stop.
     if (CHAT_VIEW && $(".runbar")) $(".runbar").style.display = "none";
@@ -2370,7 +2468,7 @@ export function mountRuleBasedProcess(root, options) {
       cr.onclick = function () { (R.on ? $("#stop") : $("#run")).click(); };
       $("#wrap").appendChild(cr);
     }
-    // ...and one colour for every Sparky bubble (see .rbp-ml in the CSS)
+    // ...and one colour for every Aria bubble (see .rbp-ml in the CSS)
     if (CHAT_VIEW && $("#console") && $("#console").closest(".rbp-root")) $("#console").closest(".rbp-root").classList.add("rbp-ml");
   
     $("#restart").onclick = function () {
@@ -3860,6 +3958,27 @@ export function mountRuleBasedProcess(root, options) {
       loadConcept(PRESETS[0]);
     }
     on(window, "resize", function () { BL.paint(world); });
+
+    if (mlUrlMode) {
+      var savedUrl = "";
+      W.stacks.forEach(function (st) {
+        st.blocks.forEach(function (b) {
+          if (!savedUrl && b.op === "ml_use_model_url" && typeof b.inputs.URL === "string") savedUrl = b.inputs.URL.trim();
+        });
+      });
+      if (savedUrl) {
+        if (mlVideo) {
+          ML.load(savedUrl).then(function (info) {
+            mlLabels = ((info && info.labels) || []).map(String);
+            mlLoadedUrl = savedUrl;
+            buildPalette();
+            render();
+          }, function () {});
+        } else {
+          loadModelUrl(savedUrl, true);
+        }
+      }
+    }
 
     if ($("#save")) {
       $("#save").onclick = function () {

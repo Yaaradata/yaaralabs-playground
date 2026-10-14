@@ -1,0 +1,100 @@
+{
+  "name": "Nuvama client documents · United States",
+  "description": "US documents a custody client sends in: 4 labels, 5 images each, plus 12 unseen test images (some blurred, cropped or photographed at an angle).",
+  "labels": [
+    {
+      "label": "KYC",
+      "covers": "Blank US brokerage, fund and bank account-opening (KYC / CIP) forms",
+      "files": [
+        "KYC/kyc_01.jpg",
+        "KYC/kyc_02.jpg",
+        "KYC/kyc_03.jpg",
+        "KYC/kyc_04.jpg",
+        "KYC/kyc_05.jpg"
+      ]
+    },
+    {
+      "label": "Corporate action",
+      "covers": "SEC 8-K press releases: dividends, stock splits, spin-offs, buybacks, acquisitions",
+      "files": [
+        "corporate_action/ca_01.jpg",
+        "corporate_action/ca_02.jpg",
+        "corporate_action/ca_03.jpg",
+        "corporate_action/ca_04.jpg",
+        "corporate_action/ca_05.jpg"
+      ]
+    },
+    {
+      "label": "Invoice",
+      "covers": "US business invoices in different layouts (USD), modern and historic",
+      "files": [
+        "invoice/inv_01.jpg",
+        "invoice/inv_02.jpg",
+        "invoice/inv_03.jpg",
+        "invoice/inv_04.jpg",
+        "invoice/inv_05.jpg"
+      ]
+    },
+    {
+      "label": "Cheque",
+      "covers": "Real US check photos and scans, each from a different bank",
+      "files": [
+        "cheque/chq_01.jpg",
+        "cheque/chq_02.jpg",
+        "cheque/chq_03.jpg",
+        "cheque/chq_04.jpg",
+        "cheque/chq_05.jpg"
+      ]
+    }
+  ],
+  "test": [
+    {
+      "file": "test/test_01.jpg",
+      "expected": "KYC"
+    },
+    {
+      "file": "test/test_02.jpg",
+      "expected": "Corporate action"
+    },
+    {
+      "file": "test/test_03.jpg",
+      "expected": "Invoice"
+    },
+    {
+      "file": "test/test_04.jpg",
+      "expected": "Cheque"
+    },
+    {
+      "file": "test/test_05.jpg",
+      "expected": "Cheque"
+    },
+    {
+      "file": "test/test_06.jpg",
+      "expected": "Corporate action"
+    },
+    {
+      "file": "test/test_07.jpg",
+      "expected": "Invoice"
+    },
+    {
+      "file": "test/test_08.jpg",
+      "expected": "Corporate action"
+    },
+    {
+      "file": "test/test_09.jpg",
+      "expected": "KYC"
+    },
+    {
+      "file": "test/test_10.jpg",
+      "expected": "Cheque"
+    },
+    {
+      "file": "test/test_11.jpg",
+      "expected": "Invoice"
+    },
+    {
+      "file": "test/test_12.jpg",
+      "expected": "KYC"
+    }
+  ]
+}

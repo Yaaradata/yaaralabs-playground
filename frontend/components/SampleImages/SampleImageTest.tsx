@@ -3,11 +3,12 @@
 /**
  * "Test dataset" on the training page: the sample's unseen test images listed on the right; click
  * one to put it on the left, then Test sends it through the same prediction call as an uploaded
- * image. Shown only when the project uses the sample's labels.
+ * image. Shown only when the project uses the sample's labels. A tab per region (India, United States,
+ * China): any region's test images can be tried, whichever region the model was trained on.
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { fileName, loadSampleImages, readLabelNames, sampleImageFile, sampleImageUrl, type SampleImageSet } from './sampleImages';
+import { loadSampleImages, readLabelNames, readRegion, SAMPLE_REGIONS, sampleImageFile, sampleImageUrl, type SampleImageSet } from './sampleImages';
 
 export interface ImagePrediction {
   label: string;
@@ -25,6 +26,7 @@ interface Props {
 type TestSet = 'standard' | 'deep';
 
 export default function SampleImageTest({ projectLabels, namesKey, predict }: Props) {
+  const [region, setRegion] = useState(() => readRegion(namesKey)); // starts on the region the project was built from
   const [data, setData] = useState<SampleImageSet | null>(null);
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
@@ -34,13 +36,13 @@ export default function SampleImageTest({ projectLabels, namesKey, predict }: Pr
 
   useEffect(() => {
     let alive = true;
-    loadSampleImages()
+    loadSampleImages(region)
       .then((d) => alive && setData(d))
       .catch(() => alive && setData(null));
     return () => {
       alive = false;
     };
-  }, []);
+  }, [region]);
 
   const renamed = useMemo(() => (typeof window === 'undefined' ? {} : readLabelNames(namesKey)), [namesKey]);
   const asProject = (label: string) => renamed[label] ?? label;
@@ -71,7 +73,7 @@ export default function SampleImageTest({ projectLabels, namesKey, predict }: Pr
   const title = (file: string) => {
     const d = deep.findIndex((t) => t.file === file);
     if (d > -1) return `Deep ${String(d + 1).padStart(2, '0')}`;
-    return fileName(file).replace(/\.\w+$/, '').replace('test_', 'Test ');
+    return (file.split('/').pop() || file).replace(/\.\w+$/, '').replace('test_', 'Test ');
   };
   const res = picked ? results[picked] : undefined;
   const pred = res && typeof res !== 'string' ? res : null;
@@ -122,6 +124,29 @@ export default function SampleImageTest({ projectLabels, namesKey, predict }: Pr
           {open ? 'Hide test dataset' : 'Test dataset'}
         </button>
       </div>
+
+      {open && (
+        <div className="px-4 border-t border-magenta-brand/20 flex gap-1 overflow-x-auto" role="tablist" aria-label="Region">
+          {SAMPLE_REGIONS.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              role="tab"
+              aria-selected={region === r.id}
+              onClick={() => {
+                if (region === r.id) return;
+                setRegion(r.id);
+                setPicked(null);
+                setSet('standard');
+              }}
+              disabled={busy}
+              className={`px-4 py-2 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors disabled:opacity-40 ${region === r.id ? 'border-pink-brand text-pink-brand' : 'border-transparent text-fg/60 hover:text-fg'}`}
+            >
+              {r.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {open && (
         <div className="grid gap-4 border-t border-magenta-brand/20 p-4 lg:grid-cols-[minmax(0,1fr)_20rem]">

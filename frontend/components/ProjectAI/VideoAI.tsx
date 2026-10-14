@@ -3,7 +3,7 @@
 /**
  * "Use the AI" for custom Live Object Detection: the block editor with video blocks, Teachable
  * Machine style (set video transparency, turn video on, use model [URL], when model detects [label]),
- * and a live webcam stage on the right instead of Sparky's chat.
+ * and a live webcam stage on the right instead of Aria's chat.
  *
  * The model is loaded from its deployed URL (Export on the project page), the way any app would:
  * {url}/model.json + {url}/metadata.json, then run on every webcam frame in the browser. Any
@@ -12,7 +12,6 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import config from '../../lib/config';
 import BlockStudioShell from '../BlockStudio/BlockStudioShell';
 import RuleBasedProcess, { type MlOptions } from '../RuleBasedProcess/RuleBasedProcess';
 import { openSavedModel } from '../VideoClassifier/api';
@@ -48,9 +47,6 @@ interface Loaded {
 type VideoState = 'off' | 'on' | 'flipped';
 type Status = { kind: 'idle' } | { kind: 'loading'; url: string } | { kind: 'ready' } | { kind: 'error'; message: string };
 
-const shortDate = (iso: string) =>
-  new Date(iso).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-
 export default function VideoAI({ projectName, sessionId, projectId, backHref }: Props) {
   const [deployed, setDeployed] = useState<Deployed | null>(null);
   const [video, setVideo] = useState<VideoState>('off');
@@ -65,28 +61,13 @@ export default function VideoAI({ projectName, sessionId, projectId, backHref }:
   const loadedRef = useRef<Loaded | null>(null);
   loadedRef.current = loaded;
 
-  // The project's model, through its deployed URL (made on first use, the same one Export shows)
+  // Only whether the project has a saved model (for the header): the model itself comes from the
+  // URL the learner pastes into "use deployed model".
   useEffect(() => {
     let alive = true;
-    (async () => {
-      let d: Deployed = { trained: false, labels: [] };
-      try {
-        // nothing saved yet: not trained (no deploy call)
-        if (!(await openSavedModel(sessionId, projectId))) throw new Error('not trained');
-        const r = await fetch(`${config.apiBaseUrl}${config.api.guests.deploy(sessionId, projectId)}`, { method: 'POST' });
-        const dep = await r.json();
-        if (r.ok && dep?.path) {
-          const url = `${config.apiBaseUrl}${dep.path}`;
-          const info = await fetch(url).then((x) => x.json());
-          if (Array.isArray(info?.labels) && info.labels.length) {
-            d = { trained: true, url, labels: info.labels.map(String), trainedAt: info.trainedAt ? shortDate(info.trainedAt) : undefined };
-          }
-        }
-      } catch {
-        /* not trained yet */
-      }
-      if (alive) setDeployed(d);
-    })();
+    openSavedModel(sessionId, projectId)
+      .then((saved) => alive && setDeployed({ trained: !!saved, labels: [] }))
+      .catch(() => alive && setDeployed({ trained: false, labels: [] }));
     return () => {
       alive = false;
     };
@@ -106,7 +87,7 @@ export default function VideoAI({ projectName, sessionId, projectId, backHref }:
     }
     if (loadedRef.current?.url === url) {
       setStatus({ kind: 'ready' });
-      return { name: loadedRef.current.name };
+      return { name: loadedRef.current.name, labels: loadedRef.current.labels };
     }
     setStatus({ kind: 'loading', url });
     try {
@@ -125,7 +106,7 @@ export default function VideoAI({ projectName, sessionId, projectId, backHref }:
       setLoaded({ url, name, labels, colors, model });
       setProbs(null);
       setStatus({ kind: 'ready' });
-      return { name };
+      return { name, labels };
     } catch (e) {
       const message = e instanceof Error && e.message ? e.message : 'Could not load a model from that URL.';
       setStatus({ kind: 'error', message });
@@ -154,8 +135,10 @@ export default function VideoAI({ projectName, sessionId, projectId, backHref }:
         ? {
             kind: 'video',
             trained: deployed.trained,
-            labels: deployed.labels,
-            model: { name: projectName, type: 'Teachable Machine image model', trainedAt: deployed.trainedAt, url: deployed.url },
+            labels: [],
+            model: { name: projectName, type: 'Teachable Machine image model' },
+            // "use deployed model [URL]" + Enter: load the model (no predictions until Run)
+            load: (url: string) => connect(url, () => undefined),
             connect,
             video: {
               turn: (state: string) => setVideo(state === 'off' ? 'off' : state === 'on flipped' ? 'flipped' : 'on'),
@@ -204,8 +187,7 @@ export default function VideoAI({ projectName, sessionId, projectId, backHref }:
       {(toolbarHostRef) =>
         mlOptions && (
           <RuleBasedProcess
-            // remount when the model becomes available so the ML Model blocks appear
-            key={mlOptions.trained ? `ml:video:${mlOptions.labels.join('|')}` : 'no-ml'}
+            key="ml:video"
             projectName={projectName}
             localStorageKey={`np-lod-ai:${sessionId}:${projectId}`}
             toolbarHostRef={toolbarHostRef}

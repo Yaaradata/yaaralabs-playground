@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * "Use sample data" for Image Recognition: shows the sample labels with their images (label names
- * can be edited), then adds everything in one upload. Images already in the project under the same
+ * "Use sample data" for Image Recognition: a tab per region (India, United States, China), each with the
+ * sample labels and their images (label names can be edited), then adds everything in one upload. Images already in the project under the same
  * label are skipped, so adding twice adds nothing.
  */
 
@@ -13,8 +13,11 @@ import {
   missingFiles,
   sampleImageFile,
   readLabelNames,
+  readRegion,
+  SAMPLE_REGIONS,
   sampleImageUrl,
   writeLabelNames,
+  writeRegion,
   type SampleImageSet,
 } from './sampleImages';
 
@@ -28,6 +31,7 @@ interface Props {
 }
 
 export default function SampleImagesDialog({ namesKey, existing, onAdd, onClose }: Props) {
+  const [region, setRegion] = useState(() => readRegion(namesKey));
   const [data, setData] = useState<SampleImageSet | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -37,13 +41,16 @@ export default function SampleImagesDialog({ namesKey, existing, onAdd, onClose 
 
   useEffect(() => {
     let alive = true;
-    loadSampleImages()
+    setData(null);
+    setLoadError(null);
+    setError(null);
+    loadSampleImages(region)
       .then((d) => alive && setData(d))
       .catch((e: unknown) => alive && setLoadError(e instanceof Error ? e.message : 'Could not load the sample images.'));
     return () => {
       alive = false;
     };
-  }, []);
+  }, [region]);
 
   useEffect(() => {
     const esc = (e: KeyboardEvent) => {
@@ -79,6 +86,7 @@ export default function SampleImagesDialog({ namesKey, existing, onAdd, onClose 
       );
       await onAdd(items);
       writeLabelNames(namesKey, Object.fromEntries(data.labels.map((l) => [l.label, nameOf(l.label)])));
+      writeRegion(namesKey, region); // its test images are the ones offered after training
       setBusy(null);
       onClose();
     } catch (e) {
@@ -101,6 +109,22 @@ export default function SampleImagesDialog({ namesKey, existing, onAdd, onClose 
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+        </div>
+
+        <div className="px-5 sm:px-6 pt-3 border-b border-fg/10 flex gap-1 overflow-x-auto" role="tablist" aria-label="Region">
+          {SAMPLE_REGIONS.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              role="tab"
+              aria-selected={region === r.id}
+              onClick={() => setRegion(r.id)}
+              disabled={!!busy}
+              className={`px-4 py-2 text-sm font-semibold whitespace-nowrap border-b-2 -mb-px transition-colors disabled:opacity-40 ${region === r.id ? 'border-pink-brand text-pink-brand' : 'border-transparent text-fg/60 hover:text-fg'}`}
+            >
+              {r.name}
+            </button>
+          ))}
         </div>
 
         {loadError && <p className="px-6 py-8 text-sm text-pink-brand" role="alert">{loadError}</p>}

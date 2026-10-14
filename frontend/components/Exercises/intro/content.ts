@@ -7,14 +7,14 @@ const PACKS: Record<IntroExerciseId, ExerciseIntroPack> = {
     slides: [
       {
         title: 'What will you discover?',
-        body: 'You’ll build a rule-based classifier with blocks — questions, conditions, and answers — then watch Sparky act it out on the stage.',
+        body: 'You’ll build a rule-based classifier with blocks — questions, conditions, and answers — then chat with Aria to see it work.',
         content: {
           kind: 'overview',
           goal: 'Your goal: pick a concept, drag blocks into a script, run it, and see how hard-coded rules behave before any machine learning.',
           stages: [
             { n: '1', title: 'Pick a concept', detail: 'Odd/even, grades, tickets, or your own task' },
             { n: '2', title: 'Build the script', detail: 'Drag blocks; they snap into a flow' },
-            { n: '3', title: 'Run & reply', detail: 'Sparky asks; you answer on the stage' },
+            { n: '3', title: 'Run & reply', detail: 'Aria asks; you reply in the chat' },
             { n: '4', title: 'Compare to ML', detail: 'Rules are clear — later labs learn from data' },
           ],
         },
@@ -41,13 +41,13 @@ const PACKS: Record<IntroExerciseId, ExerciseIntroPack> = {
           items: [
             { title: 'Palette', detail: 'Concept picker and block types you can drag in.' },
             { title: 'Canvas', detail: 'Your script — questions, conditions, and replies snap together.' },
-            { title: 'Stage / Python', detail: 'Sparky performs the run, or you inspect the generated Python.' },
+            { title: 'Chat', detail: 'Aria runs your script as a conversation.' },
           ],
         },
       },
       {
         title: 'Ready to start?',
-        body: 'Choose a preset concept or invent one. Build a short script, press Run, and answer Sparky’s questions.',
+        body: 'Choose a preset concept or invent one. Build a short script, press Run, and answer Aria’s questions.',
         content: {
           kind: 'task',
           task: 'Build one complete rule script and run it end-to-end on the stage before you move on.',

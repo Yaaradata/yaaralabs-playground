@@ -1,0 +1,100 @@
+{
+  "name": "Nuvama client documents · China",
+  "description": "Chinese documents a custody client sends in: 4 labels, 5 images each, plus 12 unseen test images (some blurred, cropped or photographed at an angle).",
+  "labels": [
+    {
+      "label": "KYC",
+      "covers": "Blank Chinese account-opening and client-information forms (securities, fund, futures, bank, Hong Kong broker)",
+      "files": [
+        "KYC/kyc_01.jpg",
+        "KYC/kyc_02.jpg",
+        "KYC/kyc_03.jpg",
+        "KYC/kyc_04.jpg",
+        "KYC/kyc_05.jpg"
+      ]
+    },
+    {
+      "label": "Corporate action",
+      "covers": "Shanghai and Shenzhen listed-company announcements: cash dividends, bonus shares from capital reserve, buybacks",
+      "files": [
+        "corporate_action/ca_01.jpg",
+        "corporate_action/ca_02.jpg",
+        "corporate_action/ca_03.jpg",
+        "corporate_action/ca_04.jpg",
+        "corporate_action/ca_05.jpg"
+      ]
+    },
+    {
+      "label": "Invoice",
+      "covers": "Chinese fapiao: VAT, e-invoice, quota, machine-printed, taxi and official specimens",
+      "files": [
+        "invoice/inv_01.jpg",
+        "invoice/inv_02.jpg",
+        "invoice/inv_03.jpg",
+        "invoice/inv_04.jpg",
+        "invoice/inv_05.jpg"
+      ]
+    },
+    {
+      "label": "Cheque",
+      "covers": "Chinese and Hong Kong cheques: museum and archive photos plus two marked specimens",
+      "files": [
+        "cheque/chq_01.jpg",
+        "cheque/chq_02.jpg",
+        "cheque/chq_03.jpg",
+        "cheque/chq_04.jpg",
+        "cheque/chq_05.jpg"
+      ]
+    }
+  ],
+  "test": [
+    {
+      "file": "test/test_01.jpg",
+      "expected": "KYC"
+    },
+    {
+      "file": "test/test_02.jpg",
+      "expected": "Invoice"
+    },
+    {
+      "file": "test/test_03.jpg",
+      "expected": "KYC"
+    },
+    {
+      "file": "test/test_04.jpg",
+      "expected": "Corporate action"
+    },
+    {
+      "file": "test/test_05.jpg",
+      "expected": "Cheque"
+    },
+    {
+      "file": "test/test_06.jpg",
+      "expected": "Corporate action"
+    },
+    {
+      "file": "test/test_07.jpg",
+      "expected": "Invoice"
+    },
+    {
+      "file": "test/test_08.jpg",
+      "expected": "Cheque"
+    },
+    {
+      "file": "test/test_09.jpg",
+      "expected": "Cheque"
+    },
+    {
+      "file": "test/test_10.jpg",
+      "expected": "Invoice"
+    },
+    {
+      "file": "test/test_11.jpg",
+      "expected": "Corporate action"
+    },
+    {
+      "file": "test/test_12.jpg",
+      "expected": "KYC"
+    }
+  ]
+}

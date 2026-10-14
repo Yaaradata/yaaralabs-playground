@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useCamera } from '../VideoClassifier/useCamera';
-import { fileName, loadSampleImages, readLabelNames, sampleImageFile, sampleImageUrl, type SampleImageSet } from '../SampleImages/sampleImages';
+import { fileName, loadSampleImages, readLabelNames, readRegion, sampleImageFile, sampleImageUrl, type SampleImageSet } from '../SampleImages/sampleImages';
 
 export interface PickedImage {
   file: File;
@@ -35,7 +35,7 @@ export default function ImagePicker({ labels, namesKey, busy, error, onPick, onC
   // workshop test images, only when this project was built from the sample labels
   useEffect(() => {
     let alive = true;
-    loadSampleImages()
+    loadSampleImages(readRegion(namesKey))
       .then((d) => {
         const renamed = readLabelNames(namesKey);
         const have = new Set(labels);

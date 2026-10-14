@@ -2,9 +2,10 @@
 
 /**
  * "3. Use the AI" for Text and Image Recognition projects: the block editor from Exercise 1 (Rule
- * Based Classifier), with an "ML Model" block category that appears once the project's model is
- * trained. The page uses the model the way any other app would: through its deployed URL (the one
- * Export shows on the training page, backend api/deployed.py).
+ * Based Classifier), with an "ML Model" block category. The page uses the model the way any other app
+ * would: through its deployed URL (the one Export shows on the training page, backend api/deployed.py).
+ * Nothing is loaded when the page opens: the learner pastes the URL into "use deployed model" and
+ * presses Enter, then the model's labels appear on the left.
  *   text   recognise text ( ) (label)   POST {url}/predict {"text": ...}
  *   image  recognise an image and wait  (a picker: Upload / Webcam / workshop test images), then
  *          POST {url}/predict with the image as a "file" upload
@@ -33,12 +34,6 @@ interface Props {
 
 interface MlState {
   trained: boolean;
-  labels: string[];
-  /** Shown by the "use deployed model" block. */
-  modelType?: string;
-  trainedAt?: string;
-  /** Text: the deployed model URL (the one Export shows); every recognise call goes through it. */
-  url?: string;
 }
 
 const MODEL_TYPES: Record<string, string> = {
@@ -69,60 +64,60 @@ export default function ProjectAI({ kind, projectName, sessionId, projectId, bac
   const [pickBusy, setPickBusy] = useState<string | null>(null);
   const [pickError, setPickError] = useState<string | null>(null);
   const pending = useRef<((r: Result | null) => void) | null>(null);
-  const base = `${config.apiBaseUrl}/api/guests/session/${sessionId}/projects/${projectId}`;
 
-  // Is the model trained, and with which labels?
+  // Only whether the project is trained (for the header): the model itself comes from the URL
+  // the learner pastes into "use deployed model".
   useEffect(() => {
     let alive = true;
-    (async () => {
-      let trained = false;
-      let labels: string[] = [];
-      let modelType: string | undefined;
-      let trainedAt: string | undefined;
-      let url: string | undefined;
-      try {
-        const status = await fetch(`${config.apiBaseUrl}${config.api.guests.trainingStatus(sessionId, projectId)}`).then((r) => r.json());
-        trained = status?.projectStatus === 'trained';
-        if (status?.modelType) modelType = MODEL_TYPES[status.modelType] ?? String(status.modelType);
-        const jobs: { completedAt?: string; startedAt?: string; createdAt?: string }[] = status?.allJobs ?? [];
-        const last = status?.currentJob ?? jobs.filter((j) => j.completedAt).sort((x, y) => String(y.completedAt).localeCompare(String(x.completedAt)))[0];
-        const done = last?.completedAt ?? last?.startedAt ?? last?.createdAt;
-        if (done) {
-          trainedAt = new Date(done).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-        }
-        const details = await fetch(base).then((r) => r.json());
-        const d = details?.data ?? {};
-        labels = (d.model?.labels?.length ? d.model.labels : d.dataset?.labels ?? []).map(String);
-        if (d.model?.trainedAt) {
-          trainedAt = new Date(d.model.trainedAt).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-        }
-        // Use the model the way any app would, through its deployed URL (the one Export shows).
-        // The labels, type and training time come from that URL.
-        if (trained) {
-          const dep = await fetch(`${config.apiBaseUrl}${config.api.guests.deploy(sessionId, projectId)}`, { method: 'POST' }).then((r) => r.json());
-          if (!dep?.path) throw new Error('not deployed');
-          url = `${config.apiBaseUrl}${dep.path}`;
-          const info = await fetch(url).then((r) => r.json());
-          if (Array.isArray(info?.labels) && info.labels.length) labels = info.labels.map(String);
-          if (info?.modelType) modelType = MODEL_TYPES[info.modelType] ?? String(info.modelType);
-          if (info?.trainedAt) trainedAt = shortDate(info.trainedAt);
-        }
-      } catch {
-        /* treated as not trained */
-        trained = false;
-      }
-      if (alive) setMl({ trained: trained && labels.length > 0, labels, modelType, trainedAt, url });
-    })();
+    fetch(`${config.apiBaseUrl}${config.api.guests.trainingStatus(sessionId, projectId)}`)
+      .then((r) => r.json())
+      .then((status) => alive && setMl({ trained: status?.projectStatus === 'trained' }))
+      .catch(() => alive && setMl({ trained: false }));
     return () => {
       alive = false;
     };
-  }, [kind, sessionId, projectId, base]);
+  }, [sessionId, projectId]);
+
+  // The model loaded from the pasted URL: its predict calls and labels (the image picker uses them)
+  const urlRef = useRef<string | null>(null);
+  const [labels, setLabels] = useState<string[]>([]);
+
+  /** "use deployed model [URL]" + Enter: read the model's details from its URL. */
+  const load = useCallback(
+    async (raw: string) => {
+      const url = raw.trim().replace(/\/+$/, '');
+      if (!/^https?:\/\/\S+$/.test(url)) throw new Error('That is not a URL. Copy it from Export on the training page.');
+      let r: Response;
+      try {
+        r = await fetch(url);
+      } catch {
+        throw new Error('No model at this URL. Copy it again from Export on the training page.');
+      }
+      if (!r.ok) throw new Error(await deployedError(r));
+      const info = await r.json().catch(() => null);
+      const got: string[] = Array.isArray(info?.labels) ? info.labels.map(String) : [];
+      const want = kind === 'image' ? 'image' : 'text';
+      if (!got.length || (info?.input && info.input !== want)) {
+        throw new Error(`This URL is not a ${kind === 'image' ? 'Image' : 'Text'} Recognition model. Use the URL from this project's Export.`);
+      }
+      urlRef.current = url;
+      setLabels(got);
+      return {
+        name: String(info?.name || projectName),
+        labels: got,
+        type: info?.modelType ? MODEL_TYPES[info.modelType] ?? String(info.modelType) : undefined,
+        trainedAt: info?.trainedAt ? shortDate(info.trainedAt) : undefined,
+        url,
+      };
+    },
+    [kind, projectName],
+  );
 
   /** POST {url}/predict on the deployed model: JSON for text, a "file" upload for images. */
-  const deployedUrl = ml?.url;
   const callDeployed = useCallback(
     async (body: FormData | { text: string }) => {
-      if (!deployedUrl) throw new Error('Your model is not deployed yet. Train it on the Train the AI page.');
+      const deployedUrl = urlRef.current;
+      if (!deployedUrl) throw new Error('Paste your model’s URL into “use deployed model” and press Enter first.');
       let r: Response;
       try {
         r = await fetch(`${deployedUrl}/predict`, body instanceof FormData
@@ -135,7 +130,7 @@ export default function ProjectAI({ kind, projectName, sessionId, projectId, bac
       const data = await r.json();
       return { label: String(data.label), confidence: Number(data.confidence) || 0 };
     },
-    [deployedUrl],
+    [],
   );
 
   const predictDeployed = useCallback((text: string) => callDeployed({ text }), [callDeployed]);
@@ -179,11 +174,10 @@ export default function ProjectAI({ kind, projectName, sessionId, projectId, bac
     }
   };
 
-  const model = ml ? { name: projectName, type: ml.modelType, trainedAt: ml.trainedAt, url: ml.url } : undefined;
   const mlOptions: MlOptions | undefined = ml
     ? kind === 'image'
-      ? { kind: 'image', trained: ml.trained, labels: ml.labels, model, recogniseImage }
-      : { kind: 'text', trained: ml.trained, labels: ml.labels, model, recognise: predictDeployed }
+      ? { kind: 'image', trained: ml.trained, labels: [], model: { name: projectName }, load, recogniseImage }
+      : { kind: 'text', trained: ml.trained, labels: [], model: { name: projectName }, load, recognise: predictDeployed }
     : undefined;
 
   // Only a hint while there is no trained model; once it is ready the header shows just the title
@@ -218,7 +212,7 @@ export default function ProjectAI({ kind, projectName, sessionId, projectId, bac
       overlay={
         picker && ml ? (
           <ImagePicker
-            labels={ml.labels}
+            labels={labels}
             namesKey={labelNamesKey(sessionId, projectId)}
             busy={pickBusy}
             error={pickError}
@@ -231,8 +225,7 @@ export default function ProjectAI({ kind, projectName, sessionId, projectId, bac
       {(toolbarHostRef) =>
         ml && (
           <RuleBasedProcess
-            // remount when the model becomes available so the ML Model blocks appear
-            key={ml.trained ? `ml:${kind}:${ml.labels.join('|')}` : 'no-ml'}
+            key={`ml:${kind}`}
             projectName={projectName}
             localStorageKey={`np-${kind === 'image' ? 'imgrec' : 'textrec'}-ai:${sessionId}:${projectId}`}
             toolbarHostRef={toolbarHostRef}

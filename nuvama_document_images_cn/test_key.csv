@@ -1,0 +1,13 @@
+file,true_label,source,condition
+test_01.jpg,KYC,"CSDC: 证券账户开立申请表(适用于机构), securities account opening application for entities (bilingual copy published by Clearstream)","clean: new document, upright"
+test_02.jpg,Invoice,Beijing Chaoyang District People's Court litigation-fee receipt 诉讼收费专用票据 (2018),"clean: new document, upright"
+test_03.jpg,KYC,"Shenwan Hongyuan Futures 申银万国期货: 个人客户交易编码申请表, individual client account application (annex 1 of the brokerage contract)",partial crop: bottom 25% cut off
+test_04.jpg,Corporate action,Yunnan Energy New Material 恩捷股份 (SZSE 002812): 2026 interim cash dividend implementation (权益分派实施公告),"clean: new document, upright"
+test_05.jpg,Cheque,"Synthetic SPECIMEN 现金支票 (cash cheque), fictional Yunshan Rural Commercial Bank","phone-photo look: perspective skew 9 deg, rotation 4 deg, shadow gradient, on a dark desk"
+test_06.jpg,Corporate action,Hangzhou Hetai Machinery 和泰机电 (SZSE 001225): bonus shares from capital reserve (资本公积金转增股本实施公告),"Gaussian blur, radius 3"
+test_07.jpg,Invoice,"Shenzhen taxi invoices 深圳市出租汽车专用发票, three receipts (2016)",heavy JPEG compression: quality 6
+test_08.jpg,Cheque,"Real cheque photo: Bank of East Asia 东亚银行, Shanghai, 1949 (right-hand cheque of a museum display)",partial crop: right 22% cut off
+test_09.jpg,Cheque,"Real cheque (newspaper print): Ta Yo Bank 大有银行, the 1923 '5000-yuan cheque', front side","clean: new document, upright"
+test_10.jpg,Invoice,State Taxation Administration: blank specimen of the e-invoice for motor-vehicle sales 电子发票(机动车销售统一发票),motion blur: 15 px horizontal
+test_11.jpg,Corporate action,Changsha Jingjia Microelectronics 景嘉微 (SZSE 300474): share buyback report (回购股份报告书),"low light / low contrast: brightness x0.45, contrast x0.5"
+test_12.jpg,KYC,"HKEX / Hong Kong Securities Clearing: 個人投資者開戶表格, individual investor account opening form","phone-photo look: perspective skew 12 deg, rotation -3 deg, shadow gradient, on a dark desk"

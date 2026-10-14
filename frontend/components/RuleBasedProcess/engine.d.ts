@@ -8,8 +8,11 @@ export type MlOptions = {
   recognise?: (text: string) => Promise<{ label: string; confidence: number }>;
   /** Image models: the host lets the learner pick an image; null when they cancel. */
   recogniseImage?: () => Promise<{ label: string; confidence: number; name?: string } | null>;
+  /** URL mode: the page opens with no model; "use deployed model [URL]" + Enter calls this, and the
+   *  labels it returns appear in the palette. The recognise calls then use that URL. */
+  load?: (url: string) => Promise<{ name: string; labels: string[]; type?: string; trainedAt?: string; url?: string }>;
   /** Video: load the model at `url`; the host then reports every webcam prediction (confidence %). */
-  connect?: (url: string, onPrediction: (label: string, confidence: number) => void) => Promise<{ name: string }>;
+  connect?: (url: string, onPrediction: (label: string, confidence: number) => void) => Promise<{ name: string; labels?: string[] }>;
   /** Video: the webcam on the stage. */
   video?: { turn: (state: string) => void; transparency: (percent: number) => void };
   /** Video: a speech bubble on the stage; `secs` null keeps it until the next one. */

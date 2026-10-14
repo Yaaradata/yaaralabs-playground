@@ -3,7 +3,7 @@
 /**
  * Label a sample dataset, then "Finish labelling": every chosen label becomes a project label with
  * its queries inside, exactly like labels added by hand. Choices are kept in this browser as a draft.
- * Trainers can fill the answer key with Ctrl+Alt+Shift+F; it is not shown on screen.
+ * Ctrl+Shift+Z (Cmd+Shift+Z on a Mac) fills every query with the answer key; pressing it again clears them.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -80,20 +80,22 @@ export default function SampleLabeller({ source, draftKey, existing, onClose, on
     return () => document.removeEventListener('keydown', esc);
   }, [busy, onClose]);
 
-  // Trainer shortcut: fill every query with the answer key
+  // Ctrl+Shift+Z: fill every query with the answer key; pressed again (all filled), clear them
   useEffect(() => {
     if (!data) return;
     const fill = (e: KeyboardEvent) => {
-      if (busy || !e.ctrlKey || !e.altKey || !e.shiftKey || e.code !== 'KeyF') return;
+      if (busy || !(e.ctrlKey || e.metaKey) || !e.shiftKey || e.altKey || e.code !== 'KeyZ') return;
       e.preventDefault();
       const all = fillAllLabels(data.queries);
-      writeDraft(draftKey, all);
-      setChoices(all);
-      setNotice(null);
+      const filled = Object.keys(all).every((id) => choices[Number(id)] === all[Number(id)]);
+      const next = filled ? {} : all;
+      writeDraft(draftKey, next);
+      setChoices(next);
+      setNotice(filled ? 'Answers cleared.' : 'Answers filled in: check them, then Finish labelling.');
     };
     document.addEventListener('keydown', fill);
     return () => document.removeEventListener('keydown', fill);
-  }, [data, busy, draftKey]);
+  }, [data, busy, draftKey, choices]);
 
   const choose = (id: number, label: string) => {
     setChoices((c) => {

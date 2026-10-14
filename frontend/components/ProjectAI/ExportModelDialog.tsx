@@ -1,9 +1,7 @@
 'use client';
 
 /**
- * "Export": deploys the trained model and shows its URL, which any app or website can use.
- *   Text / Image Recognition   GET the URL for the model's name and labels, POST .../predict
- *   Live Object Detection      the model files ({url}/model.json, metadata.json), run in the browser
+ * "Export": deploys the trained model and shows its URL.
  * The Use the AI page uses the same URL ("Use it in AI" opens it in a new tab).
  *
  * The backend makes the URL once per project (POST .../deploy) and keeps it, so it stays the same
@@ -23,32 +21,9 @@ interface Props {
   saving?: 'saving' | 'error' | null;
 }
 
-type Input = 'text' | 'image' | 'video';
-
-/** How to call the URL from another app, per kind of model. */
-function example(url: string, input: Input) {
-  if (input === 'video') {
-    return `// runs in the browser, like a Teachable Machine model
-const model = await tmImage.load("${url}/model.json", "${url}/metadata.json");
-const predictions = await model.predict(webcamCanvas);
-→ [{"className": "<one of your labels>", "probability": 0.92}, ...]`;
-  }
-  if (input === 'image') {
-    return `POST ${url}/predict
-an image upload in the form field "file"
-  (or JSON {"imageUrl": "https://.../photo.jpg"})
-
-→ {"label": "<one of your labels>", "confidence": 92.4, ...}`;
-  }
-  return `POST ${url}/predict
-{"text": "When will the dividend be paid?"}
-
-→ {"label": "<one of your labels>", "confidence": 92.4, ...}`;
-}
-
 type State =
   | { kind: 'loading' }
-  | { kind: 'ready'; url: string; labels: string[]; input: Input }
+  | { kind: 'ready'; url: string }
   | { kind: 'error'; message: string };
 
 export default function ExportModelDialog({ sessionId, projectId, onClose, useHref, saving = null }: Props) {
@@ -72,11 +47,7 @@ export default function ExportModelDialog({ sessionId, projectId, onClose, useHr
         const data = await r.json().catch(() => ({}));
         if (!r.ok || !data?.path) throw new Error(typeof data?.detail === 'string' ? data.detail : 'Could not deploy the model. Try again.');
         const url = `${config.apiBaseUrl}${data.path}`;
-        // the model's labels, for the example below (read from the deployed URL itself)
-        const info = await fetch(url).then((res) => res.json()).catch(() => ({}));
-        const labels = Array.isArray(info?.labels) ? info.labels.map(String) : [];
-        const input: Input = info?.input === 'image' || info?.input === 'video' ? info.input : 'text';
-        if (alive) setState({ kind: 'ready', url, labels, input });
+        if (alive) setState({ kind: 'ready', url });
       } catch (e) {
         if (alive) setState({ kind: 'error', message: e instanceof Error ? e.message : 'Could not deploy the model. Try again.' });
       }
@@ -158,25 +129,11 @@ export default function ExportModelDialog({ sessionId, projectId, onClose, useHr
                 {copied ? 'Copied' : 'Copy'}
               </button>
             </div>
-            <p className="mt-4 text-sm text-fg/80">
-              {state.input === 'video'
-                ? 'Use it from any app or website: load the model, show it the camera, get the label back.'
-                : `Use it from any app or website: send ${state.input === 'image' ? 'an image' : 'a message'}, get the label back.`}
-            </p>
-            <pre className="mt-2 overflow-x-auto rounded-lg border border-magenta-brand/20 bg-fg/5 px-3 py-2.5 font-mono text-xs leading-relaxed text-fg/90">
-              {example(state.url, state.input)}
-            </pre>
-            {state.labels.length > 0 && (
-              <p className="mt-2 text-xs text-fg/75">
-                <span className="font-semibold">Labels:</span> {state.labels.join(', ')}
-              </p>
-            )}
-            <p className="mt-2 text-xs text-fg/60">
-              Open the URL itself to see the model&rsquo;s name and labels. Use the AI uses this same deployed model. It stays the same
-              when you train again, and stops working when the project is deleted.
-            </p>
             {useHref && (
-              <div className="mt-5 flex justify-end">
+              <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
+                <p className="flex-1 min-w-[14rem] text-sm text-fg/70">
+                  Copy the URL, then in Use the AI paste it into <b className="text-fg">use deployed model</b> and press Enter.
+                </p>
                 <a
                   href={useHref}
                   target="_blank"

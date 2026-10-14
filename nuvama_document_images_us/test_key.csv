@@ -1,0 +1,13 @@
+file,true_label,source,condition
+test_01.jpg,KYC,IRS Form W-9 (Rev. March 2024): Request for Taxpayer Identification Number and Certification,partial crop: bottom 25% cut off
+test_02.jpg,corporate_action,Lennar: Millrose spin-off record date and election period (Jan 2025),"Gaussian blur, radius 3"
+test_03.jpg,invoice,"Real invoice: The Ashton Valve Co., Boston MA, 1888, billed to a railroad (USD)",motion blur: 15 px horizontal
+test_04.jpg,cheque,"Real check: Treasury of the United States warrant, 1865 (President Lincoln's salary, public figure)","phone-photo look: perspective skew 9 deg, rotation 4 deg, shadow gradient, on a dark desk"
+test_05.jpg,cheque,"Real check: Citibank N.A. official check / US dollar draft, 2013 (used in an internet scam)","clean: new document, upright"
+test_06.jpg,corporate_action,"Netflix: ten-for-one stock split, record date (Oct 2025)","clean: new document, upright"
+test_07.jpg,invoice,"Oregon Office of Public Defense Services: invoice example (page 2, cropped to the example invoice)","clean: new document, upright"
+test_08.jpg,corporate_action,BorgWarner: quarterly cash dividend declared (Feb 2026),"low light / low contrast: brightness x0.45, contrast x0.5"
+test_09.jpg,KYC,BNY Mellon Funds: Account Application (account registration information),"clean: new document, upright"
+test_10.jpg,cheque,"Real check photo: The Riggs National Bank, Washington DC, 1953 (Burmese Embassy to the American Red Cross), held in hands",partial crop: right 22% cut off
+test_11.jpg,invoice,"FATURA Template43_Instance166: generated tax invoice, USD amounts, fake US addresses (original 595x841 upscaled)",heavy JPEG compression: quality 6
+test_12.jpg,KYC,"BayFirst (bank): Customer Identification Program (CIP) form, new account information","phone-photo look: perspective skew 12 deg, rotation -3 deg, shadow gradient, on a dark desk"
