@@ -70,6 +70,15 @@ export function defaultDesk(labels: string[]): string {
   return labels.find((l) => /complain|escalat/i.test(l)) ?? labels[0] ?? '';
 }
 
+/* ───────── before the exam: what is in it ───────── */
+
+/** Count pills for the exam card: "Fees 3", "Corporate action 3", ..., "Off-topic 2". In `labels` order. */
+export function examCounts(items: { expected: string }[], labels: string[]): { name: string; n: number }[] {
+  const out = labels.map((l) => ({ name: shortName(l), n: items.filter((i) => i.expected === l).length })).filter((c) => c.n > 0);
+  const off = items.filter((i) => i.expected === NONE).length;
+  return off ? [...out, { name: 'Off-topic', n: off }] : out;
+}
+
 /* ───────── block 1: accuracy ───────── */
 
 export const deskItems = (items: EvalItem[]) => items.filter((i) => i.expected !== NONE);

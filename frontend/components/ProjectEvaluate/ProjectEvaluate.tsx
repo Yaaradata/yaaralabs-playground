@@ -2,8 +2,9 @@
 
 /**
  * Evaluate step for Text and Image Recognition projects (senior learners, read on a projector).
- * The exam, then: accuracy, where it got confused (grid), right per desk (graph) and the desk that
- * matters most (recall and precision as dots). Plain words only: accuracy, precision, recall.
+ * First the exam card answers "how do you know it was right?": the test set, labelled by people.
+ * Then: accuracy, where it got confused (grid), right per desk (graph, also the desk picker) and the
+ * chosen desk (recall and precision as dots), and at the bottom the scientific terms in business words.
  *   text   the /evaluate endpoint scores the sample's test messages (or the learner's own examples)
  *   image  this page sends each sample test image through the same upload + predict calls as the
  *          training page (standard set, or the harder handwritten and damaged set)
@@ -31,6 +32,7 @@ import {
   deskAtLean,
   deskDots,
   deskNoun,
+  examCounts,
   examItems,
   grid,
   hiddenWeakDeskLine,
@@ -59,6 +61,7 @@ type Setup = {
   labels: string[]; // for images: in the sample's order (KYC, Corporate action, Invoice, Cheque)
   items: { text: string; expected: string }[]; // text exam ([] = own examples)
   images?: { standard: ImageItem[]; deep: ImageItem[] }; // image exam (undefined = labels don't match)
+  ownCount: number; // the learner's examples (the own-examples exam)
 };
 
 /** The sample's test images with the project's label names, or undefined if the labels don't match. */
@@ -92,10 +95,12 @@ export default function ProjectEvaluate({ sessionId, projectId, learnHref, kind 
       let trained = false;
       let labels: string[] = [];
       let items: Setup['items'] = [];
+      let ownCount = 0;
       try {
         const d = (await fetch(base).then((r) => r.json()))?.data ?? {};
         trained = d.status === 'trained';
         labels = (d.model?.labels?.length ? d.model.labels : d.dataset?.labels ?? []).map(String);
+        ownCount = Array.isArray(d.dataset?.examples) ? d.dataset.examples.length : 0;
         if (kind === 'image') {
           const sample = await loadSampleImages(readRegion(labelNamesKey(sessionId, projectId)));
           const renamed = readLabelNames(labelNamesKey(sessionId, projectId));
@@ -105,7 +110,7 @@ export default function ProjectEvaluate({ sessionId, projectId, learnHref, kind 
             ...sample.labels.map((l) => renamed[l.label] ?? l.label).filter((l) => labels.includes(l)),
             ...labels.filter((l) => !sample.labels.some((s) => (renamed[s.label] ?? s.label) === l)),
           ];
-          if (alive) setSetup({ trained, labels: inSampleOrder, items: [], images: standard ? { standard, deep: deep ?? [] } : undefined });
+          if (alive) setSetup({ trained, labels: inSampleOrder, items: [], images: standard ? { standard, deep: deep ?? [] } : undefined, ownCount });
           return;
         }
         const sample = validateDataset(await fetch(SAMPLE_SOURCES[0].url).then((r) => r.json()));
@@ -113,7 +118,7 @@ export default function ProjectEvaluate({ sessionId, projectId, learnHref, kind 
       } catch {
         /* no sample file: the learner's own examples are used (text) */
       }
-      if (alive) setSetup({ trained, labels, items });
+      if (alive) setSetup({ trained, labels, items, ownCount });
     })();
     return () => {
       alive = false;
@@ -193,88 +198,101 @@ export default function ProjectEvaluate({ sessionId, projectId, learnHref, kind 
     );
   }
 
-  if (!res && kind === 'image') {
-    if (!setup.images) {
-      return (
-        <div className={`max-w-7xl mx-auto ${card}`}>
-          <p className="text-2xl font-semibold">The exam uses the workshop’s sample images.</p>
-          <p className="text-xl text-fg/70 mt-3">
-            Add the sample images on Collect Data (KYC, Corporate action, Invoice, Cheque) and train again, then come back here.
-          </p>
-        </div>
-      );
-    }
-    const sets = [
-      { id: 'standard' as const, name: 'Standard', items: setup.images.standard, hint: 'clean scans of each document type' },
-      { id: 'deep' as const, name: 'Handwritten and damaged', items: setup.images.deep, hint: 'filled in by hand, stained, skewed phone photos' },
-    ].filter((x) => x.items.length);
-    const chosen = sets.find((x) => x.id === imageSet) ?? sets[0];
+  if (kind === 'image' && !setup.images) {
     return (
       <div className={`max-w-7xl mx-auto ${card}`}>
-        <p className="text-2xl md:text-3xl font-semibold leading-snug">
-          Let’s give your bot an exam: {chosen.items.length} test images from the sample. It has never seen them.
+        <p className="text-2xl font-semibold">The exam uses the workshop’s sample images.</p>
+        <p className="text-xl text-fg/70 mt-3">
+          Add the sample images on Collect Data (KYC, Corporate action, Invoice, Cheque) and train again, then come back here.
         </p>
-        <div className="flex flex-wrap gap-3 mt-5" role="radiogroup" aria-label="Which test images">
-          {sets.map((x) => (
-            <button
-              key={x.id}
-              type="button"
-              role="radio"
-              aria-checked={chosen.id === x.id}
-              onClick={() => setImageSet(x.id)}
-              disabled={running}
-              className={`rounded-xl border-2 px-4 py-3 text-left transition-colors disabled:opacity-60 ${
-                chosen.id === x.id ? 'border-pink-brand bg-purple-brand/15' : 'border-magenta-brand/25 hover:border-magenta-brand/50'
-              }`}
-            >
-              <span className="block text-lg font-semibold">{x.name} ({x.items.length})</span>
-              <span className="block text-sm text-fg/60">{x.hint}</span>
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={run}
-          disabled={running}
-          className={`${btn} mt-6 bg-purple-brand hover:bg-purple-brand/90 text-white disabled:opacity-70`}
-        >
-          {running && <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />}
-          {running ? `Tested ${progress?.done ?? 0} of ${chosen.items.length}…` : 'Run the exam'}
-        </button>
-        {error && <p className="text-lg text-pink-brand mt-4" role="alert">{error}</p>}
       </div>
     );
   }
 
-  if (!res) {
-    const own = setup.items.length === 0;
-    return (
-      <div className={`max-w-7xl mx-auto ${card}`}>
-        <p className="text-2xl md:text-3xl font-semibold leading-snug">
-          {own
-            ? 'Let’s give your bot an exam on your own examples.'
-            : `Let’s give your bot an exam: the ${setup.items.length} test messages from the sample. It has never seen them.`}
-        </p>
-        {own && (
-          <p className="text-xl text-fg/70 mt-3">
-            We’ll hide each of your examples from the bot one at a time and see if it still gets it right.
-          </p>
+  const unit: Unit = kind === 'image' ? 'images' : 'messages';
+  const sets = setup.images
+    ? [
+        { id: 'standard' as const, name: 'Standard', items: setup.images.standard, hint: 'clean scans of each document type' },
+        { id: 'deep' as const, name: 'Handwritten and damaged', items: setup.images.deep, hint: 'filled in by hand, stained, skewed phone photos' },
+      ].filter((x) => x.items.length)
+    : [];
+  const chosen = sets.find((x) => x.id === imageSet) ?? sets[0];
+  const own = kind === 'text' && setup.items.length === 0;
+  const counts =
+    kind === 'image' ? examCounts(chosen?.items ?? [], setup.labels) : own ? [] : examCounts(setup.items, orderLabels(setup.labels));
+
+  return (
+    <div className="max-w-7xl mx-auto">
+      {/* The exam, explained before it runs ("how do you know whether it was right?") */}
+      <section className={`${card} !py-4 mb-[18px] flex flex-col md:flex-row md:items-center gap-4 md:gap-5`} aria-label="The exam">
+        <div className="flex-1 min-w-0 space-y-1 text-base">
+          {kind === 'image' ? (
+            <>
+              <p><b>The exam:</b> {chosen?.items.length ?? 0} document images your bot has never seen.</p>
+              <p><b>The answer key:</b> a person labelled every image beforehand. The bot is right only when it matches the human label.</p>
+            </>
+          ) : own ? (
+            <>
+              <p><b>The exam:</b> your {setup.ownCount} examples, one at a time.</p>
+              <p><b>The answer key:</b> your own labels. Each example is hidden from the bot while it’s tested.</p>
+            </>
+          ) : (
+            <>
+              <p><b>The exam:</b> {setup.items.length} client messages your bot has never seen.</p>
+              <p><b>The answer key:</b> people labelled every message beforehand. The bot is right only when it matches the human label.</p>
+            </>
+          )}
+          {counts.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {counts.map((c) => (
+                <span key={c.name} className="rounded-full border border-fg/10 bg-purple-brand/5 px-2.5 py-0.5 text-sm text-fg/70 tabular-nums">
+                  {c.name} {c.n}
+                </span>
+              ))}
+            </div>
+          )}
+          {kind === 'image' && sets.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2 pt-1.5" role="radiogroup" aria-label="Which test images">
+              {sets.map((x) => (
+                <button
+                  key={x.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={chosen?.id === x.id}
+                  onClick={() => setImageSet(x.id)}
+                  disabled={running || !!res}
+                  className={`rounded-full border px-3 py-1 text-sm font-semibold transition-colors disabled:cursor-default ${
+                    chosen?.id === x.id
+                      ? 'border-purple-brand/50 bg-purple-brand/10 text-purple-brand'
+                      : 'border-fg/15 text-fg/60 hover:border-purple-brand/40 disabled:opacity-50'
+                  }`}
+                >
+                  {x.name} ({x.items.length})
+                </button>
+              ))}
+              {chosen && <span className="text-sm text-fg/50">{chosen.hint}</span>}
+            </div>
+          )}
+          {error && <p className="text-base text-pink-brand pt-1" role="alert">{error}</p>}
+        </div>
+        {res ? (
+          <span className="shrink-0 font-bold text-[var(--success)] whitespace-nowrap">✓ Exam done</span>
+        ) : (
+          <button
+            type="button"
+            onClick={run}
+            disabled={running}
+            className={`${btn} shrink-0 bg-purple-brand hover:bg-purple-brand/90 text-white disabled:opacity-70`}
+          >
+            {running && <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />}
+            {running ? (kind === 'image' ? `Tested ${progress?.done ?? 0} of ${chosen?.items.length ?? 0}…` : 'Running the exam…') : 'Run the exam'}
+          </button>
         )}
-        <button
-          type="button"
-          onClick={run}
-          disabled={running}
-          className={`${btn} mt-6 bg-purple-brand hover:bg-purple-brand/90 text-white disabled:opacity-70`}
-        >
-          {running && <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />}
-          {running ? 'Running the exam…' : 'Run the exam'}
-        </button>
-        {error && <p className="text-lg text-pink-brand mt-4" role="alert">{error}</p>}
-      </div>
-    );
-  }
+      </section>
 
-  return <Results res={res} unit={kind === 'image' ? 'images' : 'messages'} onAgain={kind === 'image' ? () => setRes(null) : undefined} />;
+      {res && <Results res={res} unit={unit} onAgain={kind === 'image' ? () => setRes(null) : undefined} />}
+    </div>
+  );
 }
 
 /* ───────────────────────── results ───────────────────────── */
