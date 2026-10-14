@@ -41,6 +41,7 @@ import {
   orderLabels,
   perDesk,
   shortName,
+  termRows,
   type DeskBar,
   type DeskResult,
   type EvalItem,
@@ -362,6 +363,32 @@ function Results({ res, unit = 'messages', onAgain }: { res: EvalResponse; unit?
           </section>
         </div>
       </div>
+
+      {/* 5. The scientific terms, in business words (the next scroll) */}
+      <section className={`${panel} mt-[18px]`} aria-labelledby="b5">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <h2 id="b5" className="text-[21px] font-bold">The scientific terms, in business words</h2>
+          <span className="text-[13px] text-fg/50">Desk shown: {shortName(desk)}</span>
+        </div>
+        <table className="mt-3 w-full text-sm border border-fg/10 rounded-xl border-separate border-spacing-0 overflow-hidden">
+          <thead>
+            <tr className="bg-purple-brand/5 text-xs font-bold uppercase tracking-wide text-fg/50">
+              <th scope="col" className="text-left px-3.5 py-2.5 w-[200px]">Scientific term</th>
+              <th scope="col" className="text-left px-3.5 py-2.5">What it means at work</th>
+              <th scope="col" className="text-right px-3.5 py-2.5 w-[200px]">How your bot did</th>
+            </tr>
+          </thead>
+          <tbody>
+            {termRows(items, labels, desk, res.practice, unit, own).map((t) => (
+              <tr key={t.term}>
+                <th scope="row" className="text-left px-3.5 py-2 border-t border-fg/10 font-bold text-purple-brand">{t.term}</th>
+                <td className="px-3.5 py-2 border-t border-fg/10">{t.meaning}</td>
+                <td className="px-3.5 py-2 border-t border-fg/10 text-right font-bold tabular-nums">{t.yours}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
     </div>
   );
 }

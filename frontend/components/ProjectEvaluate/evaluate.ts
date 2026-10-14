@@ -234,3 +234,73 @@ export function deskDots(items: EvalItem[], desk: string) {
     flagged: desks.filter((i) => i.predicted === desk).map((item) => ({ item, ok: item.expected === desk })),
   };
 }
+
+/* ───────── bottom: the scientific terms, in business words ───────── */
+
+export interface TermRow {
+  term: string; // the scientific name
+  meaning: string; // what it means at work
+  yours: string; // how this bot did
+}
+
+/**
+ * The terms table under the results. Recall, Precision, False negative and False positive follow the
+ * chosen desk (deskAtLean at 0, the same numbers as the desk card). Overfitting is left out when
+ * there is no practice score (image runs). `own`: the answer key is the learner's own labels.
+ */
+export function termRows(
+  items: EvalItem[],
+  labels: string[],
+  desk: string,
+  practice: { correct: number; total: number },
+  unit: Unit = 'messages',
+  own = false,
+): TermRow[] {
+  const one = unit.slice(0, -1);
+  const acc = accuracy(items);
+  const r = deskAtLean(items, labels, desk, 0);
+  const name = lowerName(desk);
+  const mistakes = acc.total - acc.right;
+  const off = items.filter((i) => i.expected === NONE);
+  const lowest = items.length ? items.reduce((a, b) => (score(b) < score(a) ? b : a)) : null;
+
+  const rows: TermRow[] = [
+    { term: 'Test set', meaning: `The exam: ${unit} the bot never saw`, yours: `${items.length} ${unit}` },
+    {
+      term: 'Ground truth',
+      meaning: own ? 'The answer key: your own labels' : 'The answer key: labels a person gave',
+      yours: `Every ${one}`,
+    },
+    { term: 'Accuracy', meaning: 'Overall hit rate', yours: `${acc.right} of ${acc.total} (${acc.pct}%)` },
+    { term: 'Confusion matrix', meaning: 'The error table: what went where', yours: `${mistakes} ${mistakes === 1 ? 'mistake' : 'mistakes'}` },
+    {
+      term: 'Recall',
+      meaning: `Catch rate: of the real ${deskNoun(desk, 2, unit)}, how many it found`,
+      yours: r.total ? `${r.caught} of ${r.total} (${r.recall}%)` : `No ${deskNoun(desk, 2, unit)} in this exam`,
+    },
+    {
+      term: 'Precision',
+      meaning: `Alert quality: when it said ${name}, how often it was right`,
+      yours: r.flagged ? `${r.caught} of ${r.flagged} (${r.precision}%)` : `It never said ${shortName(desk)}`,
+    },
+    {
+      term: 'False negative',
+      meaning: `A miss: a real ${deskNoun(desk, 1, unit)} sent to another ${unit === 'images' ? 'label' : 'desk'}`,
+      yours: `${r.total - r.caught}`,
+    },
+    { term: 'False positive', meaning: `A false alarm: called ${name} when it wasn’t`, yours: `${r.falseAlarms}` },
+    {
+      term: 'Confidence score',
+      meaning: `How sure it was; below ${LOW_CONFIDENCE}% a person takes over`,
+      yours: unit === 'messages' && off.length ? `Off-topic: ${surePct(off[0])}` : lowest ? `Lowest: ${surePct(lowest)}` : '—',
+    },
+  ];
+  if (practice.total > 0) {
+    rows.push({
+      term: 'Overfitting',
+      meaning: 'Practice score flatters; only the exam counts',
+      yours: `${practice.correct} of ${practice.total} vs ${acc.right} of ${acc.total}`,
+    });
+  }
+  return rows;
+}
