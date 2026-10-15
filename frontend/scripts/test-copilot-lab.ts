@@ -116,7 +116,7 @@ test('Copy result text', () => {
   assert.equal(
     resultText(ETHICS, answers),
     [
-      'Ex 9 · AI Ethics lab: one email, three checks',
+      'AI Ethics lab: one email, three checks',
       '3 held · 2 partly · 1 slipped',
       '',
       'Personal details hidden: Caught 10 of 13 (Partly)',

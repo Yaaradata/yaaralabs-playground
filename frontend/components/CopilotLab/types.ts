@@ -1,4 +1,4 @@
-/** Copilot labs (Ex 9, Ex 10): content and answer types. Content lives in activities/. */
+/** Copilot labs (AI Ethics, Document AI): content and answer types. Content lives in activities/. */
 
 export type ActivityId = 'ethics' | 'document-ai';
 export type Verdict = 'good' | 'partial' | 'bad';
@@ -78,7 +78,6 @@ export interface Step {
 
 export interface Activity {
   id: ActivityId;
-  ex: string;
   title: string;
   point: string;
   steps: Step[];

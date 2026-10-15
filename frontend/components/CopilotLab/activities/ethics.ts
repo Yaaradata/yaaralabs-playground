@@ -1,5 +1,5 @@
 /**
- * Ex 9 · AI Ethics lab: one email, three checks. Runs in Microsoft Copilot; the Playground is the worksheet.
+ * AI Ethics lab: one email, three checks. Runs in Microsoft Copilot; the Playground is the worksheet.
  * All wording, prompts and checklists live here, so trainers can change content without touching the UI.
  * Block ids (redact, overhide, circ1, bank, push, circ2, decide) are used by aiChecks.ts and saved answers.
  */
@@ -7,7 +7,6 @@ import type { Activity } from '../types';
 
 export const ETHICS: Activity = {
   id: 'ethics',
-  ex: 'Ex 9',
   title: 'AI Ethics lab: one email, three checks',
   point: 'The AI will redact, reply and sound confident. A person still owns what gets sent.',
   steps: [

@@ -360,8 +360,8 @@ const GuestProjectManager: React.FC<GuestProjectManagerProps> = ({ sessionId }) 
                             <option value="text-recognition">Text Recognition</option>
                             <option value="confusion-matrix">Confusion Matrix</option>
                             <option value="rag-chatbot">RAG Chatbot</option>
-                            <option value="copilot-ethics">Copilot: AI Ethics (Ex 9)</option>
-                            <option value="copilot-document-ai">Copilot: Document AI (Ex 10)</option>
+                            <option value="copilot-ethics">Copilot: AI Ethics</option>
+                            <option value="copilot-document-ai">Copilot: Document AI</option>
                             <option value="ai-agent">AI Agent</option>
                             <option value="live-object-detection">Live Object Detection</option>
                             <option value="image-recognition">Image Recognition</option>
@@ -498,8 +498,8 @@ const GuestProjectManager: React.FC<GuestProjectManagerProps> = ({ sessionId }) 
                                          project.type === 'exercises' ? 'Exercises' :
                                          project.type === 'confusion-matrix' ? 'Confusion Matrix' :
                                          project.type === 'rag-chatbot' ? 'RAG Chatbot' :
-                                         project.type === 'copilot-ethics' ? 'Copilot: AI Ethics (Ex 9)' :
-                                         project.type === 'copilot-document-ai' ? 'Copilot: Document AI (Ex 10)' :
+                                         project.type === 'copilot-ethics' ? 'Copilot: AI Ethics' :
+                                         project.type === 'copilot-document-ai' ? 'Copilot: Document AI' :
                                          project.type === 'ai-agent' ? 'AI Agent' :
                                          project.type || 'Unknown'}
                                     </span>

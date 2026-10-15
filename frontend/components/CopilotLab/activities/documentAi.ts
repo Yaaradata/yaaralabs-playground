@@ -1,5 +1,5 @@
 /**
- * Ex 10 · Document AI: read a dividend notice. Runs in Microsoft Copilot; the Playground is the worksheet.
+ * Document AI: read a dividend notice. Runs in Microsoft Copilot; the Playground is the worksheet.
  * The notice (public/datasets/copilot/Seabird_dividend_notice_TRAINING.pdf, made by scripts/make_seabird_notice.py)
  * has four traps: two BSE codes (543210 address, 543201 table), no ISIN, no fixed payment date, and an Annexure A
  * that isn't attached. Block ids (amount, record, paydate, cond, fields, traps, decide) are used by aiChecks.ts.
@@ -10,7 +10,6 @@ export const NOTICE_HREF = '/datasets/copilot/Seabird_dividend_notice_TRAINING.p
 
 export const DOC_AI: Activity = {
   id: 'document-ai',
-  ex: 'Ex 10',
   title: 'Document AI: read a dividend notice',
   point: 'The AI reads fast. The risk is in what’s missing or doesn’t match. A person signs off.',
   steps: [

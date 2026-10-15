@@ -9,7 +9,7 @@
  *   Custom AI Agent         stage "assistant" with the custody desk description
  *   RAG Chatbot             stage "rag", the sample library added (empty state if the backend can't embed)
  *   AI Agent                stage "agent"
- *   Copilot labs            AI Ethics (Ex 9) and Document AI (Ex 10)
+ *   Copilot labs            AI Ethics and Document AI
  *
  * A step that can't run locally (no Gemini / Vertex) is recorded as "empty": the page is still tested.
  *

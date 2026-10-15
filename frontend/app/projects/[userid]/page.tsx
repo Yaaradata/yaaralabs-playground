@@ -519,7 +519,7 @@ function CreateProjectPage() {
     }
   };
 
-  // Copilot labs (Ex 9, Ex 10): ready once the lab has a saved step
+  // Copilot labs (AI Ethics, Document AI): ready once the lab has a saved step
   const getCopilotStatus = async (projectId: string): Promise<'available' | 'unavailable'> => {
     try {
       const sessionId = localStorage.getItem('yaaralabs_playground_session_id');
@@ -1333,8 +1333,8 @@ function CreateProjectPage() {
                           project.type === 'exercises' ? 'Exercises' :
                           project.type === 'confusion-matrix' ? 'Confusion Matrix' :
                           project.type === 'rag-chatbot' ? 'RAG Chatbot' :
-                          project.type === 'copilot-ethics' ? 'Copilot: AI Ethics (Ex 9)' :
-                          project.type === 'copilot-document-ai' ? 'Copilot: Document AI (Ex 10)' :
+                          project.type === 'copilot-ethics' ? 'Copilot: AI Ethics' :
+                          project.type === 'copilot-document-ai' ? 'Copilot: Document AI' :
                           project.type === 'ai-agent' ? 'AI Agent' :
                           project.type === 'live-video-classification' ? 'Live Object Detection' :
                           project.type === 'classification' ? 'Classification' :
@@ -1511,8 +1511,8 @@ function CreateProjectPage() {
                       : projectDay === 'day2'
                         ? [
                             ...DAY2_OPTIONS,
-                            ['copilot-ethics', 'Copilot: AI Ethics (Ex 9)'],
-                            ['copilot-document-ai', 'Copilot: Document AI (Ex 10)'],
+                            ['copilot-ethics', 'Copilot: AI Ethics'],
+                            ['copilot-document-ai', 'Copilot: Document AI'],
                           ]
                         : []
                     ).map(([value, label]) => (
@@ -1716,10 +1716,10 @@ function CreateProjectPage() {
                       Custom AI Agent
                     </option>
                     <option value="copilot-ethics" className="bg-canvas text-fg">
-                      Copilot: AI Ethics (Ex 9)
+                      Copilot: AI Ethics
                     </option>
                     <option value="copilot-document-ai" className="bg-canvas text-fg">
-                      Copilot: Document AI (Ex 10)
+                      Copilot: Document AI
                     </option>
                     <option value="exercises" className="bg-canvas text-fg">
                       Exercises

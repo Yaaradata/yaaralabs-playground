@@ -1,12 +1,12 @@
-# Copilot labs: Ex 9 AI Ethics and Ex 10 Document AI
+# Copilot labs: AI Ethics and Document AI
 
 The Playground is the worksheet beside Microsoft Copilot: copy a prompt, paste it into Copilot, tick what Copilot
 did. The Playground makes no AI calls in these labs and stores only ticks, choices and short notes.
 
 | Type id | Label | Content |
 |---|---|---|
-| `copilot-ethics` | Copilot: AI Ethics (Ex 9) | `frontend/components/CopilotLab/activities/ethics.ts` |
-| `copilot-document-ai` | Copilot: Document AI (Ex 10) | `frontend/components/CopilotLab/activities/documentAi.ts` |
+| `copilot-ethics` | Copilot: AI Ethics | `frontend/components/CopilotLab/activities/ethics.ts` |
+| `copilot-document-ai` | Copilot: Document AI | `frontend/components/CopilotLab/activities/documentAi.ts` |
 
 ## Decisions
 

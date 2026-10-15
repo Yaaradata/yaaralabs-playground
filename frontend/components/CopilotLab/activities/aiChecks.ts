@@ -1,5 +1,5 @@
 /**
- * "Your AI check": six questions for any task that depends on an AI answer. Shared by Ex 9 and Ex 10.
+ * "Your AI check": six questions for any task that depends on an AI answer. Shared by both Copilot labs.
  * Evidence lists the block ids in each lab that showed the question in action.
  */
 import type { AiCheck } from '../types';

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Copilot labs: Ex 9 AI Ethics and Ex 10 Document AI.
+ * Copilot labs: AI Ethics and Document AI.
  * The Playground is the worksheet beside Microsoft Copilot: copy the prompt, paste it into Copilot, tick what
  * Copilot did. No AI calls happen here, and only ticks, choices and short notes are saved (never Copilot's output).
  * Content: activities/. Scoring: scoring.ts. Design reference: CopilotLab.preview.jsx.
@@ -274,7 +274,7 @@ function ResultPage({ act, answers }: { act: Activity; answers: Answers }) {
     <div className="result print-area">
       <div className="result-head">
         <div>
-          <div className="eyebrow">{act.ex} · Result card</div>
+          <div className="eyebrow">Result card</div>
           <h2 className="h2">How Copilot did</h2>
         </div>
         <div className="tally num">
@@ -322,7 +322,7 @@ function ResultPage({ act, answers }: { act: Activity; answers: Answers }) {
 
 function AiCheckPage({ act, answers }: { act: Activity; answers: Answers }) {
   const [state, copy] = useCopy();
-  const other = act.id === 'ethics' ? 'Ex 10' : 'Ex 9';
+  const other = act.id === 'ethics' ? 'the Document AI lab' : 'the AI Ethics lab';
   return (
     <div className="aicheck print-area">
       <div className="eyebrow">Take this with you</div>
@@ -503,7 +503,7 @@ export default function CopilotLab({ activity, projectName, sessionId, projectId
     <div className="cpl">
       <header className="top no-print">
         <div className="min-w-0">
-          <div className="eyebrow">{projectName} · {act.ex} · Copilot</div>
+          <div className="eyebrow">{projectName} · Copilot</div>
           <h1 className="h1">{act.title}</h1>
         </div>
         <span className="sp" />
@@ -592,7 +592,7 @@ export default function CopilotLab({ activity, projectName, sessionId, projectId
         <div className="modal-bg" onClick={() => setConfirmReset(false)}>
           <div className="modal" role="dialog" aria-modal="true" aria-labelledby="cpl-reset-title" onClick={(e) => e.stopPropagation()}>
             <h3 id="cpl-reset-title">Start this lab again?</h3>
-            <p className="muted">Your ticks and notes for {act.ex} will be cleared.</p>
+            <p className="muted">Your ticks and notes for this lab will be cleared.</p>
             <div className="row-end">
               <button type="button" className="btn" onClick={() => setConfirmReset(false)} autoFocus>Cancel</button>
               <button type="button" className="btn pri" onClick={reset}>Start again</button>

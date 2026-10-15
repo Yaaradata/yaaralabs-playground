@@ -1717,7 +1717,7 @@ export default function ProjectDetailsPage() {
   // Day 2 Agent Studio: agents with a stage. Guest projects of type rag-chatbot / ai-agent keep their old Labs.
   const isAgentStudio = Boolean(selectedProject.agent_id && selectedProject.stage);
   const isRagChatbot = selectedProject.type === 'rag-chatbot' && !selectedProject.agent_id;
-  // Copilot labs (Ex 9, Ex 10): a worksheet next to Microsoft Copilot
+  // Copilot labs (AI Ethics, Document AI): a worksheet next to Microsoft Copilot
   const isCopilotLab = selectedProject.type === 'copilot-ethics' || selectedProject.type === 'copilot-document-ai';
   const isAiAgent = selectedProject.type === 'ai-agent' && !selectedProject.agent_id;
   // 'live-video-classification' is the name this type had briefly; those projects open the same way

@@ -97,7 +97,7 @@ export function resultText(act: Activity, answers: Answers): string {
   const t = tally(act, answers);
   const notes = allBlocks(act).filter((b) => b.type === 'notes');
   return [
-    `${act.ex} · ${act.title}`,
+    `${act.title}`,
     `${t.good} held · ${t.partial} partly · ${t.bad} slipped`,
     '',
     ...scoredBlocks(act).map((b) => {
