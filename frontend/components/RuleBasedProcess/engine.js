@@ -2561,7 +2561,37 @@ export function mountRuleBasedProcess(root, options) {
       cr.appendChild(document.createTextNode("Run"));
       cr.onclick = function () { (R.on ? $("#stop") : $("#run")).click(); };
       $("#wrap").appendChild(cr);
+      // ...and an expand icon at the top right of the chat: the chat takes the canvas's place (the
+      // blocks panel stays). A running script keeps running; Run / Stop moves up beside the icon.
+      var tools = document.createElement("div");
+      tools.className = "chat-tools";
+      var fv = document.createElement("button");
+      fv.id = "chatfull";
+      fv.type = "button";
+      fv.className = "chat-full";
+      fv.onclick = function () { setChatFull(!root.classList.contains("is-chat-full")); };
+      tools.appendChild(fv);
+      if ($("#play-stage")) $("#play-stage").appendChild(tools);
+      setChatFull(false);
     }
+    function setChatFull(on) {
+      var fv = $("#chatfull"), cr = $("#canvasrun");
+      if (!fv) return;
+      root.classList.toggle("is-chat-full", !!on);
+      if (cr) {
+        if (on) fv.parentNode.insertBefore(cr, fv);
+        else if ($("#wrap") && cr.parentNode !== $("#wrap")) $("#wrap").appendChild(cr);
+      }
+      fv.innerHTML = on
+        ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 4H7v3H4v2h5V4zm10 3h-3V4h-2v5h5V7zM7 17v3h2v-5H4v2h3zm8 3h2v-3h3v-2h-5v5z"/></svg>'
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 9V4h5v2H6v3H4zm10-5h5v5h-2V6h-3V4zM4 15h2v3h3v2H4v-5zm16 0v5h-5v-2h3v-3h2z"/></svg>';
+      fv.title = on ? "Back to the blocks (Esc)" : "Full screen chat";
+      fv.setAttribute("aria-label", fv.title);
+      fv.setAttribute("aria-pressed", on ? "true" : "false");
+    }
+    on(document, "keydown", function (e) {
+      if (e.key === "Escape" && root.classList.contains("is-chat-full")) setChatFull(false);
+    });
     // ...and one colour for every Aria bubble (see .rbp-ml in the CSS)
     if (CHAT_VIEW && $("#console") && $("#console").closest(".rbp-root")) $("#console").closest(".rbp-root").classList.add("rbp-ml");
   
