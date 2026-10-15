@@ -1,7 +1,7 @@
 """Tests for the Image Recognition model choice (app/image_training_service.py): MobileNet or EfficientNet.
 
-No downloads and no GCS: models are built without ImageNet weights and the save/load metadata is
-checked on a fake bucket.
+No GCS: the save/load metadata is checked on a fake bucket. EfficientNet loads its ImageNet weights
+(cached, and baked into the Docker image); MobileNet is built without them where it can be.
 
 Run from backend/:  .venv/Scripts/python.exe -m unittest test_image_models -v
 """
@@ -106,6 +106,24 @@ class SaveAndLoad(unittest.TestCase):
             self.assertTrue(loaded.load_model_from_gcs(bucket, "image_recog/p1"), loaded.last_error)
             self.assertEqual(loaded.architecture, arch)
             self.assertEqual(loaded.model.input_shape, (None, *ARCHITECTURES[arch]["img_size"], 3))
+
+    def test_reloaded_model_predicts_like_the_trained_one(self):
+        """The model built to load saved weights must be the same network as the one trained.
+        EfficientNet built with weights=None lacked Keras's ImageNet input Rescaling layer, so the
+        same weights gave different (worse) predictions after every reload."""
+        rng = np.random.default_rng(0)
+        for arch in ("mobilenet", "efficientnet"):
+            t = ImageRecognitionTrainer(arch)
+            trained = t._build_model(3, load_pretrained=True)
+            loading = t._build_model(3, load_pretrained=False)
+            self.assertEqual(
+                [type(l).__name__ for l in trained.layers[1].layers],
+                [type(l).__name__ for l in loading.layers[1].layers],
+                arch,
+            )
+            loading.set_weights(trained.get_weights())
+            x = t._preprocess(rng.uniform(0, 255, (2, *t.img_size, 3)))
+            np.testing.assert_allclose(trained.predict(x, verbose=0), loading.predict(x, verbose=0), atol=1e-5, err_msg=arch)
 
     def test_old_models_without_architecture_load_as_mobilenet(self):
         trainer = ImageRecognitionTrainer("mobilenet")

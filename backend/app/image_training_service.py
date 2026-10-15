@@ -293,11 +293,18 @@ class ImageRecognitionTrainer:
 
     def _build_model(self, num_classes: int, load_pretrained: bool = True):
         """Build the chosen base model + classifier. Same architecture for training and load-from-weights.
-        Use load_pretrained=False when loading our saved weights to avoid loading ImageNet weights."""
+        Use load_pretrained=False when loading our saved weights to avoid loading ImageNet weights.
+
+        EfficientNet is always built with its ImageNet weights: Keras adds an input Rescaling layer
+        (1 / sqrt(ImageNet std)) only when weights="imagenet". That layer has no weights, so a model
+        built with weights=None loaded our saved weights without complaint but fed the base inputs
+        about 2x too small, and every prediction after training was worse than the model we trained
+        (sample: handwritten 19/20 -> 17/20). The weights file is baked into the Docker image, and
+        load_weights then replaces them with ours. Check: scripts/check_image_roundtrip.py."""
         shape = (int(self.img_size[0]), int(self.img_size[1]), 3)
         weights = "imagenet" if load_pretrained else None
         if self.architecture == "efficientnet":
-            base_model = EfficientNetB0(include_top=False, weights=weights, input_shape=shape)
+            base_model = EfficientNetB0(include_top=False, weights="imagenet", input_shape=shape)
         else:
             base_model = MobileNetV2(include_top=False, weights=weights, input_shape=shape, alpha=0.35)
         base_model.trainable = False

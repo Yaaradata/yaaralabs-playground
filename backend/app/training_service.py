@@ -608,6 +608,16 @@ class DistilBERTTrainer:
         self.training_texts = []
         self.training_labels = []
         self.is_trained = False
+        # Fine-tuning settings for workshop-sized data (5-10 examples per label). The old 4 epochs at
+        # 2e-5 with batch 16 was ~8 weight updates on 20 examples: the model did not even learn its own
+        # training examples (25%, i.e. chance for 4 labels; sample exam 3-5/12, under 30% sure).
+        # 20 epochs at 5e-5, batch 8 (~60 updates) fits the training set and its confidence settles
+        # (10 epochs fits it too but is still unsure). Sample: 42 s on a laptop CPU, exam 10/12 at 68%.
+        # Check: scripts/check_text_roundtrip.py distilbert
+        self.epochs = 20
+        self.learning_rate = 5e-5
+        self.batch_size = 8
+        self.seed = 7  # same examples -> same model, so a workshop room sees the same results
         
     def validate_dataset(self, examples: List[TextExample]) -> Tuple[bool, str]:
         """Validate dataset for training"""
@@ -740,6 +750,9 @@ class DistilBERTTrainer:
             
             # Load with retry logic
             self.tokenizer = load_tokenizer_with_retry()
+            # Seed before the classifier head is created (random init), not only in the Trainer
+            from transformers import set_seed
+            set_seed(self.seed)
             self.model = load_model_with_retry(num_labels)
             logger.info("✅ DistilBERT model loaded successfully")
             
@@ -775,18 +788,18 @@ class DistilBERTTrainer:
             # Training arguments - optimized for ~1 minute training with good accuracy
             training_args = TrainingArguments(
                 output_dir='./distilbert_results',
-                num_train_epochs=4,  # 4 epochs - good balance of speed and accuracy
-                per_device_train_batch_size=16,  # Larger batch size for faster training (fewer steps)
-                learning_rate=2e-5,  # Standard learning rate for good accuracy
+                num_train_epochs=self.epochs,
+                per_device_train_batch_size=self.batch_size,
+                learning_rate=self.learning_rate,
+                seed=self.seed,
                 weight_decay=0.01,
-                logging_dir='./logs',
                 logging_steps=50,  # Less frequent logging for speed
                 save_strategy='no',  # Don't save checkpoints
                 eval_strategy='no',  # No validation split
                 load_best_model_at_end=False,
                 dataloader_num_workers=0,  # Disable multiprocessing (can cause issues in threads)
                 disable_tqdm=False,  # Keep progress bar
-                report_to=None,  # Disable wandb/tensorboard reporting
+                report_to="none",  # None means every installed integration: TensorBoard wrote logs/ into the working dir
             )
             
             # Data collator
