@@ -921,7 +921,7 @@ async def upload_image_for_prediction_only(
         # Upload to GCS with prediction-specific path (not in training data)
         gcs_path = f"predictions/{project_id}/{storage_name(file.filename)}"
         blob = project_service.bucket.blob(gcs_path)
-        blob.upload_from_string(file_content, content_type=file.content_type)
+        await asyncio.to_thread(blob.upload_from_string, file_content, content_type=file.content_type)
         
         # Generate GCS URL for prediction
         gcs_url = f"gs://{project_service.bucket.name}/{gcs_path}"
@@ -1186,7 +1186,7 @@ async def _train_text_ovr_model(
             training_result["model"],
         )
         now_iso = datetime.now(timezone.utc).isoformat()
-        guest_service.projects_collection.document(project_id).update({
+        await asyncio.to_thread(guest_service.projects_collection.document(project_id).update, {
             'model.filename': model_filename,
             'model.gcsPath': model_path,
             'model.accuracy': training_result.get('accuracy'),
@@ -1456,13 +1456,14 @@ async def _train_image_recognition_project(
             model_path = f"image_recog/{project_id}"
 
             logger.info(f"Saving image model to GCS directory: {model_path}")
-            saved_model_path = trainer.save_model(gcp_clients.get_bucket(), model_path)
+            saved_model_path = await asyncio.to_thread(trainer.save_model, gcp_clients.get_bucket(), model_path)
             training_result['model_bytes'] = trainer.last_model_bytes
             logger.info("Image model saved to GCS successfully")
             
             # Update Firestore with completed status and model info
-            image_trainer.update_firestore_training_status(
-                project_id, session_id, "completed", 
+            await asyncio.to_thread(
+                image_trainer.update_firestore_training_status,
+                project_id, session_id, "completed",
                 training_result, saved_model_path
             )
             
