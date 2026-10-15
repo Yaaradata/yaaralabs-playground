@@ -399,20 +399,6 @@ function Notes({ b, ans, set }) {
 function ResultPage({ act, answers }) {
   const scored = allBlocks(act).filter((b) => ['checklist', 'choice', 'fieldcheck', 'reveal'].includes(b.type) && b.scored !== false);
   const notesBlocks = allBlocks(act).filter((b) => b.type === 'notes');
-  const [copied, setCopied] = useState(false);
-
-  const text = [
-    `${act.ex} · ${act.title}`,
-    '',
-    ...scored.map((b) => { const r = blockResult(b, answers); return `${b.label}: ${r.text}`; }),
-    '',
-    ...notesBlocks.flatMap((b) => b.boxes.map((l, i) => `${l}: ${(answers[b.id] || [])[i] || '—'}`)),
-  ].join('\n');
-
-  const copy = async () => {
-    try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore in preview */ }
-  };
-
   const tally = scored.reduce((t, b) => { const r = blockResult(b, answers).tone; t[r] = (t[r] || 0) + 1; return t; }, {});
 
   return (
@@ -448,10 +434,6 @@ function ResultPage({ act, answers }) {
           ))}
         </div>
       ))}
-      <div className="row-end no-print">
-        <button className="btn" onClick={() => window.print()}>Print</button>
-        <button className="btn pri" onClick={copy}>{copied ? 'Copied ✓' : 'Copy result'}</button>
-      </div>
       <div className="point">Point to land: {act.point}</div>
     </div>
   );
@@ -459,11 +441,6 @@ function ResultPage({ act, answers }) {
 
 function AiCheckPage({ act, answers }) {
   const blocks = Object.fromEntries(allBlocks(act).filter((b) => b.id).map((b) => [b.id, b]));
-  const [copied, setCopied] = useState(false);
-  const plain = ['Before you rely on AI for a task, check:', ...AI_CHECKS.map((c, i) => `${i + 1}. ${c.title} ${c.text}`)].join('\n');
-  const copy = async () => {
-    try { await navigator.clipboard.writeText(plain); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
-  };
   return (
     <div className="aicheck print-area">
       <div className="eyebrow">Take this with you</div>
@@ -494,10 +471,6 @@ function AiCheckPage({ act, answers }) {
             </div>
           );
         })}
-      </div>
-      <div className="row-end no-print">
-        <button className="btn" onClick={() => window.print()}>Print</button>
-        <button className="btn pri" onClick={copy}>{copied ? 'Copied ✓' : 'Copy the six questions'}</button>
       </div>
     </div>
   );

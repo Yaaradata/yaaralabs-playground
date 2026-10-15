@@ -13,13 +13,11 @@ import { clearLab, clearLocal, loadLab, readLocal, saveLab, writeLocal } from '.
 import './copilotLab.css';
 import {
   TONE_LABEL,
-  aiChecksText,
   allBlocks,
   blockResult,
   checkEvidence,
   completedSteps,
   fieldScore,
-  resultText,
   scoredBlocks,
   stepDone,
   tally,
@@ -267,7 +265,6 @@ function Notes({ b, ans, set }: { b: NotesBlock; ans?: NotesAnswer; set: (v: Not
 /* ───────────── result card and AI check ───────────── */
 
 function ResultPage({ act, answers }: { act: Activity; answers: Answers }) {
-  const [state, copy] = useCopy();
   const t = tally(act, answers);
   const notes = allBlocks(act).filter((b): b is NotesBlock => b.type === 'notes');
   return (
@@ -309,19 +306,12 @@ function ResultPage({ act, answers }: { act: Activity; answers: Answers }) {
           })}
         </div>
       ))}
-      <div className="row-end no-print">
-        <button type="button" className="btn" onClick={() => window.print()}>Print</button>
-        <button type="button" className="btn pri" onClick={() => copy(resultText(act, answers))}>
-          {state === 'ok' ? 'Copied ✓' : state === 'manual' ? 'Copy failed: try again' : 'Copy result'}
-        </button>
-      </div>
       <div className="point">Point to land: {act.point}</div>
     </div>
   );
 }
 
 function AiCheckPage({ act, answers }: { act: Activity; answers: Answers }) {
-  const [state, copy] = useCopy();
   const other = act.id === 'ethics' ? 'the Document AI lab' : 'the AI Ethics lab';
   return (
     <div className="aicheck print-area">
@@ -355,12 +345,6 @@ function AiCheckPage({ act, answers }: { act: Activity; answers: Answers }) {
             </div>
           );
         })}
-      </div>
-      <div className="row-end no-print">
-        <button type="button" className="btn" onClick={() => window.print()}>Print</button>
-        <button type="button" className="btn pri" onClick={() => copy(aiChecksText(AI_CHECKS))}>
-          {state === 'ok' ? 'Copied ✓' : state === 'manual' ? 'Copy failed: try again' : 'Copy the six questions'}
-        </button>
       </div>
     </div>
   );
