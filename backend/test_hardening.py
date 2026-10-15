@@ -388,11 +388,11 @@ class ExampleLimits(unittest.TestCase):
         svc = ProjectService.__new__(ProjectService)  # no GCP clients
         project = SimpleNamespace(
             dataset=SimpleNamespace(examples=[TextExample(text=f"t{i}", label="Fees") for i in range(existing)], labels=["Fees"], records=existing),
-            model_dump=lambda: {},
+            model_dump=lambda: {"dataset": {}},
         )
         svc.get_project = mock.AsyncMock(return_value=project)
         written = []
-        doc = SimpleNamespace(set=lambda d: written.append(d))
+        doc = SimpleNamespace(set=lambda d: written.append(d), update=lambda d: written.append(d))
         type(svc).collection = property(lambda self: SimpleNamespace(document=lambda _id: doc))
         return svc, project, written
 
@@ -425,6 +425,14 @@ class ExampleLimits(unittest.TestCase):
         self.assertIn("at most 50", str(e.exception))
         self.assertEqual(written, [], "nothing is saved when the request is over the limit")
         self.assertEqual(self.add(svc, ",".join(f"e{i}" for i in range(50)))["totalExamples"], 50)
+
+    def test_adding_examples_writes_only_the_dataset(self):
+        # P1 lost updates: a whole-document set() could put back an old model / status if a training
+        # finished between the read and the write
+        svc, project, written = self.project_service()
+        project.model_dump = lambda: {"dataset": {"examples": []}, "model": {"stale": True}, "status": "draft"}
+        self.add(svc, "hello")
+        self.assertEqual(list(written[-1].keys()), ["dataset"])
 
     def test_a_project_holds_at_most_500(self):
         from app.services.project_service import ExampleLimitError

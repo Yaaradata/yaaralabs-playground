@@ -444,9 +444,10 @@ class ProjectService:
             project.dataset.labels = ordered_labels
             project.dataset.records = len(project.dataset.examples)
             
-            # Update Firestore
+            # Write only the dataset: a whole-document set() could put back an old model / status if a
+            # training finished between our read and this write (docs/hardening.md, P1 lost updates)
             project_dict = project.model_dump()
-            self.collection.document(project_id).set(project_dict)
+            self.collection.document(project_id).update({"dataset": project_dict["dataset"]})
             
             return {
                 'totalExamples': len(project.dataset.examples),
@@ -524,9 +525,9 @@ class ProjectService:
             # Update records count (total examples)
             project.dataset.records = len(project.dataset.examples) + len(project.dataset.image_examples)
             
-            # Update Firestore
+            # Write only the dataset (see add_examples): never put back an old model / status
             project_dict = project.model_dump()
-            self.collection.document(project_id).set(project_dict)
+            self.collection.document(project_id).update({"dataset": project_dict["dataset"]})
             
             return {
                 'totalImages': len(project.dataset.image_examples),
