@@ -412,7 +412,7 @@ function Results({ res, unit = 'messages', onAgain }: { res: EvalResponse; unit?
       {/* 5. The scientific terms, in business words (the next scroll) */}
       <section className={`${panel} mt-[1.125rem]`} aria-labelledby="b5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h2 id="b5" className="text-[1.3125rem] font-bold">The scientific terms, in business words</h2>
+          <h2 id="b5" className="text-[1.3125rem] font-bold">The scientific terms</h2>
           <span className="text-[length:max(0.8125rem,13.5px)] text-fg/50">Desk shown: {shortName(desk)}</span>
         </div>
         <table className="mt-3 w-full text-sm border border-fg/10 rounded-xl border-separate border-spacing-0 overflow-hidden">
