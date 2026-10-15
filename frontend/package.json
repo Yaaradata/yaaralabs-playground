@@ -17,7 +17,8 @@
     "test:session-check": "npx tsx scripts/test-session-check.ts",
     "test:xss": "tsx scripts/test-xss.ts",
     "test:rbp-safe-load": "tsx scripts/test-rbp-safe-load.ts",
-    "test:labels": "tsx scripts/test-labels.ts"
+    "test:labels": "tsx scripts/test-labels.ts",
+    "test:error-screens": "tsx scripts/test-error-screens.ts"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",
