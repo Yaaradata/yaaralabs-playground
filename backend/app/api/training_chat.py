@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
+from .agent_access import agent_guard
 from ..services.training_chat_service import TrainingChatService
 from ..models import (
     CreateChatRequest, CreateChatResponse,
@@ -21,7 +22,8 @@ from ..models import (
     Chat
 )
 
-router = APIRouter(prefix="/training", tags=["training"])
+# every route checks that the agent belongs to the caller's session (agent_access.py)
+router = APIRouter(prefix="/training", tags=["training"], dependencies=[Depends(agent_guard)])
 
 
 def get_training_service():

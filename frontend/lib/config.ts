@@ -1,4 +1,20 @@
 // Configuration for the YaaraLabs Playground frontend
+/**
+ * Agent routes (/agent, /chat, /kb, /rules, /training) check that the agent belongs to the caller's
+ * session, so every call says which session it acts for. Adds session_id from the stored guest session
+ * unless the path already has one.
+ */
+export function withSession(path: string): string {
+  if (/[?&]session_id=/.test(path)) return path;
+  let sid = '';
+  try {
+    sid = typeof window !== 'undefined' ? localStorage.getItem('yaaralabs_playground_session_id') || '' : '';
+  } catch {
+    /* storage blocked: the server answers 400 */
+  }
+  return `${path}${path.includes('?') ? '&' : '?'}session_id=${encodeURIComponent(sid)}`;
+}
+
 export const config = {
   // Backend API base URL
   apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || 'https://yaaralabs-playground-backend-uaaur7no2a-uc.a.run.app',
@@ -112,59 +128,59 @@ export const config = {
         `/api/exercises/session/${sessionId}/projects/${projectId}/tfidf/predict`,
     },
     agents: {
-      create: '/agent/create',
-      list: (sessionId: string) => `/agent?session_id=${sessionId}`,
-      delete: (agentId: string, sessionId: string) => `/agent/${agentId}?session_id=${sessionId}`,
-      chat: '/chat',
-      chatTeach: '/chat/teach',
-      chatHistory: (agentId: string, sessionId: string) => `/chat/history?agent_id=${agentId}&session_id=${sessionId}`,
-      clearChatHistory: (agentId: string, sessionId: string) => `/chat/history?agent_id=${agentId}&session_id=${sessionId}`,
+      get create() { return withSession('/agent/create'); },
+      list: (sessionId: string) => withSession(`/agent?session_id=${sessionId}`),
+      delete: (agentId: string, sessionId: string) => withSession(`/agent/${agentId}?session_id=${sessionId}`),
+      get chat() { return withSession('/chat'); },
+      get chatTeach() { return withSession('/chat/teach'); },
+      chatHistory: (agentId: string, sessionId: string) => withSession(`/chat/history?agent_id=${agentId}&session_id=${sessionId}`),
+      clearChatHistory: (agentId: string, sessionId: string) => withSession(`/chat/history?agent_id=${agentId}&session_id=${sessionId}`),
       persona: {
-        get: (agentId: string) => `/agent/${agentId}/persona`,
-        update: (agentId: string) => `/agent/${agentId}/persona`,
+        get: (agentId: string) => withSession(`/agent/${agentId}/persona`),
+        update: (agentId: string) => withSession(`/agent/${agentId}/persona`),
       },
       settings: {
-        get: (agentId: string) => `/agent/${agentId}/settings`,
-        update: (agentId: string) => `/agent/${agentId}/settings`,
+        get: (agentId: string) => withSession(`/agent/${agentId}/settings`),
+        update: (agentId: string) => withSession(`/agent/${agentId}/settings`),
       },
       guardrails: {
-        get: (agentId: string) => `/agent/${agentId}/guardrails`,
-        update: (agentId: string) => `/agent/${agentId}/guardrails`,
+        get: (agentId: string) => withSession(`/agent/${agentId}/guardrails`),
+        update: (agentId: string) => withSession(`/agent/${agentId}/guardrails`),
       },
       knowledge: {
-        text: '/kb/text',
-        file: '/kb/file',
-        link: '/kb/link',
-        qna: '/kb/qna',
-        list: (agentId: string, kbType?: string) => `/kb/list?agent_id=${agentId}${kbType ? `&kb_type=${kbType}` : ''}`,
-        get: (knowledgeId: string) => `/kb/${knowledgeId}`,
-        update: (knowledgeId: string) => `/kb/${knowledgeId}`,
-        delete: (knowledgeId: string) => `/kb/${knowledgeId}`,
-        viewFile: (knowledgeId: string) => `/kb/file/view/${knowledgeId}`,
+        get text() { return withSession('/kb/text'); },
+        get file() { return withSession('/kb/file'); },
+        get link() { return withSession('/kb/link'); },
+        get qna() { return withSession('/kb/qna'); },
+        list: (agentId: string, kbType?: string) => withSession(`/kb/list?agent_id=${agentId}${kbType ? `&kb_type=${kbType}` : ''}`),
+        get: (knowledgeId: string) => withSession(`/kb/${knowledgeId}`),
+        update: (knowledgeId: string) => withSession(`/kb/${knowledgeId}`),
+        delete: (knowledgeId: string) => withSession(`/kb/${knowledgeId}`),
+        viewFile: (knowledgeId: string) => withSession(`/kb/file/view/${knowledgeId}`),
       },
       rules: {
-        save: '/rules/save',
-        list: (agentId: string) => `/rules?agentId=${agentId}`,
+        get save() { return withSession('/rules/save'); },
+        list: (agentId: string) => withSession(`/rules?agent_id=${agentId}`),
       },
       training: {
-        message: '/training/message',
-        apply: '/training/apply',
-        reject: (changeId: string) => `/training/reject/${changeId}`,
-        sessions: (agentId: string) => `/training/sessions?agent_id=${agentId}`,
-        history: (agentId: string, sessionId: string) => `/training/history?agent_id=${agentId}&session_id=${sessionId}`,
-        restart: (agentId: string, sessionId: string) => `/training/restart?agent_id=${agentId}&session_id=${sessionId}`,
-        greeting: (agentId: string) => `/training/greeting?agent_id=${agentId}`,
-        initialize: (agentId: string, sessionId: string) => `/training/initialize?agent_id=${agentId}&session_id=${sessionId}`,
-        pending: (agentId: string, sessionId: string) => `/training/pending/${agentId}?session_id=${sessionId}`,
-        editMessage: (messageId: string) => `/training/message/${messageId}`,
-        deleteMessage: (messageId: string) => `/training/message/${messageId}`,
-        clearHistory: (agentId: string, sessionId: string) => `/training/history/clear?agent_id=${agentId}&session_id=${sessionId}`,
+        get message() { return withSession('/training/message'); },
+        get apply() { return withSession('/training/apply'); },
+        reject: (changeId: string) => withSession(`/training/reject/${changeId}`),
+        sessions: (agentId: string) => withSession(`/training/sessions?agent_id=${agentId}`),
+        history: (agentId: string, sessionId: string) => withSession(`/training/history?agent_id=${agentId}&session_id=${sessionId}`),
+        restart: (agentId: string, sessionId: string) => withSession(`/training/restart?agent_id=${agentId}&session_id=${sessionId}`),
+        greeting: (agentId: string) => withSession(`/training/greeting?agent_id=${agentId}`),
+        initialize: (agentId: string, sessionId: string) => withSession(`/training/initialize?agent_id=${agentId}&session_id=${sessionId}`),
+        pending: (agentId: string, sessionId: string) => withSession(`/training/pending/${agentId}?session_id=${sessionId}`),
+        editMessage: (messageId: string) => withSession(`/training/message/${messageId}`),
+        deleteMessage: (messageId: string) => withSession(`/training/message/${messageId}`),
+        clearHistory: (agentId: string, sessionId: string) => withSession(`/training/history/clear?agent_id=${agentId}&session_id=${sessionId}`),
         // Chat management endpoints (Playground AI-like)
-        createChat: '/training/chats',
-        getChats: (agentId: string) => `/training/chats?agent_id=${agentId}`,
-        getChat: (chatId: string) => `/training/chats/${chatId}`,
-        archiveChat: (chatId: string) => `/training/chats/${chatId}/archive`,
-        deleteChat: (chatId: string) => `/training/chats/${chatId}`,
+        get createChat() { return withSession('/training/chats'); },
+        getChats: (agentId: string) => withSession(`/training/chats?agent_id=${agentId}`),
+        getChat: (chatId: string) => withSession(`/training/chats/${chatId}`),
+        archiveChat: (chatId: string) => withSession(`/training/chats/${chatId}/archive`),
+        deleteChat: (chatId: string) => withSession(`/training/chats/${chatId}`),
       },
     },
   },

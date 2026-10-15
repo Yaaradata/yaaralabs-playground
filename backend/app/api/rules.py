@@ -2,13 +2,15 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import List
 from pydantic import BaseModel
 
+from .agent_access import agent_guard
 from ..models import (
     RuleSaveRequest, RuleResponse, RuleListResponse,
     ErrorResponse
 )
 from ..services.rules_service import RulesService
 
-router = APIRouter(prefix="/rules", tags=["agent"])
+# every route checks that the agent belongs to the caller's session (agent_access.py)
+router = APIRouter(prefix="/rules", tags=["agent"], dependencies=[Depends(agent_guard)])
 
 
 class RuleStatusUpdate(BaseModel):

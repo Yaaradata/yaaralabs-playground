@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import StreamingResponse
 from typing import Optional, List
 
+from .agent_access import agent_guard
 from ..models import (
     ChatRequest, ChatResponse, ChatTeachRequest, ChatTeachResponse,
     ErrorResponse
@@ -11,7 +12,8 @@ from ..services.chat_service import ChatService
 from ..services.agent_service import AgentService
 from ..services.agent_studio_service import AgentStudioService, StudioModelError, typed
 
-router = APIRouter(prefix="/chat", tags=["agent"])
+# every route checks that the agent belongs to the caller's session (agent_access.py)
+router = APIRouter(prefix="/chat", tags=["agent"], dependencies=[Depends(agent_guard)])
 
 
 def get_chat_service():

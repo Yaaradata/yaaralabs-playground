@@ -1,5 +1,5 @@
 /** API calls for the Day 2 Agent Studio. Every call throws an Error with the server's message on failure. */
-import config from '../../lib/config';
+import config, { withSession } from '../../lib/config';
 import type {
   AgentSettings,
   Guardrails,
@@ -19,7 +19,9 @@ const base = () => config.apiBaseUrl;
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${base()}${path}`, init);
+    // the agent routers check ownership: every call carries the session
+    const url = /^\/(agent|chat|kb|rules|training)(\/|\?|$)/.test(path) ? withSession(path) : path;
+    res = await fetch(`${base()}${url}`, init);
   } catch {
     throw new Error("Couldn't reach the server. Check your connection and try again.");
   }

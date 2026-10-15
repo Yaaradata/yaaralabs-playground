@@ -3,6 +3,7 @@ from typing import Optional, List
 from pydantic import BaseModel
 import logging
 
+from .agent_access import agent_guard
 from ..models import (
     KnowledgeTextRequest, KnowledgeFileRequest, KnowledgeLinkRequest, KnowledgeQnARequest,
     KnowledgeResponse, KnowledgeFileResponse, ErrorResponse
@@ -13,7 +14,8 @@ from ..config import gcp_clients
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/kb", tags=["agent"])
+# every route checks that the agent belongs to the caller's session (agent_access.py)
+router = APIRouter(prefix="/kb", tags=["agent"], dependencies=[Depends(agent_guard)])
 
 
 def get_knowledge_service():

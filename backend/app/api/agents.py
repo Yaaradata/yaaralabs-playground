@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import List, Optional
 
+from .agent_access import agent_guard, public_agent
 from ..models import (
     AgentCreateRequest, AgentCreateResponse, Agent,
     ErrorResponse, PersonaUpdateRequest, PersonaUpdateResponse, Persona,
@@ -9,7 +10,8 @@ from ..models import (
 )
 from ..services.agent_service import AgentService, AgentAccessError, AgentRequestError
 
-router = APIRouter(prefix="/agent", tags=["agent"])
+# every route checks that the agent belongs to the caller's session (agent_access.py)
+router = APIRouter(prefix="/agent", tags=["agent"], dependencies=[Depends(agent_guard)])
 
 
 def get_agent_service():
@@ -18,7 +20,7 @@ def get_agent_service():
     return AgentService()
 
 
-@router.post("/create", response_model=AgentCreateResponse)
+@router.post("/create")
 async def create_agent(
     request: AgentCreateRequest,
     agent_service: AgentService = Depends(get_agent_service)
@@ -33,7 +35,7 @@ async def create_agent(
     """
     try:
         agent = agent_service.create_agent(request)
-        return AgentCreateResponse(data=agent)
+        return {"success": True, "data": public_agent(agent)}
     except AgentAccessError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except AgentRequestError as e:
@@ -44,16 +46,15 @@ async def create_agent(
 
 @router.get("")
 async def get_agents(
-    session_id: Optional[str] = Query(None, description="Filter by session ID"),
+    session_id: str = Query(..., min_length=1, description="The caller's session"),
     agent_service: AgentService = Depends(get_agent_service)
 ):
     """
-    List agents, optionally filtered by session_id.
-    Returns a list of agents.
+    List the agents of one session (session_id is required: listing every session's agents leaked
+    their session ids, the only credential). Agents are returned without session_id / user_id.
     """
     try:
-        agents = agent_service.get_agents_by_session(session_id) if session_id else agent_service.get_all_agents()
-        return agents
+        return [public_agent(a) for a in agent_service.get_agents_by_session(session_id)]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -61,7 +62,7 @@ async def get_agents(
 @router.delete("/{agent_id}")
 async def delete_agent(
     agent_id: str,
-    session_id: Optional[str] = Query(None, description="Session ID for verification"),
+    session_id: str = Query(..., min_length=1, description="Session ID (ownership is checked by agent_guard)"),
     agent_service: AgentService = Depends(get_agent_service)
 ):
     """
