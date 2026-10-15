@@ -11,7 +11,9 @@
     "test:sample-labelling": "npx tsx scripts/test-sample-labelling.ts",
     "test:evaluate": "npx tsx scripts/test-evaluate.ts",
     "test:agent-studio": "npx tsx scripts/test-agent-studio.ts",
-    "test:copilot-lab": "npx tsx scripts/test-copilot-lab.ts"
+    "test:copilot-lab": "npx tsx scripts/test-copilot-lab.ts",
+    "test:responsive": "tsx scripts/responsive-audit.ts",
+    "seed:responsive": "tsx scripts/responsive-seed.ts"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",
@@ -29,7 +31,9 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
+    "playwright-core": "^1.48.2",
     "tailwindcss": "^4",
+    "tsx": "^4.19.2",
     "typescript": "^5"
   }
 }

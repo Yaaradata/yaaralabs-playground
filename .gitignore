@@ -47,3 +47,6 @@ rule-based-process (1).html
 
 # Document image dataset: original downloads stay local
 nuvama_document_images/raw/
+
+# responsive screen test output (npm run test:responsive)
+frontend/responsive-report/
