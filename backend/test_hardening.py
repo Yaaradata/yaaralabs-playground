@@ -540,5 +540,49 @@ class FileNames(unittest.TestCase):
             f"inline; filename={self.NAMES[2]}".encode("latin-1")  # what the old code sent
 
 
+# ── 12. debug and maintenance routes are closed in production ────────────────
+
+
+class AdminOnlyRoutes(unittest.TestCase):
+    GATED = [
+        ("GET", f"/api/guests/debug/session/{A}"),
+        ("GET", f"/api/guests/debug/projects/{A}"),
+        ("POST", f"/api/guests/debug/fix-project-types/{A}"),
+        ("GET", f"/api/guests/session/{A}/debug"),
+        ("POST", "/internal/cleanup"),
+        ("GET", "/api/diagnostics/routes"),
+    ]
+
+    def test_the_rule(self):
+        from fastapi import HTTPException
+
+        from app.api import admin
+
+        with mock.patch.dict("os.environ", {"NODE_ENV": "production", "ADMIN_TOKEN": "s3cret"}):
+            for token in (None, "", "wrong"):
+                with self.assertRaises(HTTPException) as e:
+                    admin.require_admin(token)
+                self.assertEqual(e.exception.status_code, 404)
+            admin.require_admin("s3cret")  # the right token passes
+        with mock.patch.dict("os.environ", {"NODE_ENV": "production", "ADMIN_TOKEN": ""}):
+            with self.assertRaises(HTTPException):
+                admin.require_admin("anything")  # no secret configured: off
+        with mock.patch.dict("os.environ", {"NODE_ENV": "development"}):
+            admin.require_admin(None)  # local development: open
+
+    def test_the_app_hides_them_in_production(self):
+        import app.main as main
+
+        client = TestClient(main.app, raise_server_exceptions=False)
+        with mock.patch.dict("os.environ", {"NODE_ENV": "production", "ADMIN_TOKEN": "s3cret"}):
+            for method, path in self.GATED:
+                r = client.request(method, path, json={})
+                self.assertEqual(r.status_code, 404, f"{method} {path} -> {r.status_code}")
+            self.assertEqual(client.get("/health").status_code, 200)
+        if main._PRODUCTION:  # docs follow NODE_ENV at start-up
+            for path in ("/docs", "/redoc", "/openapi.json"):
+                self.assertEqual(client.get(path).status_code, 404, path)
+
+
 if __name__ == "__main__":
     unittest.main()

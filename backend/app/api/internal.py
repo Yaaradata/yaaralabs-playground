@@ -1,9 +1,11 @@
 from fastapi import APIRouter, HTTPException, Depends
 
 from ..models import CleanupRequest, CleanupResponse, ErrorResponse
+from .admin import require_admin
 from ..services.agent_service import AgentService
 
-router = APIRouter(prefix="/internal", tags=["agent"])
+# maintenance only: admin token in production (admin.py)
+router = APIRouter(prefix="/internal", tags=["agent"], dependencies=[Depends(require_admin)])
 
 
 def get_agent_service():

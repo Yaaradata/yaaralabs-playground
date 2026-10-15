@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse, Response
@@ -34,6 +34,7 @@ from .api import (
     exercises,
 )
 from .api.guests import router as guests_router
+from .api.admin import is_production, require_admin
 
 # --------------------------------------------------
 # Logging
@@ -44,14 +45,16 @@ logger = logging.getLogger(__name__)
 # --------------------------------------------------
 # FastAPI App
 # --------------------------------------------------
+_PRODUCTION = is_production()
 app = FastAPI(
     title="YaaraLabs Playground API",
     description="Backend service for ML project management with GCP integration",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    # API docs only outside production (docs/hardening.md, item 12)
+    docs_url=None if _PRODUCTION else "/docs",
+    redoc_url=None if _PRODUCTION else "/redoc",
     # Ensure schema generation doesn't fail on errors
-    openapi_url="/openapi.json",
+    openapi_url=None if _PRODUCTION else "/openapi.json",
 )
 
 # --------------------------------------------------
@@ -143,7 +146,7 @@ def health_check():
 # --------------------------------------------------
 # Diagnostic Endpoint - Check Router Registration
 # --------------------------------------------------
-@app.get("/api/diagnostics/routes")
+@app.get("/api/diagnostics/routes", dependencies=[Depends(require_admin)])
 def check_routes():
     """Diagnostic endpoint to verify all routes are registered"""
     critical_paths = ["/agent", "/kb", "/rules", "/chat", "/training"]

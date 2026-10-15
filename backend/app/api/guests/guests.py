@@ -34,6 +34,7 @@ from ...text_embed_service import embed_text_trainer, MODEL_TYPE as EMBED_MODEL_
 from ..slots import HEAVY_TRAINING
 from . import training_lock
 from ...labels import LabelError, clean_label
+from ..admin import require_admin
 from ...filenames import content_disposition, storage_name
 from ...services.project_service import ExampleLimitError
 from ...image_training_service import image_trainer, ImageRecognitionTrainer, get_cached_predictor
@@ -80,7 +81,7 @@ async def validate_session_dependency(session_id: str, guest_service: GuestServi
 # DEBUG ENDPOINTS
 # ============================================================================
 
-@router.get("/debug/session/{session_id}")
+@router.get("/debug/session/{session_id}", dependencies=[Depends(require_admin)])
 async def debug_session(session_id: str):
     """Debug endpoint to check session status"""
     try:
@@ -98,7 +99,7 @@ async def debug_session(session_id: str):
             "session_exists": False
         }
 
-@router.get("/debug/projects/{session_id}")
+@router.get("/debug/projects/{session_id}", dependencies=[Depends(require_admin)])
 async def debug_projects(session_id: str):
     """Debug endpoint to check projects without session validation"""
     try:
@@ -123,7 +124,7 @@ async def debug_projects(session_id: str):
             "projects_count": 0
         }
 
-@router.post("/debug/fix-project-types/{session_id}")
+@router.post("/debug/fix-project-types/{session_id}", dependencies=[Depends(require_admin)])
 async def fix_project_types(session_id: str):
     """Fix project types for a session by updating invalid enum values"""
     try:
@@ -2932,7 +2933,7 @@ async def delete_specific_image_example(
 # SESSION CLEANUP
 # ============================================================================
 
-@router.get("/session/{session_id}/debug", response_model=dict)
+@router.get("/session/{session_id}/debug", response_model=dict, dependencies=[Depends(require_admin)])
 async def debug_guest_session(
     session_id: str,
     guest_service: GuestService = Depends(get_guest_service),
