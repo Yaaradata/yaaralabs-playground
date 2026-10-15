@@ -164,6 +164,8 @@ export default function LearnPage() {
   const [projectDataset, setProjectDataset] = useState<Dataset | null>(null);
   const [isValidSession, setIsValidSession] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  // A failed load (server error, network) shows Retry instead of sending the learner back to the list
+  const [loadFailed, setLoadFailed] = useState<string | null>(null);
   const [actualSessionId, setActualSessionId] = useState<string>('');
   const [actualProjectId, setActualProjectId] = useState<string>('');
   const [trainingStats, setTrainingStats] = useState({
@@ -469,9 +471,13 @@ export default function LearnPage() {
           window.location.href = `/projects/${urlUserId}`;
           return;
         }
+      } else if (response.status === 404) {
+        // the project really is gone
+        window.location.href = `/projects/${urlUserId}`;
+        return;
       } else {
         console.error('Failed to load project details:', response.status);
-        window.location.href = `/projects/${urlUserId}`;
+        setLoadFailed('Couldn’t load this project. Your work is safe.');
         return;
       }
 
@@ -490,7 +496,7 @@ export default function LearnPage() {
       }
     } catch (error) {
       console.error('Error loading project and training data:', error);
-      window.location.href = `/projects/${urlUserId}`;
+      setLoadFailed('Couldn’t reach the server. Your work is safe.');
     }
   };
 
@@ -1423,7 +1429,7 @@ export default function LearnPage() {
   // Check if training requirements are met
   const canTrainModel = trainingStats.totalExamples >= 5 && trainingStats.totalLabels >= 2;
 
-  if (isLoading || isInitializing) {
+  if ((isLoading || isInitializing) && !loadFailed) {
     return (
       <div className="min-h-screen bg-canvas text-fg">
         <Header />
@@ -1435,6 +1441,34 @@ export default function LearnPage() {
                 <div className="text-fg text-xl">Loading project data...</div>
                 <div className="text-fg/70 text-sm mt-2">Please wait while we set up your learning environment</div>
               </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (loadFailed && actualSessionId && actualProjectId) {
+    return (
+      <div className="min-h-screen bg-canvas text-fg">
+        <Header />
+        <main className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
+          <div role="alert" className="max-w-md mx-auto mt-16 rounded-2xl border border-magenta-brand/25 bg-card p-6 text-center">
+            <p className="text-xl font-semibold">{loadFailed}</p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setLoadFailed(null);
+                  void loadProjectAndTrainingData(actualSessionId, actualProjectId);
+                }}
+                className="rounded-xl bg-purple-brand px-5 py-2.5 font-semibold text-white hover:bg-purple-brand/90"
+              >
+                Retry
+              </button>
+              <Link href={`/projects/${urlUserId}`} className="rounded-xl border border-magenta-brand/30 px-5 py-2.5 font-semibold hover:bg-purple-brand/10">
+                Back to projects
+              </Link>
             </div>
           </div>
         </main>

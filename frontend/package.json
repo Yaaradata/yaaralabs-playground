@@ -20,7 +20,8 @@
     "test:labels": "tsx scripts/test-labels.ts",
     "test:error-screens": "tsx scripts/test-error-screens.ts",
     "test:rbp-model-limit": "tsx scripts/test-rbp-model-limit.ts",
-    "test:break-it": "tsx scripts/break-it.ts"
+    "test:break-it": "tsx scripts/break-it.ts",
+    "test:learn-retry": "tsx scripts/test-learn-retry.ts"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",
