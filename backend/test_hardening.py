@@ -287,5 +287,95 @@ class FeatureSlots(unittest.TestCase):
         self.assertFalse(hasattr(ex, "_TRAIN_SLOTS"), "agent turns, RAG and training must not share one semaphore")
 
 
+# ── 6. a project trains once at a time; heavy trainings are capped ───────────
+
+
+class TrainingGuard(unittest.TestCase):
+    def setUp(self):
+        import threading
+
+        from app.api.guests import guests as g
+        from app.api.guests import training_lock
+        from app.models import TrainingResponse
+
+        self.g, self.training_lock = g, training_lock
+        self.app = FastAPI()
+        self.app.include_router(g.router)
+        self.app.dependency_overrides[g.validate_session_dependency] = lambda: {"session_id": A}
+        projects = {f"p{i}": {"id": f"p{i}", "createdBy": f"guest:{A}", "type": "text-recognition"} for i in range(4)}
+        fake_service = SimpleNamespace(get_guest_project_by_id=mock.AsyncMock(side_effect=lambda pid: projects.get(pid)))
+        self.app.dependency_overrides[g.get_guest_service] = lambda: fake_service
+
+        # the Firestore transaction, in memory, with the same decision function
+        locks, mutex = {}, threading.Lock()
+
+        def acquire(project_id, db=None):
+            import time
+
+            with mutex:
+                if training_lock.lock_is_held(locks.get(project_id), time.time()):
+                    from fastapi import HTTPException
+
+                    raise HTTPException(status_code=409, detail=training_lock.ALREADY)
+                locks[project_id] = {"at": time.time()}
+            return project_id
+
+        def release(ref):
+            with mutex:
+                locks.pop(ref, None)
+
+        async def slow_training(*a, **k):
+            import asyncio
+
+            await asyncio.sleep(0.5)
+            return TrainingResponse(success=True, message="Training completed successfully!")
+
+        self.patches = [
+            mock.patch.object(training_lock, "acquire", side_effect=acquire),
+            mock.patch.object(training_lock, "release", side_effect=release),
+            mock.patch.object(g, "_train_text_recognition_project", side_effect=slow_training),
+            mock.patch.object(g, "_train_image_recognition_project", side_effect=slow_training),
+        ]
+        for p in self.patches:
+            p.start()
+
+    def tearDown(self):
+        for p in self.patches:
+            p.stop()
+
+    def train_together(self, bodies):
+        import asyncio
+
+        import httpx
+
+        async def run():
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://t") as c:
+                rs = await asyncio.gather(*(c.post(f"/api/guests/session/{A}/projects/{pid}/train", json=body) for pid, body in bodies))
+                return [r.status_code for r in rs], [r.text for r in rs]
+
+        return asyncio.run(run())
+
+    def test_double_click_gets_409(self):
+        codes, texts = self.train_together([("p0", {"modelType": "logistic_regression"})] * 2)
+        self.assertEqual(sorted(codes), [200, 409], texts)
+        self.assertTrue(any("Already training" in t for t in texts))
+
+    def test_the_lock_is_released_after_training(self):
+        self.assertEqual(self.train_together([("p0", {"modelType": "logistic_regression"})])[0], [200])
+        self.assertEqual(self.train_together([("p0", {"modelType": "logistic_regression"})])[0], [200])
+
+    def test_third_heavy_training_at_once_is_told_busy(self):
+        with mock.patch.object(self.g.HEAVY_TRAINING, "wait", 0.2):
+            codes, texts = self.train_together([(f"p{i}", {"modelType": "distilbert"}) for i in range(3)])
+        self.assertEqual(sorted(codes), [200, 200, 503], texts)
+        self.assertTrue(any("Busy, retry in a minute." in t for t in texts))
+
+    def test_stale_lock_does_not_block_forever(self):
+        tl = self.training_lock
+        self.assertTrue(tl.lock_is_held({"at": 1000.0}, 1000.0 + 60))
+        self.assertFalse(tl.lock_is_held({"at": 1000.0}, 1000.0 + tl.STALE_SECONDS + 1))
+        self.assertFalse(tl.lock_is_held(None, 1000.0))
+
+
 if __name__ == "__main__":
     unittest.main()

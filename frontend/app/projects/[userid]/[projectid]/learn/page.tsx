@@ -765,7 +765,10 @@ export default function LearnPage() {
         }
         
         // Show user-friendly error
-        if (response.status === 422) {
+        if (response.status === 409 || response.status === 503) {
+          // 409: this project is already training (another tab or a double-click); 503: the server is busy
+          alert(typeof errorDetails.detail === 'string' ? errorDetails.detail : 'Training is busy. Please try again in a minute.');
+        } else if (response.status === 422) {
           const errorMsg = errorDetails.message || 'Invalid training configuration';
           alert(`Training Error: ${errorMsg}`);
         } else if (response.status === 404) {

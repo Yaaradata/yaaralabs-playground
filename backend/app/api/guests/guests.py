@@ -3,6 +3,7 @@ from typing import List, Optional
 import json
 import logging
 import asyncio
+import contextlib
 from datetime import datetime, timezone
 import secrets
 import uuid
@@ -30,6 +31,8 @@ from ...services.project_service import ProjectService
 from ...training_service import trainer, distilbert_trainer
 from ...text_ovr_service import ovr_text_trainer, MODEL_TYPE as OVR_MODEL_TYPE
 from ...text_embed_service import embed_text_trainer, MODEL_TYPE as EMBED_MODEL_TYPE
+from ..slots import HEAVY_TRAINING
+from . import training_lock
 from ...image_training_service import image_trainer, ImageRecognitionTrainer, get_cached_predictor
 from ...services.image_url_fetcher import fetch_image_from_url, ImageUrlError
 from ...training_job_service import training_job_service
@@ -1091,17 +1094,26 @@ async def start_guest_training(
             raise HTTPException(status_code=404, detail="Project not found in this session")
         
         project_type = guest_project.get('type', 'text-recognition')
-        
-        # Handle image recognition projects
-        if project_type == 'image-recognition':
-            return await _train_image_recognition_project(
-                session_id, project_id, guest_project, training_config, guest_service
-            )
-        
-        # Handle text recognition projects (existing logic)
-        return await _train_text_recognition_project(
-            session_id, project_id, guest_project, training_config, guest_service
-        )
+
+        # One training per project (409 "Already training" for a double-click or a second tab), and
+        # at most HEAVY_TRAINING.size image / DistilBERT trainings at once on this instance.
+        requested = ((training_config.modelType if training_config else None) or "").strip().lower()
+        heavy = project_type == 'image-recognition' or requested not in ("logistic_regression", EMBED_MODEL_TYPE, OVR_MODEL_TYPE)
+        lock = await asyncio.to_thread(training_lock.acquire, project_id)
+        try:
+            async with (HEAVY_TRAINING() if heavy else contextlib.nullcontext()):
+                # Handle image recognition projects
+                if project_type == 'image-recognition':
+                    return await _train_image_recognition_project(
+                        session_id, project_id, guest_project, training_config, guest_service
+                    )
+
+                # Handle text recognition projects (existing logic)
+                return await _train_text_recognition_project(
+                    session_id, project_id, guest_project, training_config, guest_service
+                )
+        finally:
+            await asyncio.to_thread(training_lock.release, lock)
             
     except HTTPException:
         raise

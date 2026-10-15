@@ -22,8 +22,8 @@ BUSY = "Busy, please try again in a moment."
 
 
 class Slots:
-    def __init__(self, name: str, size: int, wait: float = 90.0):
-        self.name, self.size, self.wait = name, size, wait
+    def __init__(self, name: str, size: int, wait: float = 90.0, busy: str = BUSY):
+        self.name, self.size, self.wait, self.busy = name, size, wait, busy
         self._sems: Dict[int, asyncio.Semaphore] = {}  # one per event loop (tests start several)
 
     def _sem(self) -> asyncio.Semaphore:
@@ -39,7 +39,7 @@ class Slots:
         try:
             await asyncio.wait_for(sem.acquire(), timeout=self.wait)
         except asyncio.TimeoutError:
-            raise HTTPException(status_code=503, detail=BUSY)
+            raise HTTPException(status_code=503, detail=self.busy)
         try:
             yield
         finally:
@@ -49,3 +49,5 @@ class Slots:
 AGENT_TURNS = Slots("agent turns", 16)  # AI Agent turns and resumes: model calls (I/O-bound)
 RAG_WORK = Slots("rag index and eval", 8)  # embeddings + several model calls per request
 CPU_TRAINING = Slots("cpu training", 3)  # confusion matrix, exercises TF-IDF: CPU-bound on 4 vCPUs
+# Image (MobileNet / EfficientNet) and DistilBERT training: each takes most of the instance's CPUs
+HEAVY_TRAINING = Slots("image and DistilBERT training", 2, wait=60.0, busy="Busy, retry in a minute.")
