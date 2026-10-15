@@ -218,7 +218,12 @@ class LiveObjectDetectionService:
     def detect(self, image_base64: str) -> List[LodVisionObject]:
         from google.cloud.vision_v1.types import Image
 
+        from . import mock_ai
+
         image_bytes = _decode_image(image_base64)
+        if mock_ai.enabled():  # load tests: no Cloud Vision call (mock_ai.py)
+            mock_ai.delay(0.3, 1.2)
+            return []
         image = Image(content=image_bytes)
         try:
             response = _get_vision_client().object_localization(image=image)
@@ -245,7 +250,12 @@ class LiveObjectDetectionService:
         return _suppress_overlaps(detected)
 
     def caption(self, body: LodCaptionRequest) -> Tuple[str, List[LodVisionObject]]:
+        from . import mock_ai
+
         image_bytes = _decode_image(body.image_base64)
+        if mock_ai.enabled():  # load tests (mock_ai.py)
+            mock_ai.delay()
+            return "A person is at the desk.", []
         # Prefer client detections; if the live UI still has none, localize this frame.
         localized: List[LodVisionObject] = []
         if body.detections:

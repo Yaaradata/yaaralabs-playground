@@ -108,8 +108,8 @@ class Participant:
         for l in manifest["labels"]:
             for f in l["files"]:
                 files.append(("files", (Path(f).name, (DATASETS / "nuvama_documents" / f).read_bytes(), "image/jpeg")))
-                labels.append(("labels", l["label"]))
-        await self.call("image upload", "POST", f"/api/guests/session/{self.sid}/projects/{pid}/images", files=files, data=labels)
+                labels.append(l["label"])
+        await self.call("image upload", "POST", f"/api/guests/session/{self.sid}/projects/{pid}/images", files=files, data={"labels": labels})
         tests = [t["file"] for t in manifest["test"]]
         arch = ["mobilenet", "efficientnet"][self.n % 2]
         while self.alive():

@@ -108,7 +108,8 @@ async def detect_objects(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error("LOD Cloud Vision detect failed: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail="Could not detect objects in this frame")
+        # the vision service failed, not our server: 502 with the same friendly message
+        raise HTTPException(status_code=502, detail="Could not detect objects in this frame")
 
 
 @router.post(
@@ -133,4 +134,4 @@ async def caption_scene(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error("LOD caption failed: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail="Could not generate a caption")
+        raise HTTPException(status_code=502, detail="Could not generate a caption")  # the model failed, not our server
