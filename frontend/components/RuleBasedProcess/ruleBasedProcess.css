@@ -46,7 +46,7 @@
   .rbp-root .main{display:flex;flex:1;min-height:0;height:100%;margin:0;padding:0}
 
   /* ---------- palette ---------- */
-  .rbp-root .pal{width:250px;flex:none;display:flex;flex-direction:column;background:var(--surface);
+  .rbp-root .pal{width:clamp(180px,18vw,260px);flex:none;display:flex;flex-direction:column;background:var(--surface);
        border-right:1px solid var(--line);min-width:160px;max-width:480px}
   .rbp-root .palhead{display:flex;align-items:center;gap:6px;padding:8px 9px;border-bottom:1px solid var(--line);
        flex:none;flex-wrap:wrap}
@@ -64,7 +64,7 @@
   .rbp-root .palhead .btn.edit:hover:not(:disabled){
     background:#84b5de;border-color:#84b5de;color:#010101}
   .rbp-root .palhead .btn.edit .btn-ico{width:14px;height:14px;display:block}
-  .rbp-root .tabs{display:grid;grid-template-columns:repeat(2,98px);gap:5px;padding:9px;
+  .rbp-root .tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:9px;
         justify-content:start;border-bottom:1px solid var(--line)}
   .rbp-root .tab{border:1px solid var(--line2);background:var(--bg);border-radius:20px;padding:6px 6px;
        font-size:11.5px;font-weight:700;color:var(--ink2);display:flex;align-items:center;
@@ -221,7 +221,7 @@
     user-select:none;-webkit-user-select:none}
 
   /* ---------- stage side ---------- */
-  .rbp-root .side{width:362px;flex:none;display:flex;flex-direction:column;background:var(--surface);
+  .rbp-root .side{width:clamp(260px,26vw,380px);flex:none;display:flex;flex-direction:column;background:var(--surface);
         border-left:1px solid var(--line);min-height:0;min-width:240px;max-width:560px}
   .rbp-root .side section{border-bottom:1px solid var(--line);padding:12px 14px}
   .rbp-root .side h2{margin:0 0 7px;font-size:11.5px;font-weight:700;color:var(--ink2)}
@@ -841,14 +841,8 @@
   .rbp-root .dlg .tip{font-size:11.5px;color:var(--ink3);margin-top:4px;line-height:1.6}
   .rbp-root .dlg .tip code{background:rgba(255,255,255,.09);padding:1px 4px;border-radius:3px;color:var(--ink2)}
 
-  @media(max-width:1080px){.rbp-root{overflow:auto}
-    .rbp-root .main{flex-direction:column;height:auto}
-    .rbp-root .pal{width:auto;border-right:none;border-bottom:1px solid var(--line);max-width:none}
-    .rbp-root .palbody{flex-direction:row;flex-wrap:wrap;gap:12px;max-height:230px;padding:12px;align-items:flex-start}
-    .rbp-root .wrap{flex:none;height:460px}
-    .rbp-root .side{width:auto;border-left:none;border-top:1px solid var(--line);max-width:none}
-    .rbp-root .rsplit{display:none}
-  }
+  /* No stacked layout on narrow windows: palette | board | Aria stay side by side at every size,
+     the side columns are a share of the window (above) and the board takes the rest. */
   .rbp-root :focus-visible{outline:2px solid var(--purple);outline-offset:2px}
   @media(prefers-reduced-motion:reduce){.rbp-root,.rbp-root *{transition:none!important;animation:none!important}}
 

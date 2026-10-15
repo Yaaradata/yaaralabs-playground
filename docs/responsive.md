@@ -63,3 +63,13 @@ Counted in `frontend/app` and `frontend/components` (Scratch editor excluded) on
 ## C. The sizing system
 
 (filled in by part C)
+
+## Decision: the same arrangement at every size (from the review, 15 Oct)
+
+A page keeps the layout it has on a 1920×1080 screen at every window size: it gets smaller, it
+doesn't rearrange. The Rule Based Process board (and Use the AI, which reuses it) used to stack the
+block palette on top of the board below 1080 px wide; now palette | board | Aria stay side by side,
+the palette is `clamp(180px, 18vw, 260px)`, Aria's panel `clamp(260px, 26vw, 380px)` (inside the
+drag-to-resize limits) and the board takes the rest. At 870 px: 180 | 430 | 260, no horizontal
+scroll. The same rule applies to every page in part E: no breakpoint that turns columns into a stack
+within the test matrix.
