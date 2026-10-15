@@ -1276,29 +1276,45 @@ export default function TrainPage() {
     console.log('📤 Uploading images:', files.length, 'files with label:', label);
     setIsUploadingImages(true);
     try {
-      const formData = new FormData();
-      files.forEach(file => {
-        formData.append('files', file);
-      });
-      formData.append('label', label);
-      
       const url = `${config.apiBaseUrl}${config.api.guests.images(actualSessionId, actualProjectId)}`;
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        body: formData,
-      });
-      
-      
-      if (response.ok) {
-        const result = await response.json();
-        // Reload images to show the new ones
+      // Batches of at most 5 files and about 20 MB: one request must stay under Cloud Run's 32 MB limit.
+      // The server skips files it can't use (HEIC, over 10 MB, not an image) and says why.
+      const batches: File[][] = [];
+      let batch: File[] = [];
+      let bytes = 0;
+      for (const f of files) {
+        if (batch.length && (batch.length >= 5 || bytes + f.size > 20 * 1024 * 1024)) {
+          batches.push(batch);
+          batch = [];
+          bytes = 0;
+        }
+        batch.push(f);
+        bytes += f.size;
+      }
+      if (batch.length) batches.push(batch);
+
+      let added = 0;
+      const skipped: string[] = [];
+      for (const b of batches) {
+        const formData = new FormData();
+        b.forEach((file) => formData.append('files', file));
+        formData.append('label', label);
+        const response = await fetch(url, { method: 'POST', body: formData });
+        const result = await response.json().catch(() => ({}));
+        if (response.ok) {
+          added += Number(result.uploadedImages) || 0;
+          for (const x of result.skipped || []) skipped.push(`${x.filename}: ${x.reason}`);
+        } else {
+          skipped.push(typeof result.detail === 'string' ? result.detail : `${b.length} file(s) could not be uploaded.`);
+        }
+      }
+      // Reload images and label counts to show the new ones
+      if (added) {
         await loadImages();
-        // Also refresh labels to update counts
         await refreshExamplesFromAPI(true);
-      } else {
-        const errorData = await response.json();
-        alert(`Failed to upload images: ${errorData.detail || 'Unknown error'}`);
+      }
+      if (skipped.length) {
+        alert(`${added} image${added === 1 ? '' : 's'} added. Not added:\n${skipped.slice(0, 8).join('\n')}${skipped.length > 8 ? `\n…and ${skipped.length - 8} more` : ''}`);
       }
     } catch (error) {
       console.error('Error uploading images:', error);

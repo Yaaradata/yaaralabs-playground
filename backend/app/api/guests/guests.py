@@ -81,6 +81,21 @@ async def validate_session_dependency(session_id: str, guest_service: GuestServi
 # DEBUG ENDPOINTS
 # ============================================================================
 
+
+
+def _is_image(content: bytes) -> bool:
+    """True when Pillow can read the file as an image (a renamed .exe or an empty file can't)."""
+    try:
+        import io
+
+        from PIL import Image
+
+        with Image.open(io.BytesIO(content)) as img:
+            img.verify()
+        return True
+    except Exception:
+        return False
+
 @router.get("/debug/session/{session_id}", dependencies=[Depends(require_admin)])
 async def debug_session(session_id: str):
     """Debug endpoint to check session status"""
@@ -730,22 +745,24 @@ async def upload_guest_images(
         uploaded_images = []
         pending = []
         
+        # One bad file (an iPhone HEIC photo, a 15 MB picture, a renamed .exe) used to reject the whole
+        # batch. Bad files are now skipped with a reason and the rest are uploaded (docs/hardening.md).
+        skipped = []
         for file, file_label in zip(files, file_labels):
             if file.content_type not in allowed_types:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid file type: {file.content_type}. Only JPEG, PNG, GIF, and WebP images are allowed."
-                )
-            
+                skipped.append({"filename": file.filename, "reason": "Only JPG, PNG, GIF and WebP images can be used (iPhone HEIC photos can't)."})
+                continue
+
             # Check file size (10MB limit per image)
             file_content = await file.read()
             if len(file_content) > 10 * 1024 * 1024:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"File {file.filename} is too large. Maximum size is 10MB per image."
-                )
-            
-            gcs_path = f"images/{project_id}/{file_label}/{storage_name(file.filename)}"
+                skipped.append({"filename": file.filename, "reason": "Bigger than 10 MB."})
+                continue
+            if not _is_image(file_content):
+                skipped.append({"filename": file.filename, "reason": "This file isn't a readable image."})
+                continue
+
+            gcs_path= f"images/{project_id}/{file_label}/{storage_name(file.filename)}"
             pending.append((gcs_path, file_content, file.content_type))
             uploaded_images.append({
                 "image_url": f"gs://{project_service.bucket.name}/{gcs_path}",
@@ -755,6 +772,10 @@ async def upload_guest_images(
                 "content_type": file.content_type
             })
         
+        if not pending:
+            reasons = "; ".join(f"{x['filename']}: {x['reason']}" for x in skipped[:5])
+            raise HTTPException(status_code=400, detail=f"None of these images could be used. {reasons}")
+
         # Upload to GCS in parallel (each upload is a blocking network call)
         def _put(item):
             path, content, ctype = item
@@ -771,7 +792,8 @@ async def upload_guest_images(
             "totalImages": result['totalImages'],
             "labels": result['labels'],
             "uploadedImages": len(uploaded_images),
-            "imageUrls": [img["image_url"] for img in uploaded_images]  # Include image URLs for prediction
+            "imageUrls": [img["image_url"] for img in uploaded_images],  # Include image URLs for prediction
+            "skipped": skipped,  # files left out, with the reason (shown to the learner)
         }
     except HTTPException:
         raise

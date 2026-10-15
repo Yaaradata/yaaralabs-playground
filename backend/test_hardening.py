@@ -731,6 +731,60 @@ class RateLimits(unittest.TestCase):
         self.assertEqual(codes[-1], 429)
 
 
+class ImageBatches(unittest.TestCase):
+    """P1: one bad file (an iPhone HEIC, a renamed .exe, an empty file) no longer rejects the whole batch."""
+
+    def setUp(self):
+        import io
+
+        from PIL import Image
+
+        from app.api.guests import guests as g
+
+        buf = io.BytesIO()
+        Image.new("RGB", (8, 8), "red").save(buf, "JPEG")
+        self.jpeg = buf.getvalue()
+        self.app = FastAPI()
+        self.app.include_router(g.router)
+        self.app.dependency_overrides[g.validate_session_dependency] = lambda: {"session_id": A}
+        self.added = []
+        project = SimpleNamespace(student_id=A, type="image-recognition", dataset=SimpleNamespace(labels=[]))
+
+        async def add_image_examples(pid, imgs):
+            self.added.extend(imgs)
+            return {"totalImages": len(self.added), "labels": ["Cheque"]}
+
+        svc = SimpleNamespace(
+            get_project=mock.AsyncMock(return_value=project),
+            bucket=SimpleNamespace(name="b", blob=lambda path: SimpleNamespace(upload_from_string=lambda *a, **k: None)),
+            add_image_examples=add_image_examples,
+        )
+        self.app.dependency_overrides[g.get_project_service] = lambda: svc
+        self.client = TestClient(self.app, raise_server_exceptions=False)
+        self.url = f"/api/guests/session/{A}/projects/p1/images"
+
+    def test_bad_files_are_skipped_and_the_rest_upload(self):
+        files = [
+            ("files", ("a.jpg", self.jpeg, "image/jpeg")),
+            ("files", ("IMG_0001.HEIC", b"\x00\x00\x00\x18ftypheic", "image/heic")),
+            ("files", ("setup.exe.png", b"MZ\x90\x00 not an image", "image/png")),
+            ("files", ("empty.png", b"", "image/png")),
+            ("files", ("b.jpg", self.jpeg, "image/jpeg")),
+        ]
+        r = self.client.post(self.url, files=files, data={"label": "Cheque"})
+        self.assertEqual(r.status_code, 200, r.text)
+        body = r.json()
+        self.assertEqual(body["uploadedImages"], 2)
+        self.assertEqual([s["filename"] for s in body["skipped"]], ["IMG_0001.HEIC", "setup.exe.png", "empty.png"])
+        self.assertIn("HEIC", body["skipped"][0]["reason"])
+
+    def test_a_batch_with_no_usable_file_says_why(self):
+        r = self.client.post(self.url, files=[("files", ("IMG.HEIC", b"x", "image/heic"))], data={"label": "Cheque"})
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("IMG.HEIC", r.json()["detail"])
+        self.assertEqual(self.added, [])
+
+
 class NoDuplicateRoutes(unittest.TestCase):
     """P1: a second definition of the same method + path is dead code (FastAPI serves the first)."""
 
