@@ -8,6 +8,7 @@ Run from backend/:  .venv/Scripts/python.exe -m unittest test_agent_guardrails -
 from __future__ import annotations
 
 import unittest
+from unittest import mock
 from types import SimpleNamespace
 
 from fastapi import FastAPI
@@ -147,10 +148,13 @@ class Validation(unittest.TestCase):
         app = FastAPI()
         app.include_router(router)
         client = TestClient(app)
-        r = client.put("/agent/a1/guardrails", json={"never_rules": ["x"] * 11})
-        self.assertEqual(r.status_code, 422)
-        r = client.put("/agent/a1/guardrails", json={"never_rules": ["x" * 201]})
-        self.assertEqual(r.status_code, 422)
+        owner = SimpleNamespace(agent_id="a1", session_id="s1")
+        with mock.patch("app.api.agent_access.AgentService") as svc:  # the agent belongs to s1
+            svc.return_value.get_agent.return_value = owner
+            r = client.put("/agent/a1/guardrails", params={"session_id": "s1"}, json={"never_rules": ["x"] * 11})
+            self.assertEqual(r.status_code, 422)
+            r = client.put("/agent/a1/guardrails", params={"session_id": "s1"}, json={"never_rules": ["x" * 201]})
+            self.assertEqual(r.status_code, 422)
 
 
 if __name__ == "__main__":

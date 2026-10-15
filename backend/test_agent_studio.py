@@ -439,8 +439,10 @@ class Routing(unittest.TestCase):
     def test_legacy_agent_uses_chat_service(self):
         legacy = SimpleNamespace(agent_id="A", session_id="s", stage=None)
         client, fake = self._client(legacy)
-        with mock.patch("app.api.chat.AgentService") as svc, mock.patch("app.api.chat.AgentStudioService") as st:
+        with mock.patch("app.api.chat.AgentService") as svc, mock.patch("app.api.chat.AgentStudioService") as st, \
+                mock.patch("app.api.agent_access.AgentService") as owner:
             svc.return_value.get_agent.return_value = legacy
+            owner.return_value.get_agent.return_value = legacy
             r = client.post("/chat", json={"agent_id": "A", "session_id": "s", "message": "hi"})
         self.assertEqual(r.json()["response"], "legacy")
         fake.chat.assert_called_once()
@@ -449,8 +451,10 @@ class Routing(unittest.TestCase):
     def test_staged_agent_uses_the_studio(self):
         staged = SimpleNamespace(agent_id="A", session_id="s", stage="rag")
         client, fake = self._client(staged)
-        with mock.patch("app.api.chat.AgentService") as svc, mock.patch("app.api.chat.AgentStudioService") as st:
+        with mock.patch("app.api.chat.AgentService") as svc, mock.patch("app.api.chat.AgentStudioService") as st, \
+                mock.patch("app.api.agent_access.AgentService") as owner:
             svc.return_value.get_agent.return_value = staged
+            owner.return_value.get_agent.return_value = staged
             st.return_value.answer.return_value = {"response": "studio", "trace": {"stage": "rag"}, "chat_id": "C2"}
             r = client.post("/chat", json={"agent_id": "A", "session_id": "s", "message": "hi"})
             other = client.post("/chat", json={"agent_id": "A", "session_id": "other", "message": "hi"})
