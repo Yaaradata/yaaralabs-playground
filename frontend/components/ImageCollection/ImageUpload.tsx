@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { labelProblem, LABEL_MAX } from '../../lib/labels';
 
 interface ImageUploadProps {
   onUpload: (files: File[], label: string) => Promise<void>;
@@ -22,7 +23,8 @@ export default function ImageUpload({ onUpload, isUploading, projectType }: Imag
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const labelReady = label.trim().length > 0;
+  const labelError = label.trim() ? labelProblem(label) : null;
+  const labelReady = label.trim().length > 0 && !labelError;
   const canPickFiles = labelReady && !isUploading;
 
   const handleFiles = (files: File[]) => {
@@ -111,10 +113,13 @@ export default function ImageUpload({ onUpload, isUploading, projectType }: Imag
           type="text"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
+          maxLength={LABEL_MAX}
+          aria-invalid={Boolean(labelError)}
           placeholder="e.g. Invoice"
           className="w-full px-3 py-2 bg-canvas border border-magenta-brand/30 rounded-lg text-sm text-fg placeholder-fg/50 focus:border-pink-brand focus:outline-none"
           disabled={isUploading}
         />
+        {labelError && <p className="mt-1 text-sm text-pink-brand" role="alert">{labelError}</p>}
       </div>
 
       {/* Upload Area — only after a label is entered */}

@@ -462,5 +462,46 @@ class ExampleLimits(unittest.TestCase):
             te.evaluate(lambda t: {"A": 0.5, "B": 0.5}, te.EMBED_MODEL_TYPE, ["A", "B"], examples, [], own_examples=lambda ex: [])
 
 
+# ── 9. label names that go into URLs and storage paths ───────────────────────
+
+
+class LabelNames(unittest.TestCase):
+    def test_labels_that_could_never_be_deleted_are_refused(self):
+        from app.labels import LabelError, clean_label
+
+        for bad in ("cats/dogs", "Q&A?", "#1", "100%", "a\\b", "   ", "", "x" * 51, "tab\there"):
+            with self.assertRaises(LabelError, msg=repr(bad)):
+                clean_label(bad)
+
+    def test_indian_scripts_and_normal_labels_are_fine(self):
+        from app.labels import clean_label
+
+        for ok in ("கட்டணம்", "शिकायत", "Fees & billing", "Onboarding and KYC", "Desk-2_b", "x" * 50):
+            self.assertEqual(clean_label(ok), ok)
+        self.assertEqual(clean_label("  Corporate   action "), "Corporate action")
+        self.assertEqual(clean_label("tab	here"), "tab here")  # whitespace is normalised, not refused
+
+    def test_a_case_only_duplicate_is_refused(self):
+        from app.labels import LabelError, clean_label
+
+        with self.assertRaises(LabelError):
+            clean_label("fees", ["Fees"])
+        self.assertEqual(clean_label("Fees", ["Fees"]), "Fees")  # the same label again is fine
+
+    def test_text_examples_with_a_bad_label_get_400(self):
+        import asyncio
+
+        from app.models import ExampleAdd
+        from app.services.project_service import ProjectService
+
+        svc = ProjectService.__new__(ProjectService)
+        project = SimpleNamespace(dataset=SimpleNamespace(examples=[], labels=["Fees"], records=0), model_dump=lambda: {})
+        svc.get_project = mock.AsyncMock(return_value=project)
+        with self.assertRaises(ValueError):
+            asyncio.run(svc.add_examples("p1", [ExampleAdd(text="hello", label="cats/dogs")]))
+        with self.assertRaises(ValueError):
+            asyncio.run(svc.add_examples("p1", [ExampleAdd(text="hello", label="FEES")]))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -33,6 +33,7 @@ from ...text_ovr_service import ovr_text_trainer, MODEL_TYPE as OVR_MODEL_TYPE
 from ...text_embed_service import embed_text_trainer, MODEL_TYPE as EMBED_MODEL_TYPE
 from ..slots import HEAVY_TRAINING
 from . import training_lock
+from ...labels import LabelError, clean_label
 from ...services.project_service import ExampleLimitError
 from ...image_training_service import image_trainer, ImageRecognitionTrainer, get_cached_predictor
 from ...services.image_url_fetcher import fetch_image_from_url, ImageUrlError
@@ -650,7 +651,7 @@ async def add_guest_examples(
             result = await project_service.add_examples(
                 project_id, examples_data.examples, split=examples_data.split, skip_existing=examples_data.skip_existing
             )
-        except ExampleLimitError as e:
+        except (ExampleLimitError, LabelError) as e:
             raise HTTPException(status_code=400, detail=str(e))
         
         # Calculate how many examples were actually created
@@ -707,6 +708,13 @@ async def upload_guest_images(
                 status_code=400,
                 detail="Image uploads are only allowed for image-recognition projects"
             )
+
+        # Label names go into storage paths and URLs: trimmed, 1-50 characters (app/labels.py)
+        try:
+            existing = list(getattr(project.dataset, "labels", None) or [])
+            file_labels = [clean_label(l, existing) for l in file_labels]
+        except LabelError as e:
+            raise HTTPException(status_code=400, detail=str(e))
         
         # Validate number of files
         if len(files) > 20:
@@ -791,6 +799,11 @@ async def upload_guest_images_from_url(
                 status_code=400,
                 detail="Image uploads are only allowed for image-recognition projects"
             )
+
+        try:
+            label = clean_label(label, list(getattr(project.dataset, "labels", None) or []))
+        except LabelError as e:
+            raise HTTPException(status_code=400, detail=str(e))
         
         # Download the image (handles search-result links, web pages, data: URLs)
         try:

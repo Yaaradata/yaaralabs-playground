@@ -20,6 +20,7 @@ import SampleLabeller from '../../../../../components/SampleLabelling/SampleLabe
 import { SAMPLE_SOURCES, batches, standardLabelNames, type NewExample, type SampleSource } from '../../../../../components/SampleLabelling/sample';
 import SampleImagesDialog from '../../../../../components/SampleImages/SampleImagesDialog';
 import { MIN_IMAGES_PER_LABEL, labelNamesKey } from '../../../../../components/SampleImages/sampleImages';
+import { labelProblem, LABEL_MAX } from '../../../../../lib/labels';
 
 interface GuestSession {
   session_id: string;
@@ -706,10 +707,11 @@ export default function TrainPage() {
 
   const handleAddLabel = async () => {
     if (newLabelName.trim() && actualSessionId && actualProjectId) {
-      // Validate label name - only allow alphanumeric characters, spaces, and common punctuation
+      // Validate label name: letters in any script, numbers, spaces, - _ &; 50 characters; no case-only duplicate
       const validLabelName = newLabelName.trim();
-      if (!/^[a-zA-Z0-9\s\-_]+$/.test(validLabelName)) {
-        alert('Label name can only contain letters, numbers, spaces, hyphens, and underscores. Please use a valid name.');
+      const problem = labelProblem(validLabelName, labels.map((l) => l.name));
+      if (problem) {
+        alert(problem);
         return;
       }
       
@@ -2096,7 +2098,7 @@ export default function TrainPage() {
                 }}
                 placeholder="label"
                 className="w-full px-3 py-2 border border-magenta-brand/40 rounded text-fg bg-canvas focus:outline-none focus:border-pink-brand"
-                maxLength={30}
+                maxLength={LABEL_MAX}
                 autoFocus
               />
               <div className="text-right text-xs text-fg/60 mt-1">

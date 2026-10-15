@@ -385,6 +385,13 @@ class ProjectService:
                     return [text.strip() for text in example_data.text.split(',') if text.strip()]
                 return [example_data.text.strip()] if example_data.text.strip() else []
 
+            # Label names go into URLs: the same rule as the label page (app/labels.py)
+            from ..labels import clean_label
+
+            known = list(project.dataset.labels or [])
+            for e in examples:
+                e.label = clean_label(e.label, known)
+
             # Check the limits before changing anything: a refused request adds nothing
             incoming = sum(len(parts(e)) for e in examples)
             if incoming > MAX_EXAMPLES_PER_REQUEST:
@@ -447,7 +454,7 @@ class ProjectService:
                 'labels': project.dataset.labels,
                 'skipped': skipped,
             }
-        except ExampleLimitError:
+        except ValueError:  # ExampleLimitError, LabelError: the learner's message, not a server error
             raise
         except Exception as e:
             raise Exception(f"Failed to add examples: {str(e)}")
