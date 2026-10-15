@@ -1447,7 +1447,7 @@ export function mountRuleBasedProcess(root, options) {
       return asList(v);
     }
     function esc(s) {
-      return String(s).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; });
+      return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; });
     }
     var moodTimer = null;
     var moodHoldUntil = 0;
@@ -3672,7 +3672,7 @@ export function mountRuleBasedProcess(root, options) {
           }
         } catch (err) {
           var msg = (err && err.message) ? String(err.message) : "Reset failed";
-          note("Could not reset workspace: " + msg, "fail");
+          note("Could not reset workspace: " + esc(msg), "fail"); // server text: escaped, never HTML
           return;
         }
       }

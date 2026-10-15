@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { formatContent } from './formatContent';
 
 // Format time consistently to avoid hydration mismatches
 const formatTime = (date: Date): string => {
@@ -47,29 +48,7 @@ export default function ChatMessage({
 }: ChatMessageProps) {
   const isUser = message.role === 'user';
   
-  const formatContent = (content: string) => {
-    // Convert markdown-style bold to HTML
-    let formatted = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    
-    // If content looks like guidelines (multiple sentences ending with periods, separated by spaces),
-    // format them as separate lines
-    // Check if content has multiple sentences (at least 2 sentences ending with periods)
-    const sentences = content.split(/\.\s+/).filter(s => s.trim());
-    if (sentences.length >= 2 && content.trim().endsWith('.')) {
-      // Format as separate lines - each sentence on its own line
-      formatted = sentences
-        .map((s) => {
-          const sentence = s.trim();
-          // Add period back
-          const withPeriod = sentence + '.';
-          // Apply bold formatting if needed
-          return withPeriod.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        })
-        .join('<br/>');
-    }
-    
-    return formatted;
-  };
+  // escaped first, then **bold** and line breaks (formatContent.ts)
 
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'} mb-4`}>
