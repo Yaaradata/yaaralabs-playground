@@ -23,7 +23,7 @@ def get_chat_service():
 
 
 @router.post("", response_model=ChatResponse)
-async def chat(
+def chat(
     request: ChatRequest,
     chat_service: ChatService = Depends(get_chat_service)
 ):
@@ -66,7 +66,7 @@ async def chat(
 
 
 @router.post("/stream")
-async def chat_stream(
+def chat_stream(
     request: ChatRequest,
     chat_service: ChatService = Depends(get_chat_service)
 ):
@@ -98,7 +98,7 @@ async def chat_stream(
 
 
 @router.post("/teach", response_model=ChatTeachResponse)
-async def teach_agent(
+def teach_agent(
     request: ChatTeachRequest,
     chat_service: ChatService = Depends(get_chat_service)
 ):
@@ -126,7 +126,7 @@ async def teach_agent(
 
 
 @router.get("/history")
-async def get_chat_history(
+def get_chat_history(
     agent_id: str = Query(..., description="Agent ID"),
     session_id: str = Query(..., description="Session ID"),
     limit: int = Query(50, description="Maximum number of messages to return"),
@@ -148,7 +148,7 @@ async def get_chat_history(
 
 
 @router.delete("/history")
-async def clear_chat_history(
+def clear_chat_history(
     agent_id: str = Query(..., description="Agent ID"),
     session_id: str = Query(..., description="Session ID"),
     chat_service: ChatService = Depends(get_chat_service)

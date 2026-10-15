@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import logging
 from typing import Optional
 
@@ -99,7 +101,7 @@ async def get_workspace(
     """Load (or lazily create) the Rule Based Process workspace for a project."""
     await _assert_rbp_project(session_id, project_id, project_service)
     try:
-        workspace = rbp_service.get_or_create(project_id, session_id)
+        workspace = await asyncio.to_thread(rbp_service.get_or_create, project_id, session_id)
         return RuleBasedWorkspaceResponse(data=workspace)
     except Exception as e:
         logger.error("RBP get_workspace failed: %s", e, exc_info=True)
@@ -121,7 +123,7 @@ async def save_workspace(
     """Persist concepts, block stacks, and pan for a Rule Based Process project."""
     await _assert_rbp_project(session_id, project_id, project_service)
     try:
-        workspace = rbp_service.save(project_id, session_id, body.state)
+        workspace = await asyncio.to_thread(rbp_service.save, project_id, session_id, body.state)
         return RuleBasedWorkspaceResponse(data=workspace)
     except Exception as e:
         logger.error("RBP save_workspace failed: %s", e, exc_info=True)
@@ -142,7 +144,7 @@ async def reset_workspace(
     """Reset workspace to default concepts and an empty block canvas."""
     await _assert_rbp_project(session_id, project_id, project_service)
     try:
-        workspace = rbp_service.reset(project_id, session_id)
+        workspace = await asyncio.to_thread(rbp_service.reset, project_id, session_id)
         return RuleBasedWorkspaceResponse(data=workspace)
     except Exception as e:
         logger.error("RBP reset_workspace failed: %s", e, exc_info=True)
@@ -164,7 +166,7 @@ async def ask_model(
     """Ask the classroom LLM for a short answer (Model blocks)."""
     await _assert_rbp_project(session_id, project_id, project_service)
     try:
-        reply = rbp_service.ask_model(body.prompt)
+        reply = await asyncio.to_thread(rbp_service.ask_model, body.prompt)  # 2-10 s model call: off the event loop
         return RuleBasedAskResponse(reply=reply, prompt=body.prompt.strip())
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -187,7 +189,7 @@ async def delete_workspace(
     """Delete persisted workspace document (project shell remains)."""
     await _assert_rbp_project(session_id, project_id, project_service)
     try:
-        deleted = rbp_service.delete(project_id)
+        deleted = await asyncio.to_thread(rbp_service.delete, project_id)
         if not deleted:
             raise HTTPException(status_code=404, detail="Workspace not found")
         return RuleBasedWorkspaceDeleteResponse()

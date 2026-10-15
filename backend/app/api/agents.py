@@ -21,7 +21,7 @@ def get_agent_service():
 
 
 @router.post("/create")
-async def create_agent(
+def create_agent(
     request: AgentCreateRequest,
     agent_service: AgentService = Depends(get_agent_service)
 ):
@@ -45,7 +45,7 @@ async def create_agent(
 
 
 @router.get("")
-async def get_agents(
+def get_agents(
     session_id: str = Query(..., min_length=1, description="The caller's session"),
     agent_service: AgentService = Depends(get_agent_service)
 ):
@@ -60,7 +60,7 @@ async def get_agents(
 
 
 @router.delete("/{agent_id}")
-async def delete_agent(
+def delete_agent(
     agent_id: str,
     session_id: str = Query(..., min_length=1, description="Session ID (ownership is checked by agent_guard)"),
     agent_service: AgentService = Depends(get_agent_service)
@@ -92,7 +92,7 @@ async def delete_agent(
 
 
 @router.get("/{agent_id}/persona", response_model=Persona)
-async def get_persona(
+def get_persona(
     agent_id: str,
     agent_service: AgentService = Depends(get_agent_service)
 ):
@@ -111,7 +111,7 @@ async def get_persona(
 
 
 @router.put("/{agent_id}/persona", response_model=PersonaUpdateResponse)
-async def update_persona(
+def update_persona(
     agent_id: str,
     request: PersonaUpdateRequest,
     agent_service: AgentService = Depends(get_agent_service)
@@ -145,7 +145,7 @@ async def update_persona(
 
 
 @router.get("/{agent_id}/guardrails", response_model=AgentGuardrails)
-async def get_guardrails(
+def get_guardrails(
     agent_id: str,
     agent_service: AgentService = Depends(get_agent_service)
 ):
@@ -165,7 +165,7 @@ async def get_guardrails(
 
 
 @router.put("/{agent_id}/guardrails", response_model=GuardrailsUpdateResponse)
-async def update_guardrails(
+def update_guardrails(
     agent_id: str,
     request: GuardrailsUpdateRequest,
     agent_service: AgentService = Depends(get_agent_service)
@@ -187,7 +187,7 @@ async def update_guardrails(
 
 
 @router.get("/{agent_id}/settings", response_model=AgentSettings)
-async def get_settings(
+def get_settings(
     agent_id: str,
     agent_service: AgentService = Depends(get_agent_service)
 ):
@@ -205,7 +205,7 @@ async def get_settings(
 
 
 @router.put("/{agent_id}/settings", response_model=SettingsUpdateResponse)
-async def update_settings(
+def update_settings(
     agent_id: str,
     request: SettingsUpdateRequest,
     agent_service: AgentService = Depends(get_agent_service)

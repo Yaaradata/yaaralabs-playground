@@ -109,5 +109,83 @@ class AgentOwnership(unittest.TestCase):
         self.assertNotIn(r.status_code, (400, 403))
 
 
+# ── 3. a slow model call doesn't stall everyone else ─────────────────────
+
+
+class EventLoopNotBlocked(unittest.TestCase):
+    """While one request waits 1 s on the model, a quick request must still answer at once."""
+
+    SLOW = 1.0
+
+    def ping_during(self, app, slow_request):
+        import asyncio
+        import time
+
+        import httpx
+
+        @app.get("/ping")
+        async def ping():
+            return {"ok": True}
+
+        async def run():
+            transport = httpx.ASGITransport(app=app)
+            async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+                t0 = time.perf_counter()
+                slow = asyncio.create_task(slow_request(c))
+                await asyncio.sleep(0.15)  # the slow request is now inside the model call
+                await c.get("/ping")
+                # from the slow request's start: about 0.15 s if the loop is free, over 1 s if it's blocked
+                ping = time.perf_counter() - t0
+                await slow
+                return ping
+
+        return asyncio.run(run())
+
+    def test_rbp_ask_model_runs_off_the_loop(self):
+        import time
+
+        from app.api import rule_based_process as rbp
+
+        app = FastAPI()
+        app.include_router(rbp.router)
+        app.dependency_overrides[rbp.validate_session] = lambda: {"session_id": A}
+        slow_service = SimpleNamespace(ask_model=lambda prompt: (time.sleep(self.SLOW), "Corporate action")[1])
+        app.dependency_overrides[rbp.get_rbp_service] = lambda: slow_service
+        app.dependency_overrides[rbp.get_project_service] = lambda: None
+
+        async def noop(*a, **k):
+            return None
+
+        with mock.patch.object(rbp, "_assert_rbp_project", noop):
+            ping = self.ping_during(app, lambda c: c.post(f"/api/rbp/session/{A}/projects/p1/ask", json={"prompt": "Which desk?"}))
+        self.assertLess(ping, 0.6, f"/ping answered {ping:.2f}s after the model call started (blocked)")
+
+    def test_agent_chat_runs_off_the_loop(self):
+        import time
+
+        app = FastAPI()
+        app.include_router(chat.router)
+        slow_chat = SimpleNamespace(chat=lambda *a, **k: (time.sleep(self.SLOW), {"response": "ok", "trace": {}, "chat_id": "C"})[1])
+        app.dependency_overrides[chat.get_chat_service] = lambda: slow_chat
+        legacy = SimpleNamespace(agent_id=AGENT_A, session_id=A, stage=None)
+        with mock.patch.object(agent_access.AgentService, "get_agent", return_value=legacy), \
+                mock.patch.object(chat, "AgentService") as svc:
+            svc.return_value.get_agent.return_value = legacy
+            ping = self.ping_during(app, lambda c: c.post("/chat", json={"agent_id": AGENT_A, "session_id": A, "message": "hi"}))
+        self.assertLess(ping, 0.6, f"/ping answered {ping:.2f}s after the chat call started (blocked)")
+
+    def test_no_async_handler_without_await_in_agent_routers(self):
+        import importlib.util
+        from pathlib import Path
+
+        spec = importlib.util.spec_from_file_location("fbh", Path(__file__).parent / "scripts" / "find_blocking_handlers.py")
+        fbh = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(fbh)
+        blocking = []
+        for f in ("chat", "agents", "knowledge", "training_chat", "rules"):
+            blocking += [f"{f}.{n}" for n, _, awaits in fbh.handlers(Path(__file__).parent / "app" / "api" / f"{f}.py") if awaits == 0]
+        self.assertEqual(blocking, [], "async handlers that never await run blocking calls on the event loop")
+
+
 if __name__ == "__main__":
     unittest.main()

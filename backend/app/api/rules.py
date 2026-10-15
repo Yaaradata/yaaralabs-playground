@@ -24,7 +24,7 @@ def get_rules_service():
 
 
 @router.post("/save", response_model=RuleResponse)
-async def save_rule(
+def save_rule(
     request: RuleSaveRequest,
     rules_service: RulesService = Depends(get_rules_service)
 ):
@@ -44,7 +44,7 @@ async def save_rule(
 
 
 @router.get("", response_model=RuleListResponse)
-async def get_rules(
+def get_rules(
     agent_id: str = Query(..., description="Agent ID"),
     rules_service: RulesService = Depends(get_rules_service)
 ):
@@ -61,7 +61,7 @@ async def get_rules(
 
 
 @router.delete("/{rule_id}")
-async def delete_rule(
+def delete_rule(
     rule_id: str,
     rules_service: RulesService = Depends(get_rules_service)
 ):
@@ -76,7 +76,7 @@ async def delete_rule(
 
 
 @router.patch("/{rule_id}/status")
-async def update_rule_status(
+def update_rule_status(
     rule_id: str,
     status_update: RuleStatusUpdate,
     rules_service: RulesService = Depends(get_rules_service)

@@ -90,7 +90,7 @@ class GreetingResponse(BaseModel):
 
 
 @router.post("/message", response_model=TrainingMessageResponse)
-async def process_training_message(
+def process_training_message(
     request: TrainingMessageRequest,
     training_service: TrainingChatService = Depends(get_training_service)
 ):
@@ -172,7 +172,7 @@ async def process_training_message(
 
 
 @router.post("/apply", response_model=ApplyChangeResponse)
-async def apply_change(
+def apply_change(
     request: ApplyChangeRequest,
     training_service: TrainingChatService = Depends(get_training_service)
 ):
@@ -202,7 +202,7 @@ async def apply_change(
 
 
 @router.post("/reject/{change_id}")
-async def reject_change(
+def reject_change(
     change_id: str,
     training_service: TrainingChatService = Depends(get_training_service)
 ):
@@ -224,7 +224,7 @@ async def reject_change(
 
 
 @router.get("/sessions")
-async def get_training_sessions(
+def get_training_sessions(
     agent_id: str = Query(..., description="Agent ID"),
     training_service: TrainingChatService = Depends(get_training_service)
 ):
@@ -239,7 +239,7 @@ async def get_training_sessions(
 
 
 @router.get("/history", response_model=TrainingHistoryResponse)
-async def get_training_history(
+def get_training_history(
     agent_id: str = Query(..., description="Agent ID"),
     session_id: str = Query(..., description="Session ID"),
     limit: int = Query(50, description="Maximum number of messages to return"),
@@ -262,7 +262,7 @@ async def get_training_history(
 
 
 @router.post("/restart", response_model=RestartResponse)
-async def restart_training(
+def restart_training(
     agent_id: str = Query(..., description="Agent ID"),
     session_id: str = Query(..., description="Session ID"),
     training_service: TrainingChatService = Depends(get_training_service)
@@ -294,7 +294,7 @@ async def restart_training(
 
 
 @router.get("/greeting", response_model=GreetingResponse)
-async def get_greeting(
+def get_greeting(
     agent_id: str = Query(..., description="Agent ID"),
     training_service: TrainingChatService = Depends(get_training_service)
 ):
@@ -309,7 +309,7 @@ async def get_greeting(
 
 
 @router.post("/initialize")
-async def initialize_session(
+def initialize_session(
     agent_id: str = Query(..., description="Agent ID"),
     session_id: str = Query(..., description="Session ID"),
     training_service: TrainingChatService = Depends(get_training_service)
@@ -326,7 +326,7 @@ async def initialize_session(
 
 
 @router.get("/pending/{agent_id}")
-async def get_pending_changes(
+def get_pending_changes(
     agent_id: str,
     session_id: str = Query(..., description="Session ID"),
     training_service: TrainingChatService = Depends(get_training_service)
@@ -354,7 +354,7 @@ class EditMessageRequest(BaseModel):
 
 
 @router.put("/message/{message_id}")
-async def edit_message(
+def edit_message(
     message_id: str,
     request: EditMessageRequest,
     training_service: TrainingChatService = Depends(get_training_service)
@@ -375,7 +375,7 @@ async def edit_message(
 
 
 @router.delete("/message/{message_id}")
-async def delete_message(
+def delete_message(
     message_id: str,
     training_service: TrainingChatService = Depends(get_training_service)
 ):
@@ -395,7 +395,7 @@ async def delete_message(
 
 
 @router.delete("/history/clear")
-async def clear_history(
+def clear_history(
     agent_id: str = Query(..., description="Agent ID"),
     session_id: str = Query(..., description="Session ID"),
     training_service: TrainingChatService = Depends(get_training_service)
@@ -418,7 +418,7 @@ async def clear_history(
 # ==================== Chat Management Endpoints (Playground AI-like) ====================
 
 @router.post("/chats", response_model=CreateChatResponse)
-async def create_chat(
+def create_chat(
     request: CreateChatRequest,
     training_service: TrainingChatService = Depends(get_training_service)
 ):
@@ -441,7 +441,7 @@ async def create_chat(
 
 
 @router.get("/chats", response_model=GetChatsResponse)
-async def get_chats(
+def get_chats(
     agent_id: str = Query(..., description="Agent ID"),
     training_service: TrainingChatService = Depends(get_training_service)
 ):
@@ -463,7 +463,7 @@ async def get_chats(
 
 
 @router.get("/chats/{chat_id}", response_model=GetChatResponse)
-async def get_chat(
+def get_chat(
     chat_id: str,
     training_service: TrainingChatService = Depends(get_training_service)
 ):
@@ -487,7 +487,7 @@ async def get_chat(
 
 
 @router.post("/chats/{chat_id}/archive", response_model=ArchiveChatResponse)
-async def archive_chat(
+def archive_chat(
     chat_id: str,
     training_service: TrainingChatService = Depends(get_training_service)
 ):
@@ -510,7 +510,7 @@ async def archive_chat(
 
 
 @router.delete("/chats/{chat_id}", response_model=DeleteChatResponse)
-async def delete_chat(
+def delete_chat(
     chat_id: str,
     training_service: TrainingChatService = Depends(get_training_service)
 ):

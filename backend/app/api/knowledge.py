@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, Query
 from typing import Optional, List
 from pydantic import BaseModel
@@ -31,7 +32,7 @@ class KnowledgeUpdateRequest(BaseModel):
 # ============ LIST, GET, UPDATE, DELETE ============
 
 @router.get("/list")
-async def list_knowledge(
+def list_knowledge(
     agent_id: str = Query(..., description="Agent ID"),
     kb_type: Optional[str] = Query(None, description="Filter by knowledge type (TEXT, FILE, LINK, QNA)"),
     knowledge_service: KnowledgeService = Depends(get_knowledge_service)
@@ -51,7 +52,7 @@ async def list_knowledge(
 
 
 @router.get("/{knowledge_id}")
-async def get_knowledge(
+def get_knowledge(
     knowledge_id: str,
     knowledge_service: KnowledgeService = Depends(get_knowledge_service)
 ):
@@ -73,7 +74,7 @@ async def get_knowledge(
 
 
 @router.put("/{knowledge_id}")
-async def update_knowledge(
+def update_knowledge(
     knowledge_id: str,
     request: KnowledgeUpdateRequest,
     knowledge_service: KnowledgeService = Depends(get_knowledge_service)
@@ -96,7 +97,7 @@ async def update_knowledge(
 
 
 @router.delete("/{knowledge_id}")
-async def delete_knowledge(
+def delete_knowledge(
     knowledge_id: str,
     knowledge_service: KnowledgeService = Depends(get_knowledge_service)
 ):
@@ -118,7 +119,7 @@ async def delete_knowledge(
 # ============ ADD KNOWLEDGE ============
 
 @router.post("/text")
-async def add_text_knowledge(
+def add_text_knowledge(
     request: KnowledgeTextRequest,
     knowledge_service: KnowledgeService = Depends(get_knowledge_service)
 ):
@@ -192,7 +193,9 @@ async def add_file_knowledge(
         logger.info(f"✅ File validated: {file_type}, {file_size} bytes")
         
         # Upload to GCS
-        gcs_url = file_service.upload_to_gcs(
+        # upload, text extraction and embeddings block: run them off the event loop
+        gcs_url = await asyncio.to_thread(
+            file_service.upload_to_gcs,
             file_content, 
             agent_id, 
             file.filename, 
@@ -200,7 +203,8 @@ async def add_file_knowledge(
         )
         
         # Extract text from file
-        extracted_text, file_metadata = file_service.extract_text(
+        extracted_text, file_metadata = await asyncio.to_thread(
+            file_service.extract_text,
             file_content, 
             file_type, 
             file.filename
@@ -212,7 +216,8 @@ async def add_file_knowledge(
         logger.info(f"📝 Extracted {len(extracted_text)} chars from {file.filename}")
         
         # Add to knowledge base
-        result = knowledge_service.add_file_knowledge(
+        result = await asyncio.to_thread(
+            knowledge_service.add_file_knowledge,
             agent_id=agent_id,
             session_id=session_id,
             file_name=file.filename,
@@ -242,7 +247,7 @@ async def add_file_knowledge(
 
 
 @router.post("/link")
-async def add_link_knowledge(
+def add_link_knowledge(
     request: KnowledgeLinkRequest,
     knowledge_service: KnowledgeService = Depends(get_knowledge_service)
 ):
@@ -275,7 +280,7 @@ async def add_link_knowledge(
 
 
 @router.post("/qna", response_model=KnowledgeResponse)
-async def add_qna_knowledge(
+def add_qna_knowledge(
     request: KnowledgeQnARequest,
     knowledge_service: KnowledgeService = Depends(get_knowledge_service)
 ):
@@ -298,7 +303,7 @@ async def add_qna_knowledge(
 
 
 @router.get("/file/view/{knowledge_id}")
-async def view_file(
+def view_file(
     knowledge_id: str,
     knowledge_service: KnowledgeService = Depends(get_knowledge_service)
 ):
