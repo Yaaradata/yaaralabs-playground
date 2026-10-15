@@ -70,6 +70,8 @@ export default function RuleBasedProcess({
   extraSlotsRef.current = Boolean(extraTabs || extraPanel);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  // bumped by Retry after a failed load: re-runs the load (and only then mounts the board)
+  const [attempt, setAttempt] = useState(0);
   const [extraHost, setExtraHost] = useState<HTMLElement | null>(null);
   const [panelHost, setPanelHost] = useState<HTMLElement | null>(null);
 
@@ -179,6 +181,10 @@ export default function RuleBasedProcess({
 
     const boot = async () => {
       let initialState: Record<string, unknown> | undefined;
+      // A failed load (5xx, network) must not mount the default board: its autosave and the save on
+      // leaving would overwrite the learner's real work. Only "nothing saved yet" (404) starts fresh.
+      let loadFailed = false;
+      if (!cancelled) setLoadError(null);
       if (persistLocal && localStorageKey) {
         try {
           const raw = window.localStorage.getItem(localStorageKey);
@@ -200,18 +206,17 @@ export default function RuleBasedProcess({
               initialState = json.data.state;
             }
           } else if (res.status !== 404) {
-            const err = await res.json().catch(() => ({}));
-            if (!cancelled) {
-              setLoadError(
-                typeof err.detail === 'string' ? err.detail : 'Could not load workspace'
-              );
-            }
+            loadFailed = true;
           }
         } catch {
-          if (!cancelled) setLoadError('Could not reach the Rule Based Process API');
+          loadFailed = true;
         }
       }
 
+      if (loadFailed) {
+        if (!cancelled) setLoadError('Couldn’t load your work. Your saved work is safe on the server.');
+        return;
+      }
       if (cancelled || !rootRef.current) return;
 
       root.innerHTML = MARKUP;
@@ -349,7 +354,7 @@ export default function RuleBasedProcess({
       setStageHost(null);
       if (root) root.innerHTML = '';
     };
-  }, [sessionId, projectId, localStorageKey]);
+  }, [sessionId, projectId, localStorageKey, attempt]);
 
   return (
     <div className="h-full min-h-0 flex flex-col">
@@ -359,11 +364,18 @@ export default function RuleBasedProcess({
         </div>
       ) : null}
       {loadError ? (
-        <div className="px-4 py-2 text-sm text-[#ef6f5e] bg-ink-card border-b border-[#2A2A35]">
-          {loadError}
+        <div role="alert" className="m-4 rounded-xl border border-[#ef6f5e]/40 bg-ink-card px-4 py-3 text-sm text-[#ef6f5e] flex flex-wrap items-center gap-3">
+          <span>{loadError}</span>
+          <button
+            type="button"
+            onClick={() => setAttempt((n) => n + 1)}
+            className="rounded-lg bg-purple-brand px-3 py-1.5 font-semibold text-white hover:bg-purple-brand/90"
+          >
+            Retry
+          </button>
         </div>
       ) : null}
-      {!ready && sessionId && projectId && !localStorageKey ? (
+      {!ready && !loadError && sessionId && projectId && !localStorageKey ? (
         <div className="px-4 py-2 text-sm text-white/50">Loading workspace…</div>
       ) : null}
       <div ref={rootRef} className="rbp-root flex-1 min-h-0" />

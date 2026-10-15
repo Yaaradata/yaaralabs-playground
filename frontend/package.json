@@ -15,7 +15,8 @@
     "test:responsive": "tsx scripts/responsive-audit.ts",
     "seed:responsive": "tsx scripts/responsive-seed.ts",
     "test:session-check": "npx tsx scripts/test-session-check.ts",
-    "test:xss": "tsx scripts/test-xss.ts"
+    "test:xss": "tsx scripts/test-xss.ts",
+    "test:rbp-safe-load": "tsx scripts/test-rbp-safe-load.ts"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",
