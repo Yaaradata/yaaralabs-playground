@@ -34,7 +34,8 @@ from ..models import (
 )
 from ..services import ai_agent_service as agent
 from ..services.project_service import ProjectService
-from .exercises import _TRAIN_SLOTS, get_project_service, validate_session
+from .exercises import get_project_service, validate_session
+from .slots import AGENT_TURNS
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +131,7 @@ async def open_chat(chat_id: str, ctx: _Ctx = Depends()):
 @router.post(P + "/turns")
 async def start_turn(body: AgentTurnRequest, ctx: _Ctx = Depends()):
     await ctx.check()
-    async with _TRAIN_SLOTS:
+    async with AGENT_TURNS():
         return await _run(ctx.service.start_turn, ctx.pid, ctx.sid, body.message, use_tools=body.useTools, chat=body.chat,
                           eval_id=body.evalId, prompt_id=body.testPromptId)
 
@@ -138,7 +139,7 @@ async def start_turn(body: AgentTurnRequest, ctx: _Ctx = Depends()):
 @router.post(P + "/turns/{turn_id}/tool-results")
 async def resume_turn(turn_id: str, body: AgentResumeRequest, ctx: _Ctx = Depends()):
     await ctx.check()
-    async with _TRAIN_SLOTS:
+    async with AGENT_TURNS():
         return await _run(ctx.service.resume_turn, ctx.pid, turn_id, [r.model_dump() for r in body.results])
 
 

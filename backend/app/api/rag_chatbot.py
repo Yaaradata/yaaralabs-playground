@@ -43,7 +43,8 @@ from ..models import (
 from ..services import rag_chatbot_service as rag
 from ..services.project_service import ProjectService
 from ..services.rag_text import TextError
-from .exercises import _TRAIN_SLOTS, get_project_service, validate_session
+from .exercises import get_project_service, validate_session
+from .slots import RAG_WORK
 
 logger = logging.getLogger(__name__)
 
@@ -182,7 +183,7 @@ async def preview(body: RagPreviewRequest, ctx: _Ctx = Depends()):
 @router.post(P + "/index")
 async def build_index(ctx: _Ctx = Depends()):
     await ctx.check()
-    async with _TRAIN_SLOTS:
+    async with RAG_WORK():
         return await _run(ctx.service.build_index, ctx.pid, ctx.sid)
 
 
@@ -239,7 +240,7 @@ async def delete_ask(ask_id: str, ctx: _Ctx = Depends()):
 @router.post(P + "/evals")
 async def run_eval(body: RagEvalRequest, ctx: _Ctx = Depends()):
     await ctx.check()
-    async with _TRAIN_SLOTS:
+    async with RAG_WORK():
         return await _run(ctx.service.run_eval, ctx.pid, ctx.sid, body.questionIds, _over(body))
 
 

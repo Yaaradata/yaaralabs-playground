@@ -27,6 +27,7 @@ from ..services.guest_service import GuestService
 from ..services.project_service import ProjectService
 from ..services.exercises_service import ExercisesService
 from ..services import exercises_tfidf_datasets, exercises_tfidf_service
+from .slots import CPU_TRAINING
 from .exercises_agent import register_agent_routes
 from .exercises_build_rag import register_build_rag_routes
 from .exercises_compare import register_compare_routes
@@ -39,7 +40,6 @@ from .exercises_rag import register_rag_routes
 from .exercises_tokeniser import register_tokeniser_routes
 from .exercises_vision import register_vision_routes
 
-_TRAIN_SLOTS = asyncio.Semaphore(3)
 
 logger = logging.getLogger(__name__)
 
@@ -309,7 +309,7 @@ async def tfidf_train(
         ngram_max = max(body.ngram_min, body.ngram_max)
         exercises_tfidf_service.begin_train(session_id, project_id)
         try:
-            async with _TRAIN_SLOTS:
+            async with CPU_TRAINING():
                 result = await asyncio.to_thread(
                     exercises_tfidf_service.train,
                     session_id,

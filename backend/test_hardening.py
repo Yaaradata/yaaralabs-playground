@@ -229,5 +229,63 @@ class CalculatorBomb(unittest.TestCase):
         self.assertEqual(len(str(calculator("9**100")["result"])), 96)
 
 
+# ── 5. separate slots per feature; a clear "busy" instead of waiting forever ─────
+
+
+class FeatureSlots(unittest.TestCase):
+    def test_agent_turns_run_while_cpu_training_is_full(self):
+        import asyncio
+
+        from app.api.slots import AGENT_TURNS, CPU_TRAINING
+
+        async def run():
+            hold = asyncio.Event()
+            running = []
+
+            async def train():
+                async with CPU_TRAINING():
+                    await hold.wait()
+
+            async def turn(i):
+                async with AGENT_TURNS():
+                    running.append(i)
+                    await asyncio.sleep(0.05)
+
+            trainings = [asyncio.create_task(train()) for _ in range(CPU_TRAINING.size)]
+            await asyncio.sleep(0.01)  # every CPU slot is now taken
+            await asyncio.wait_for(asyncio.gather(*(turn(i) for i in range(16))), timeout=1.0)
+            hold.set()
+            await asyncio.gather(*trainings)
+            return running
+
+        self.assertEqual(len(asyncio.run(run())), 16, "16 agent turns must not wait for training")
+
+    def test_waiting_too_long_returns_busy(self):
+        import asyncio
+
+        from fastapi import HTTPException
+
+        from app.api.slots import BUSY, Slots
+
+        one = Slots("test", 1, wait=0.2)
+
+        async def run():
+            async with one():
+                try:
+                    async with one():
+                        return None
+                except HTTPException as e:
+                    return e
+
+        e = asyncio.run(run())
+        self.assertIsNotNone(e)
+        self.assertEqual((e.status_code, e.detail), (503, BUSY))
+
+    def test_no_feature_uses_one_shared_semaphore(self):
+        import app.api.exercises as ex
+
+        self.assertFalse(hasattr(ex, "_TRAIN_SLOTS"), "agent turns, RAG and training must not share one semaphore")
+
+
 if __name__ == "__main__":
     unittest.main()

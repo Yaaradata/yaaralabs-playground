@@ -25,7 +25,8 @@ from ..models import (
 from ..services import cm_datasets
 from ..services.confusion_matrix_service import CMBusy, CMError, CMNotFound, ConfusionMatrixService
 from ..services.project_service import ProjectService
-from .exercises import _TRAIN_SLOTS, get_project_service, validate_session
+from .exercises import get_project_service, validate_session
+from .slots import CPU_TRAINING
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +123,7 @@ async def open_source(
     """Open the Ex 2 model or a pre-trained model. The first visit trains/copies Run 1; later visits reopen."""
     await _assert_cm_project(session_id, project_id, project_service)
     try:
-        async with _TRAIN_SLOTS:
+        async with CPU_TRAINING():
             data = await asyncio.to_thread(service.open, project_id, session_id, body.source, body.datasetId, body.ex2ProjectId, body.target)
         return CMProjectResponse(data=data)
     except Exception as e:
@@ -141,7 +142,7 @@ async def train(
     """Retrain logistic regression with these settings; the run and the model are saved."""
     await _assert_cm_project(session_id, project_id, project_service)
     try:
-        async with _TRAIN_SLOTS:
+        async with CPU_TRAINING():
             data = await asyncio.to_thread(service.train, project_id, session_id, body.params.model_dump(), body.model)
         return CMProjectResponse(data=data)
     except Exception as e:
