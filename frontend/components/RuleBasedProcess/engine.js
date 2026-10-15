@@ -2001,10 +2001,22 @@ export function mountRuleBasedProcess(root, options) {
       }
     }
 
+    // "Ask the model" inside a forever / repeat loop used to call the server up to GUARD (20,000)
+    // times in one Run. At most MODEL_CALLS_PER_RUN calls, then the run stops (docs/hardening.md #13).
+    var MODEL_CALLS_PER_RUN = 20;
+    var MODEL_LIMIT_MSG = "Model limit reached for this run";
+
     async function callAskModel(prompt) {
       var text = String(prompt == null ? "" : prompt).trim();
       if (!text) {
         return "Type a question first — the model needs something to read.";
+      }
+      R.modelCalls = (R.modelCalls || 0) + 1;
+      if (R.modelCalls > MODEL_CALLS_PER_RUN) {
+        R.stop = true;
+        setBuddyMood("idle", MODEL_LIMIT_MSG, { force: true });
+        logLine("warn", "!", MODEL_LIMIT_MSG + " (" + MODEL_CALLS_PER_RUN + " questions). Press Run to start again.");
+        return MODEL_LIMIT_MSG;
       }
       if (typeof options.askModel === "function") {
         try {
@@ -2427,6 +2439,7 @@ export function mountRuleBasedProcess(root, options) {
       R.outs = [];
       R.t0 = Date.now();
       R.depth = 0;
+      R.modelCalls = 0;
       resetVars();
   
       try {

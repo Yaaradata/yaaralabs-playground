@@ -18,7 +18,8 @@
     "test:xss": "tsx scripts/test-xss.ts",
     "test:rbp-safe-load": "tsx scripts/test-rbp-safe-load.ts",
     "test:labels": "tsx scripts/test-labels.ts",
-    "test:error-screens": "tsx scripts/test-error-screens.ts"
+    "test:error-screens": "tsx scripts/test-error-screens.ts",
+    "test:rbp-model-limit": "tsx scripts/test-rbp-model-limit.ts"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",
