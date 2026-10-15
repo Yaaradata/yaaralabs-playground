@@ -80,11 +80,29 @@ function imageExam(test: SampleImageTestItem[], prefix: string, labels: string[]
 const card = 'bg-card border border-magenta-brand/20 rounded-2xl p-5 md:p-6';
 const btn = 'inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-lg font-semibold transition-colors';
 
+type RunProgress = { stage?: string; done: number; total: number } | null;
+
+/** The Run button while the text exam runs: a count, so learners see it moving. */
+function runningLabel(p: RunProgress): string {
+  if (!p || p.stage === 'loading' || !p.total) return 'Loading your model…';
+  if (p.stage === 'practice') return `Practice: ${p.done} of ${p.total}…`;
+  return `Tested ${p.done} of ${p.total}…`;
+}
+
+/** The line under the button: which step of the exam is running. */
+function runningStep(p: RunProgress): string {
+  if (!p || p.stage === 'loading' || !p.total) return 'Step 1 of 3: loading your trained model.';
+  if (p.stage === 'exam') return `Step 2 of 3: your model answers ${p.total} exam messages it has never seen.`;
+  if (p.stage === 'own') return `Step 2 of 3: each of your ${p.total} examples is hidden in turn, and your model guesses it.`;
+  return `Step 3 of 3: your model checks the ${p.total} examples it learned from.`;
+}
+
 export default function ProjectEvaluate({ sessionId, projectId, learnHref, kind = 'text' }: Props) {
   const base = `${config.apiBaseUrl}/api/guests/session/${sessionId}/projects/${projectId}`;
   const [setup, setSetup] = useState<Setup | null>(null);
   const [running, setRunning] = useState(false);
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  // stage (text): loading -> exam (or own: held-out examples) -> practice
+  const [progress, setProgress] = useState<{ stage?: string; done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [res, setRes] = useState<EvalResponse | null>(null);
   const [imageSet, setImageSet] = useState<'standard' | 'deep'>('standard');
@@ -170,14 +188,36 @@ export default function ProjectEvaluate({ sessionId, projectId, learnHref, kind 
         setRes({ success: true, source: 'test-set', modelType: '', labels: setup.labels, items: out, practice: { correct: 0, total: 0 } });
         return;
       }
-      const r = await fetch(`${base}/evaluate`, {
+      // ?stream=1: one JSON line per tested message ({stage, done, total}), then {result} or {error}
+      setProgress({ stage: 'loading', done: 0, total: 0 });
+      const r = await fetch(`${base}/evaluate?stream=1`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: setup.items }),
       });
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok || !data?.success) throw new Error(typeof data?.detail === 'string' ? data.detail : 'The exam could not run. Please try again.');
-      setRes(data as EvalResponse);
+      if (!r.ok || !r.body) {
+        const data = await r.json().catch(() => ({}));
+        throw new Error(typeof data?.detail === 'string' ? data.detail : 'The exam could not run. Please try again.');
+      }
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let buffered = '';
+      let last: { result?: EvalResponse; error?: string } = {};
+      for (;;) {
+        const { value, done } = await reader.read();
+        buffered += decoder.decode(value, { stream: !done });
+        const lines = buffered.split('\n');
+        buffered = done ? '' : lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const msg = JSON.parse(line);
+          if (msg.stage) setProgress({ stage: msg.stage, done: msg.done, total: msg.total });
+          else last = msg;
+        }
+        if (done) break;
+      }
+      if (!last.result?.success) throw new Error(last.error || 'The exam could not run. Please try again.');
+      setRes(last.result);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'The exam could not run. Please try again.');
     } finally {
@@ -274,6 +314,9 @@ export default function ProjectEvaluate({ sessionId, projectId, learnHref, kind 
               {chosen && <span className="text-sm text-fg/50">{chosen.hint}</span>}
             </div>
           )}
+          {running && kind === 'text' && (
+            <p className="text-sm text-fg/60 pt-1" aria-live="polite">{runningStep(progress)}</p>
+          )}
           {error && <p className="text-base text-pink-brand pt-1" role="alert">{error}</p>}
         </div>
         {res ? (
@@ -286,7 +329,7 @@ export default function ProjectEvaluate({ sessionId, projectId, learnHref, kind 
             className={`${btn} shrink-0 bg-purple-brand hover:bg-purple-brand/90 text-white disabled:opacity-70`}
           >
             {running && <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />}
-            {running ? (kind === 'image' ? `Tested ${progress?.done ?? 0} of ${chosen?.items.length ?? 0}…` : 'Running the exam…') : 'Run the exam'}
+            {running ? (kind === 'image' ? `Tested ${progress?.done ?? 0} of ${chosen?.items.length ?? 0}…` : runningLabel(progress)) : 'Run the exam'}
           </button>
         )}
       </section>

@@ -31,7 +31,13 @@ MAX_LEAVE_ONE_OUT = 200  # one refit per example: 200 is already about a minute 
 MAX_TEXT = 500
 
 Scorer = Callable[[str], Dict[str, float]]
-LeaveOneOut = Callable[[List[Dict[str, str]]], List[Dict[str, Any]]]
+LeaveOneOut = Callable[..., List[Dict[str, Any]]]
+# progress(stage, done, total) after each message; stage is "exam", "own" (held out) or "practice"
+Progress = Callable[[str, int, int], None]
+
+
+def _no_progress(stage: str, done: int, total: int) -> None:
+    pass
 
 
 class EvaluateError(ValueError):
@@ -97,7 +103,7 @@ def scorer_from_prediction(predict: Callable[[str], Dict[str, Any]], labels: Lis
     return score
 
 
-def score_items(score: Scorer, items: List[Dict[str, str]]) -> List[Dict[str, Any]]:
+def score_items(score: Scorer, items: List[Dict[str, str]], progress: Progress = _no_progress) -> List[Dict[str, Any]]:
     out = []
     for item in items:
         scores = score(item["text"])
@@ -107,19 +113,28 @@ def score_items(score: Scorer, items: List[Dict[str, str]]) -> List[Dict[str, An
             "predicted": _choice(scores),
             "scores": {label: round(value, 4) for label, value in scores.items()},
         })
+        progress("exam", len(out), len(items))
     return out
 
 
-def practice(score: Scorer, examples: List[Dict[str, str]]) -> Dict[str, int]:
+def practice(score: Scorer, examples: List[Dict[str, str]], progress: Progress = _no_progress) -> Dict[str, int]:
     """The deployed model on the messages it learned from."""
-    correct = sum(_choice(score(ex["text"])) == ex["label"] for ex in examples)
+    correct = 0
+    for done, ex in enumerate(examples, 1):
+        correct += _choice(score(ex["text"])) == ex["label"]
+        progress("practice", done, len(examples))
     return {"correct": correct, "total": len(examples)}
 
 
-def _held_out(examples: List[Dict[str, str]], refit_and_score: Callable[[List[int], int], Dict[str, float]]) -> List[Dict[str, Any]]:
+def _held_out(
+    examples: List[Dict[str, str]],
+    refit_and_score: Callable[[List[int], int], Dict[str, float]],
+    progress: Progress = _no_progress,
+) -> List[Dict[str, Any]]:
     labels = [ex["label"] for ex in examples]
     out = []
     for i, ex in enumerate(examples):
+        progress("own", i, len(examples))
         keep = [j for j in range(len(examples)) if j != i]
         if len({labels[j] for j in keep}) < 2:
             continue  # can't train a 2-label model without this example
@@ -132,20 +147,26 @@ def _held_out(examples: List[Dict[str, str]], refit_and_score: Callable[[List[in
             "predicted": _choice(scores),
             "scores": {label: round(value, 4) for label, value in scores.items()},
         })
+    progress("own", len(examples), len(examples))
     return out
 
 
-def leave_one_out(examples: List[Dict[str, str]], c_value: float = DEFAULT_C) -> List[Dict[str, Any]]:
+def leave_one_out(
+    examples: List[Dict[str, str]], c_value: float = DEFAULT_C, progress: Progress = _no_progress
+) -> List[Dict[str, Any]]:
     """Word-only model (logistic_regression_ovr): hold out each example, refit, score it."""
     texts = [normalize_text(ex["text"]) for ex in examples]
     labels = [ex["label"] for ex in examples]
     return _held_out(
         examples,
         lambda keep, i: _scores(_fit([texts[j] for j in keep], [labels[j] for j in keep], c_value), examples[i]["text"]),
+        progress,
     )
 
 
-def leave_one_out_embed(examples: List[Dict[str, str]], model: Dict[str, Any]) -> List[Dict[str, Any]]:
+def leave_one_out_embed(
+    examples: List[Dict[str, str]], model: Dict[str, Any], progress: Progress = _no_progress
+) -> List[Dict[str, Any]]:
     """Sentence-meaning model: same settings as the deployed model; embeddings computed once."""
     from ..text_embed_service import fit, get_embedder, scores_many
 
@@ -158,7 +179,7 @@ def leave_one_out_embed(examples: List[Dict[str, str]], model: Dict[str, Any]) -
         m = fit([texts[j] for j in keep], [labels[j] for j in keep], embedder, model.get("settings"), train_emb=emb[keep])
         return scores_many(m, [texts[i]], embedder)[0]
 
-    return _held_out(examples, refit_and_score)
+    return _held_out(examples, refit_and_score, progress)
 
 
 def evaluate(
@@ -168,9 +189,11 @@ def evaluate(
     examples: List[Dict[str, str]],
     items: List[Dict[str, str]],
     own_examples: Optional[LeaveOneOut] = None,
+    progress: Optional[Progress] = None,
 ) -> Dict[str, Any]:
     """The whole response body, from a scorer for the deployed model. `own_examples` runs the
-    leave-one-out when the exam can't be used (default: the word-only model's)."""
+    leave-one-out when the exam can't be used (default: the word-only model's). `progress` is
+    called after each message, so the page can show "Tested 6 of 14"."""
     if len(items) > MAX_ITEMS:
         raise EvaluateError(f"Send at most {MAX_ITEMS} messages.")
     for item in items:
@@ -181,13 +204,14 @@ def evaluate(
 
     matched = match_items(items, labels) if items else None
     if matched is not None:
-        source, scored = "test-set", score_items(score, matched)
+        source, scored = "test-set", score_items(score, matched, progress or _no_progress)
     else:
         if model_type not in (OVR_MODEL_TYPE, EMBED_MODEL_TYPE):
             raise EvaluateError("Use the workshop labels, or the default model, to evaluate.")
         if len(examples) > MAX_LEAVE_ONE_OUT:
             raise EvaluateError(f"The exam on your own examples works with at most {MAX_LEAVE_ONE_OUT} examples.")
-        source, scored = "own-examples", (own_examples or leave_one_out)(examples)
+        own = own_examples or leave_one_out
+        source, scored = "own-examples", own(examples, progress=progress) if progress else own(examples)
 
     return {
         "success": True,
@@ -195,7 +219,7 @@ def evaluate(
         "modelType": model_type,
         "labels": labels,
         "items": scored,
-        "practice": practice(score, examples),
+        "practice": practice(score, examples, progress or _no_progress),
     }
 
 
@@ -221,14 +245,16 @@ def deployed_scorer(
 
     if model_type == EMBED_MODEL_TYPE:
         model = embed_text_trainer.load(bucket, gcs_path)
-        return embed_scorer(model), (lambda examples: leave_one_out_embed(examples, model)), lambda: None
+        return embed_scorer(model), (lambda examples, progress=_no_progress: leave_one_out_embed(examples, model, progress)), lambda: None
 
     if model_type == OVR_MODEL_TYPE:
         return ovr_scorer(ovr_text_trainer._load(bucket, gcs_path)), leave_one_out, lambda: None
 
     if model_type == "distilbert":
-        # The DistilBERT trainer has no in-memory predict; each call downloads the model.
-        return scorer_from_prediction(lambda t: distilbert_trainer.predict_from_gcs(t, bucket, gcs_path), labels), None, lambda: None
+        # Download and load once for the whole exam (predict_from_gcs downloads the model for every
+        # message: 14 exam messages plus every practice example took many minutes on the live site).
+        predict, cleanup = distilbert_trainer.load_predictor(bucket, gcs_path)
+        return scorer_from_prediction(predict, labels), None, cleanup
 
     # Legacy Logistic Regression: download once, predict from the local file
     fd, path = tempfile.mkstemp(suffix=".pkl")

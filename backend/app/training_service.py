@@ -986,6 +986,61 @@ class DistilBERTTrainer:
             logger.error(f"Full traceback: {traceback.format_exc()}")
             raise Exception(f"Failed to save DistilBERT model: {str(e)}")
     
+    def load_predictor(self, bucket, gcs_path: str):
+        """Download and load the model once; returns (predict, cleanup). predict(text) gives the same
+        result as predict_from_gcs without downloading the model again (used by Evaluate, which scores
+        every exam message and every example). Doesn't touch self.model, so it's safe in a thread."""
+        import json
+        import os
+        import shutil
+        import tempfile
+
+        import torch
+        from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+        temp_dir = tempfile.mkdtemp()
+        try:
+            for blob in bucket.list_blobs(prefix=gcs_path):
+                rel_path = blob.name.replace(gcs_path + '/', '')
+                if rel_path:
+                    local_path = os.path.join(temp_dir, rel_path)
+                    os.makedirs(os.path.dirname(local_path), exist_ok=True)
+                    blob.download_to_filename(local_path)
+            metadata_path = os.path.join(temp_dir, 'metadata.json')
+            if not os.path.exists(metadata_path):
+                raise FileNotFoundError(f"No model files found in GCS path: {gcs_path}")
+            with open(metadata_path, 'r') as f:
+                metadata = json.load(f)
+            tokenizer = AutoTokenizer.from_pretrained(temp_dir)
+            model = AutoModelForSequenceClassification.from_pretrained(temp_dir)
+            model.eval()
+        except Exception:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            raise
+
+        class_names = metadata.get('class_names', [])
+        id_to_label = {str(k): v for k, v in (metadata.get('id_to_label') or {}).items()}
+        exact = {str(t).lower().strip(): l for t, l in zip(metadata.get('training_texts', []), metadata.get('training_labels', []))}
+
+        def name(i: int) -> str:
+            return id_to_label.get(str(i), class_names[i] if i < len(class_names) else f'class_{i}')
+
+        def predict(text: str) -> Dict[str, Any]:
+            hit = exact.get(text.lower().strip())
+            if hit is not None:
+                return {'label': hit, 'confidence': 100.0, 'alternatives': []}
+            inputs = tokenizer(text, truncation=True, padding='max_length', max_length=64, return_tensors='pt')
+            with torch.no_grad():
+                probs = torch.nn.functional.softmax(model(**inputs).logits, dim=-1)[0].cpu().numpy()
+            best = int(probs.argmax())
+            alternatives = sorted(
+                ({'label': name(i), 'confidence': round(float(p) * 100, 2)} for i, p in enumerate(probs) if i != best),
+                key=lambda x: x['confidence'], reverse=True,
+            )
+            return {'label': name(best), 'confidence': round(float(probs[best]) * 100, 2), 'alternatives': alternatives}
+
+        return predict, lambda: shutil.rmtree(temp_dir, ignore_errors=True)
+
     def predict_from_gcs(self, text: str, bucket, gcs_path: str) -> Dict[str, Any]:
         """Make prediction using DistilBERT model stored in GCS"""
         import tempfile

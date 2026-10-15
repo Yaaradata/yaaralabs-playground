@@ -11,6 +11,8 @@ Run from backend/:  .venv/Scripts/python.exe -m unittest test_text_evaluate -v
 from __future__ import annotations
 
 import json
+import shutil
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -253,6 +255,122 @@ class Route(unittest.TestCase):
         body = r.json()
         self.assertEqual(body["source"], "test-set")
         self.assertEqual(body["items"][0]["expected"], FEES)
+
+
+class Progress(unittest.TestCase):
+    """The page shows "Tested 6 of 14" while the exam runs (it showed only "Running the exam…")."""
+
+    def setUp(self):
+        self.examples, self.exam = sample()
+        self.model = OvrTextClassifierTrainer().train_model(self.examples)["model"]
+        self.labels = self.model["labels"]
+
+    def test_exam_and_practice_count_up(self):
+        seen = []
+        evaluate(ovr_scorer(self.model), OVR, self.labels, self.examples, self.exam,
+                 progress=lambda stage, done, total: seen.append((stage, done, total)))
+        self.assertEqual([s for s in seen if s[0] == "exam"], [("exam", i, 14) for i in range(1, 15)])
+        self.assertEqual(seen[-1], ("practice", 20, 20))
+
+    def test_own_examples_count_up(self):
+        seen = []
+        evaluate(ovr_scorer(self.model), OVR, self.labels, self.examples, [],
+                 progress=lambda stage, done, total: seen.append((stage, done, total)))
+        own = [s for s in seen if s[0] == "own"]
+        self.assertEqual(own[0], ("own", 0, 20))
+        self.assertEqual(own[-1], ("own", 20, 20))
+
+    def stream(self, project, scorer, items):
+        original = evaluate_route.deployed_scorer
+        evaluate_route.deployed_scorer = lambda *a: scorer
+        try:
+            r = Route().client(project).post("/api/guests/session/s1/projects/p1/evaluate?stream=1", json={"items": items})
+        finally:
+            evaluate_route.deployed_scorer = original
+        self.assertEqual(r.status_code, 200)
+        return [json.loads(x) for x in r.text.splitlines() if x.strip()]
+
+    def test_stream_route_sends_progress_then_result(self):
+        project = Route().project(model={"modelType": OVR, "gcsPath": "x.pkl", "labels": self.labels},
+                                  dataset={"examples": self.examples})
+        lines = self.stream(project, (ovr_scorer(self.model), leave_one_out, lambda: None), self.exam)
+        self.assertEqual(lines[0]["stage"], "loading")
+        self.assertIn({"stage": "exam", "done": 7, "total": 14}, lines)
+        self.assertIn({"stage": "practice", "done": 20, "total": 20}, lines)
+        self.assertEqual(lines[-1]["result"]["source"], "test-set")
+        self.assertEqual(len(lines[-1]["result"]["items"]), 14)
+
+    def test_stream_route_sends_the_error_as_the_last_line(self):
+        project = Route().project(model={"modelType": "distilbert", "gcsPath": "x", "labels": [FEES, CORP]})
+        lines = self.stream(project, ((lambda t: {FEES: 0.6, CORP: 0.4}), None, lambda: None),
+                            [{"text": "hi", "expected": "Billing"}])
+        self.assertEqual(lines[-1], {"error": "Use the workshop labels, or the default model, to evaluate.", "status": 400})
+
+
+class _Blob:
+    def __init__(self, name, path, downloads):
+        self.name, self.path, self.downloads = name, path, downloads
+
+    def download_to_filename(self, dest):
+        self.downloads.append(self.name)
+        shutil.copyfile(self.path, dest)
+
+
+class _Bucket:
+    """A folder on disk served as a GCS bucket; counts downloads."""
+
+    def __init__(self, folder):
+        self.folder, self.downloads = Path(folder), []
+
+    def list_blobs(self, prefix):
+        return [_Blob(f"{prefix}/{f.name}", f, self.downloads) for f in sorted(self.folder.iterdir())]
+
+
+class DistilBertLoadsOnce(unittest.TestCase):
+    """Evaluate on a DistilBERT project downloaded the whole model again for every message (14 exam
+    messages + every example), so the live page sat on "Running the exam…" for many minutes."""
+
+    @classmethod
+    def setUpClass(cls):
+        import torch
+        from transformers import AutoTokenizer, DistilBertConfig, DistilBertForSequenceClassification
+
+        torch.manual_seed(0)
+        cls.dir = tempfile.TemporaryDirectory()
+        AutoTokenizer.from_pretrained("distilbert-base-uncased", local_files_only=True).save_pretrained(cls.dir.name)
+        config = DistilBertConfig(n_layers=1, dim=32, hidden_dim=64, n_heads=2, num_labels=2)
+        DistilBertForSequenceClassification(config).save_pretrained(cls.dir.name)
+        (Path(cls.dir.name) / "metadata.json").write_text(json.dumps({
+            "class_names": [FEES, CORP], "label_to_id": {FEES: 0, CORP: 1}, "id_to_label": {"0": FEES, "1": CORP},
+            "training_texts": ["my bill is high"], "training_labels": [FEES],
+        }))
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.dir.cleanup()
+
+    def test_scorer_downloads_the_model_once(self):
+        from app.services.text_evaluate_service import deployed_scorer
+
+        bucket = _Bucket(self.dir.name)
+        score, _, cleanup = deployed_scorer("distilbert", [FEES, CORP], bucket, "models/m1")
+        try:
+            for text in ["why was I charged twice", "when is the dividend paid", "my bill is high"] * 5:
+                self.assertEqual(set(score(text)), {FEES, CORP})
+        finally:
+            cleanup()
+        self.assertEqual(len(bucket.downloads), len(list(Path(self.dir.name).iterdir())))
+
+    def test_same_answers_as_predict_from_gcs(self):
+        from app.training_service import distilbert_trainer
+
+        bucket = _Bucket(self.dir.name)
+        predict, cleanup = distilbert_trainer.load_predictor(bucket, "models/m1")
+        try:
+            for text in ["why was I charged twice", "My bill is high", "bonus shares"]:
+                self.assertEqual(predict(text), distilbert_trainer.predict_from_gcs(text, bucket, "models/m1"))
+        finally:
+            cleanup()
 
 
 if __name__ == "__main__":
