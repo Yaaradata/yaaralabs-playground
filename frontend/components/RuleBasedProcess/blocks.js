@@ -61,7 +61,7 @@ var CAT = {
     ml_detected:      { cat: "ml", shape: "rep", parts: [L("detected object")] },
     ml_detected_conf: { cat: "ml", shape: "rep", parts: [L("detection confidence %")] },
 
-    ask:        { cat: "sensing", shape: "stack", parts: [L("ask"), T("Q", "What is your name?"), L("and wait")] },
+    ask:        { cat: "sensing", shape: "stack", parts: [L("ask"), T("Q", "Hi, how can I help you?"), L("and wait")] },
     answer:     { cat: "sensing", shape: "rep", parts: [L("answer")] },
     answer_empty:{ cat: "sensing", shape: "bool", parts: [L("answer is empty?")] },
     set_answer: { cat: "sensing", shape: "stack", parts: [L("set answer to"), T("VAL", "")] },
@@ -331,8 +331,14 @@ var CAT = {
     return measurer.measureText(s || "").width;
   }
   function sizeField(inp) {
-    var w = textWidth(inp.value || inp.placeholder || "", "600 12px 'Helvetica Neue',Helvetica,Arial,sans-serif");
-    inp.style.width = Math.max(inp.classList.contains("txt") ? 34 : 26, Math.ceil(w) + 18) + "px";
+    // measure with the font and padding the box really uses (CSS draws it bigger than 12px), so the
+    // whole value shows instead of being cut off at the end
+    var cs = inp.isConnected ? window.getComputedStyle(inp) : null;
+    var font = cs && cs.fontSize ? cs.fontWeight + " " + cs.fontSize + " " + cs.fontFamily
+      : "600 14px 'Helvetica Neue',Helvetica,Arial,sans-serif";
+    var pad = cs ? (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0) : 20;
+    var w = textWidth(inp.value || inp.placeholder || "", font);
+    inp.style.width = Math.max(inp.classList.contains("txt") ? 34 : 26, Math.ceil(w + pad) + 8) + "px";
   }
 
   var FLAG_GREEN = '<svg class="icon-flag" viewBox="0 0 16 16"><path d="M3 1v14" stroke="#3B7A2F" stroke-width="2" ' +

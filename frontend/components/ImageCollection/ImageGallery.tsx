@@ -19,6 +19,8 @@ interface ImageGalleryProps {
   onDeleteSpecificExample?: (label: string, exampleIndex: number) => void;
   onDeleteEmptyLabel?: (label: string) => void;
   onUploadImages?: (files: File[], label: string) => void;
+  /** The label whose images are uploading right now ("Uploading…" on its Add images button). */
+  uploadingLabel?: string;
   isLoading?: boolean;
   sessionId?: string;
   projectId?: string;
@@ -42,6 +44,7 @@ export default function ImageGallery({
   onDeleteSpecificExample,
   onDeleteEmptyLabel,
   onUploadImages,
+  uploadingLabel = '',
   isLoading,
   sessionId,
   projectId,
@@ -93,7 +96,7 @@ export default function ImageGallery({
     return gcsUrl;
   };
 
-  const busy = isDeletingLabel || isDeletingExamples;
+  const busy = isDeletingLabel || isDeletingExamples || Boolean(uploadingLabel);
 
   if (isLoading && images.length === 0) {
     return (
@@ -111,8 +114,8 @@ export default function ImageGallery({
         <svg className="w-10 h-10 mx-auto text-fg/25" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
-        <p className="text-fg/70 mt-2">No images yet</p>
-        <p className="text-fg/50 text-sm mt-1">Add images on the left, or use the sample data.</p>
+        <p className="text-fg/70 mt-2">No labels yet</p>
+        <p className="text-fg/50 text-sm mt-1">Add a label on the left, then add its images here. Or use the sample data.</p>
       </div>
     );
   }
@@ -134,8 +137,12 @@ export default function ImageGallery({
               {isDeletingExamples && deletingLabelId === label && <span className="text-orange-400 text-xs">Clearing…</span>}
               <span className="flex-1" />
               {onUploadImages && (
-                <label className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-magenta-brand/40 text-fg hover:bg-purple-brand/10 cursor-pointer text-xs font-medium">
-                  <span aria-hidden="true">+</span> Add
+                <label
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold ${
+                    busy ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                  } ${labelImages.length === 0 ? 'bg-purple-brand text-white hover:bg-purple-brand/90' : 'border border-magenta-brand/40 text-fg hover:bg-purple-brand/10'}`}
+                >
+                  {uploadingLabel === label ? 'Uploading…' : <><span aria-hidden="true">+</span> Add images</>}
                   <input
                     type="file"
                     accept="image/*"
@@ -180,7 +187,7 @@ export default function ImageGallery({
             </div>
 
             {labelImages.length === 0 ? (
-              <p className="text-sm text-fg/50 py-3">No images in this label yet.</p>
+              <p className="text-sm text-fg/50 py-3">No images yet. Use <span className="font-medium text-fg/70">Add images</span> to add at least {MIN_PER_LABEL}.</p>
             ) : (
               <div className="grid grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-2">
                 {labelImages.map((image, index) => (

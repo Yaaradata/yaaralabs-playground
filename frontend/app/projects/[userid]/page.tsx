@@ -1457,13 +1457,13 @@ function CreateProjectPage() {
                   />
                 </div>
 
-                {/* Project Type Dropdown */}
+                {/* Day, then Project Type Dropdown */}
                 <div>
-                  <label htmlFor="projectType" className="block text-sm font-medium text-fg mb-2">
-                    Project Type
-                  </label>
+                  <p className="block text-sm font-medium text-fg mb-2">
+                    Select Day
+                  </p>
                   {/* Day: two buttons; the type list below follows the chosen day */}
-                  <div role="radiogroup" aria-label="Day" className="grid grid-cols-2 gap-3 mb-3">
+                  <div role="radiogroup" aria-label="Select Day" className="grid grid-cols-2 gap-3 mb-4">
                     {([['day1', 'Day 1'], ['day2', 'Day 2']] as const).map(([value, label]) => (
                       <button
                         key={value}
@@ -1485,6 +1485,9 @@ function CreateProjectPage() {
                       </button>
                     ))}
                   </div>
+                  <label htmlFor="projectType" className="block text-sm font-medium text-fg mb-2">
+                    Project Type
+                  </label>
                   <select
                     id="projectType"
                     value={projectType}

@@ -269,8 +269,7 @@ export function mountRuleBasedProcess(root, options) {
           return [
             mk("when_flag"),
             mlUrlMode ? mk("ml_use_model_url", { i: { URL: "" } }) : mk("ml_use_model", { f: { MODEL: mlModelName } }),
-            // no question text: Aria just waits for the client message in the reply box
-            mk("forever", { body: [mk("ask", { i: { Q: "" } })].concat(routes) }),
+            mk("forever", { body: [mk("ask", { i: { Q: "Hi, how can I help you?" } })].concat(routes) }),
           ];
         },
       });
@@ -281,46 +280,37 @@ export function mountRuleBasedProcess(root, options) {
     // it smarter by adding more keywords with "or" blocks. The same labels as the Text Recognition
     // sample data, so the two projects can be compared on the same messages.
     var DESK_RULES = [
-      { label: "Corporate action", keyword: "dividend", more: "bonus, split, buyback, record date" },
-      { label: "Fees & billing", keyword: "fee", more: "invoice, charge, bill, GST" },
-      { label: "Onboarding & KYC", keyword: "KYC", more: "PAN, FATCA, address, signatory" },
-      { label: "Complaint / escalation", keyword: "complaint", more: "unacceptable, escalate, regulator, wrong" },
+      { label: "Corporate action", keyword: "dividend", more: "bonus, split, buyback, record date",
+        reply: "Send this to the Corporate Actions desk." },
+      { label: "Fees & billing", keyword: "fee", more: "invoice, charge, bill, GST",
+        reply: "Send this to the Billing desk." },
+      { label: "Onboarding & KYC", keyword: "KYC", more: "PAN, FATCA, address, signatory",
+        reply: "Send this to the Onboarding and KYC desk." },
+      { label: "Complaint / escalation", keyword: "complaint", more: "unacceptable, escalate, regulator, wrong",
+        reply: "Escalate this to a senior manager." },
     ];
-    var DESK_NONE = "none";
-    var DESK_REPLY = "Sorry, I didn't understand. A person will reply.";
     var DESK_CONCEPT = options.starter === "desk-routing" ? {
       id: "desks", title: "Route client messages",
-      vars: ["Desk"],
+      vars: ["Answer"],
       answer: { type: "text" },
       brief: "Send each client message to the right desk.\n\n" +
              "One keyword per desk:\n" +
              DESK_RULES.map(function (r) { return r.label + " ← " + r.keyword; }).join("\n") + "\n\n" +
-             "Make it smarter: put an \"or\" block in an if and add more keywords, e.g. " +
+             "Make it smarter: type more keywords in the same block, comma separated, e.g. " +
              DESK_RULES.map(function (r) { return r.more.split(", ")[0]; }).join(", ") + ".",
       tests: [],
       solution: function () {
-        // if answer contains any of <keywords> then set Desk to <label>: one keyword to start, the
-        // learner types more, comma separated, in the same block. Checked top to bottom with
-        // "else": the first desk whose keyword matches wins, even if a later desk has it too
-        var rules = chainDeskRules(DESK_RULES.map(function (r) {
-          return mk("if_then", {
-            i: { COND: mk("op_contains_any", { i: { A: mk("answer"), B: r.keyword } }) },
-            body: [mk("set_var", { f: { VAR: "Desk" }, i: { VAL: r.label } })],
-          });
-        }));
+        // like the Scratch fan example: ask, then one "if answer contains any of <keywords> then say
+        // <desk>" per desk, inside forever
         return [
           mk("when_flag"),
-          mk("forever", { body: [
-            // no question text: Aria just waits for the client message in the reply box
-            mk("ask", { i: { Q: "" } }),
-            mk("set_var", { f: { VAR: "Desk" }, i: { VAL: DESK_NONE } }),
-          ].concat(rules, [
-            mk("if_else", {
-              i: { COND: mk("op_eq", { i: { A: V("Desk"), B: DESK_NONE } }) },
-              body: [mk("say", { i: { MSG: DESK_REPLY } })],
-              body2: [mk("say", { i: { MSG: mk("op_join", { i: { A: "Send this to: ", B: V("Desk") } }) } })],
-            }),
-          ]) }),
+          mk("forever", { body: [mk("ask", { i: { Q: "Hi, how can I help you?" } })].concat(
+            DESK_RULES.map(function (r) {
+              return mk("if_then", {
+                i: { COND: mk("op_contains_any", { i: { A: mk("answer"), B: r.keyword } }) },
+                body: [mk("say", { i: { MSG: r.reply } })],
+              });
+            })) }),
         ];
       },
     } : null;
@@ -374,8 +364,9 @@ export function mountRuleBasedProcess(root, options) {
         if (!b || typeof b !== "object") return;
         if (b.op === "op_contains" && b.inputs && b.inputs.A && b.inputs.A.op === "answer" &&
             typeof b.inputs.B === "string") b.op = "op_contains_any";
-        // the starter used to ask "Type a client message"; Aria now just waits, like a chat bot
-        if (b.op === "ask" && b.inputs && b.inputs.Q === "Type a client message") b.inputs.Q = "";
+        // older starters asked "Type a client message" or nothing: Aria now greets the client
+        if (b.op === "ask" && b.inputs && (b.inputs.Q === "Type a client message" || b.inputs.Q === ""))
+          b.inputs.Q = "Hi, how can I help you?";
         Object.keys(b.inputs || {}).forEach(function (k) { walk(b.inputs[k]); });
         (b.body || []).forEach(walk);
         (b.body2 || []).forEach(walk);
@@ -4030,6 +4021,13 @@ export function mountRuleBasedProcess(root, options) {
       else zoom = 1;
       W = { stacks: Array.isArray(state.stacks) ? JSON.parse(JSON.stringify(state.stacks)) : [] };
       if (DESK_CONCEPT && state.active_concept_id === "desks") upgradeDeskRules(W.stacks);
+      // Text Recognition saved with an empty ask box: Aria greets the client
+      if (mlReady && !mlImage && !mlVideo && state.active_concept_id === "ml_text") (function walk(arr) {
+        (arr || []).forEach(function (b) {
+          if (b.op === "ask" && b.inputs && b.inputs.Q === "") b.inputs.Q = "Hi, how can I help you?";
+          walk(b.body); walk(b.body2);
+        });
+      })(W.stacks.reduce(function (a, st) { return a.concat(st.blocks || []); }, []));
       emptyCanvas = !!state.empty_canvas && W.stacks.length === 0;
       undo.length = 0;
       syncUndoBtn();

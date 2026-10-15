@@ -86,7 +86,7 @@ export default function TrainPage() {
   
   // Image collection state
   const [images, setImages] = useState<{ label: string; image_url: string; id: string; filename: string }[]>([]);
-  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [uploadingImageLabel, setUploadingImageLabel] = useState('');
   const [isLoadingImages, setIsLoadingImages] = useState(false);
   const [showSampleImages, setShowSampleImages] = useState(false);
 
@@ -705,36 +705,30 @@ export default function TrainPage() {
     await refreshExamplesFromAPI(true);
   };
 
+  /** A new, still empty label at the top of the list. It lives in this browser until it gets its
+   *  first example or image (empty labels are not sent to the API). Returns false if the name is not valid. */
+  const addLocalLabel = (name: string): boolean => {
+    if (!name.trim() || !actualSessionId || !actualProjectId) return false;
+    // Validate label name: letters in any script, numbers, spaces, - _ &; 50 characters; no case-only duplicate
+    const validLabelName = name.trim();
+    const problem = labelProblem(validLabelName, labels.map((l) => l.name));
+    if (problem) {
+      alert(problem);
+      return false;
+    }
+    const newLabel: Label = {
+      id: `label-${Date.now()}`,
+      name: validLabelName,
+      examples: [],
+      createdAt: new Date().toLocaleDateString()
+    };
+    setLabels([newLabel, ...labels]);
+    saveLocalLabels(actualSessionId, actualProjectId, [newLabel, ...loadLocalLabels(actualSessionId, actualProjectId)]);
+    return true;
+  };
+
   const handleAddLabel = async () => {
-    if (newLabelName.trim() && actualSessionId && actualProjectId) {
-      // Validate label name: letters in any script, numbers, spaces, - _ &; 50 characters; no case-only duplicate
-      const validLabelName = newLabelName.trim();
-      const problem = labelProblem(validLabelName, labels.map((l) => l.name));
-      if (problem) {
-        alert(problem);
-        return;
-      }
-      
-      const newLabel: Label = {
-        id: `label-${Date.now()}`,
-        name: validLabelName,
-        examples: [],
-        createdAt: new Date().toLocaleDateString()
-      };
-      
-      // Add new label at the top of the list
-      const updatedLabels = [newLabel, ...labels];
-      setLabels(updatedLabels);
-      
-      // Save only the new local label to localStorage (also at the top)
-      const currentLocalLabels = loadLocalLabels(actualSessionId, actualProjectId);
-      const updatedLocalLabels = [newLabel, ...currentLocalLabels];
-      saveLocalLabels(actualSessionId, actualProjectId, updatedLocalLabels);
-      
-      // Label created successfully - examples will be submitted when added
-      // Don't submit empty labels to API as they might cause validation errors
-      console.log('Label created locally, will submit to API when examples are added');
-      
+    if (addLocalLabel(newLabelName)) {
       setNewLabelName('');
       setShowAddLabelModal(false);
     }
@@ -1274,7 +1268,6 @@ export default function TrainPage() {
     if (!actualSessionId || !actualProjectId) return;
     
     console.log('📤 Uploading images:', files.length, 'files with label:', label);
-    setIsUploadingImages(true);
     try {
       const url = `${config.apiBaseUrl}${config.api.guests.images(actualSessionId, actualProjectId)}`;
       // Batches of at most 5 files and about 20 MB: one request must stay under Cloud Run's 32 MB limit.
@@ -1319,8 +1312,6 @@ export default function TrainPage() {
     } catch (error) {
       console.error('Error uploading images:', error);
       alert('Network error: Failed to upload images. Please try again.');
-    } finally {
-      setIsUploadingImages(false);
     }
   };
 
@@ -1597,6 +1588,14 @@ export default function TrainPage() {
     if (!confirm(`Are you sure you want to delete the empty image label "${label}"? This action cannot be undone.`)) {
       return;
     }
+
+    // A label added here and never given images exists only in this browser: remove it there
+    const localLabels = loadLocalLabels(actualSessionId, actualProjectId);
+    if (localLabels.some((l) => l.name === label)) {
+      saveLocalLabels(actualSessionId, actualProjectId, localLabels.filter((l) => l.name !== label));
+      setLabels((prev) => prev.filter((l) => l.name !== label));
+      return;
+    }
     
     setIsDeletingImageLabel(true);
     setDeletingImageLabelId(label);
@@ -1782,10 +1781,10 @@ export default function TrainPage() {
 
                 <div className="grid gap-5 md:grid-cols-[22rem_minmax(0,1fr)] items-start">
                   <section className="rounded-xl border border-magenta-brand/20 bg-card p-5 md:sticky md:top-24" aria-labelledby="add-images-h">
-                    <h3 id="add-images-h" className="font-semibold text-fg mb-3">Add images</h3>
+                    <h3 id="add-images-h" className="font-semibold text-fg mb-3">Add labels</h3>
                     <ImageUpload
-                      onUpload={handleImageUpload}
-                      isUploading={isUploadingImages}
+                      existingLabels={labels.map(label => label.name)}
+                      onAddLabel={addLocalLabel}
                       projectType={selectedProject.type}
                     />
                   </section>
@@ -1805,7 +1804,11 @@ export default function TrainPage() {
                       onDeleteAllExamples={handleDeleteImageExamplesByLabel}
                       onDeleteSpecificExample={handleDeleteSpecificImageExample}
                       onDeleteEmptyLabel={handleDeleteEmptyImageLabel}
-                      onUploadImages={handleImageUpload}
+                      onUploadImages={async (files, label) => {
+                        setUploadingImageLabel(label);
+                        try { await handleImageUpload(files, label); } finally { setUploadingImageLabel(''); }
+                      }}
+                      uploadingLabel={uploadingImageLabel}
                       isLoading={isLoadingImages}
                       sessionId={actualSessionId}
                       projectId={actualProjectId}
