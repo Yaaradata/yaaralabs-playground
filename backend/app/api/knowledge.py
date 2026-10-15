@@ -4,6 +4,7 @@ from typing import Optional, List
 from pydantic import BaseModel
 import logging
 
+from .rate_limits import rate_limit
 from .agent_access import agent_guard
 from ..models import (
     KnowledgeTextRequest, KnowledgeFileRequest, KnowledgeLinkRequest, KnowledgeQnARequest,
@@ -246,7 +247,7 @@ async def add_file_knowledge(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/link")
+@router.post("/link", dependencies=[Depends(rate_limit("kb link"))])
 def add_link_knowledge(
     request: KnowledgeLinkRequest,
     knowledge_service: KnowledgeService = Depends(get_knowledge_service)

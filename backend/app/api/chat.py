@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import StreamingResponse
 from typing import Optional, List
 
+from .rate_limits import rate_limit
 from .agent_access import agent_guard
 from ..models import (
     ChatRequest, ChatResponse, ChatTeachRequest, ChatTeachResponse,
@@ -22,7 +23,7 @@ def get_chat_service():
     return ChatService()
 
 
-@router.post("", response_model=ChatResponse)
+@router.post("", response_model=ChatResponse, dependencies=[Depends(rate_limit("chat"))])
 def chat(
     request: ChatRequest,
     chat_service: ChatService = Depends(get_chat_service)
@@ -65,7 +66,7 @@ def chat(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/stream")
+@router.post("/stream", dependencies=[Depends(rate_limit("chat"))])
 def chat_stream(
     request: ChatRequest,
     chat_service: ChatService = Depends(get_chat_service)

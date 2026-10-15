@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
+from .rate_limits import rate_limit
 from .agent_access import agent_guard
 from ..services.training_chat_service import TrainingChatService
 from ..models import (
@@ -89,7 +90,7 @@ class GreetingResponse(BaseModel):
     greeting: str
 
 
-@router.post("/message", response_model=TrainingMessageResponse)
+@router.post("/message", response_model=TrainingMessageResponse, dependencies=[Depends(rate_limit("training message"))])
 def process_training_message(
     request: TrainingMessageRequest,
     training_service: TrainingChatService = Depends(get_training_service)

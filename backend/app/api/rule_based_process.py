@@ -10,6 +10,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from starlette.concurrency import run_in_threadpool
 
+from .rate_limits import rate_limit
 from ..models import (
     ProjectType,
     RuleBasedAskRequest,
@@ -153,6 +154,7 @@ async def reset_workspace(
 
 @router.post(
     "/session/{session_id}/projects/{project_id}/ask",
+    dependencies=[Depends(rate_limit("rbp ask"))],
     response_model=RuleBasedAskResponse,
 )
 async def ask_model(

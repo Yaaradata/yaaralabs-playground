@@ -24,6 +24,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from .rate_limits import rate_limit
 from ..models import (
     AgentEvalRequest,
     AgentOwnToolRequest,
@@ -128,7 +129,7 @@ async def open_chat(chat_id: str, ctx: _Ctx = Depends()):
     return await _run(ctx.service.open_chat, ctx.pid, ctx.sid, chat_id)
 
 
-@router.post(P + "/turns")
+@router.post(P + "/turns", dependencies=[Depends(rate_limit("agent turn"))])
 async def start_turn(body: AgentTurnRequest, ctx: _Ctx = Depends()):
     await ctx.check()
     async with AGENT_TURNS():

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import List, Optional
 
+from .rate_limits import rate_limit
 from .agent_access import agent_guard, public_agent
 from ..models import (
     AgentCreateRequest, AgentCreateResponse, Agent,
@@ -20,7 +21,7 @@ def get_agent_service():
     return AgentService()
 
 
-@router.post("/create")
+@router.post("/create", dependencies=[Depends(rate_limit("agent create"))])
 def create_agent(
     request: AgentCreateRequest,
     agent_service: AgentService = Depends(get_agent_service)

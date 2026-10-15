@@ -678,6 +678,51 @@ class LinksStayOutside(unittest.TestCase):
         self.assertIn("private or local", str(e.exception))
 
 
+class RateLimits(unittest.TestCase):
+    """P1: about 12 model calls a minute per session and action, then a friendly 429."""
+
+    def test_chat_is_limited_per_session(self):
+        from app.api import rate_limits
+
+        app = FastAPI()
+        app.include_router(chat.router)
+        fast_chat = SimpleNamespace(chat=lambda *a, **k: {"response": "ok", "trace": {}, "chat_id": "C"})
+        app.dependency_overrides[chat.get_chat_service] = lambda: fast_chat
+        legacy = lambda sid: SimpleNamespace(agent_id=AGENT_A, session_id=sid, stage=None)  # noqa: E731
+        client = TestClient(app, raise_server_exceptions=False)
+        with mock.patch.object(rate_limits, "_limiter", rate_limits.SlidingWindowLimiter()), \
+                mock.patch.object(agent_access.AgentService, "get_agent", side_effect=lambda aid: legacy(A if aid == AGENT_A else B)), \
+                mock.patch.object(chat, "AgentService") as svc:
+            svc.return_value.get_agent.side_effect = lambda aid: legacy(A if aid == AGENT_A else B)
+            codes = [client.post("/chat", json={"agent_id": AGENT_A, "session_id": A, "message": f"q{i}"}).status_code for i in range(13)]
+            self.assertEqual(codes[:12], [200] * 12)
+            r = client.post("/chat", json={"agent_id": AGENT_A, "session_id": A, "message": "one more"})
+            self.assertEqual((r.status_code, r.json()["detail"]), (429, rate_limits.SLOW_DOWN))
+            other = client.post("/chat", json={"agent_id": "AGENT_B", "session_id": B, "message": "hi"})
+            self.assertEqual(other.status_code, 200, "another session is not affected")
+
+    def test_rbp_ask_is_limited(self):
+        import time
+
+        from app.api import rate_limits
+        from app.api import rule_based_process as rbp
+
+        app = FastAPI()
+        app.include_router(rbp.router)
+        app.dependency_overrides[rbp.validate_session] = lambda: {"session_id": A}
+        app.dependency_overrides[rbp.get_rbp_service] = lambda: SimpleNamespace(ask_model=lambda p: "ok")
+        app.dependency_overrides[rbp.get_project_service] = lambda: None
+
+        async def noop(*a, **k):
+            return None
+
+        client = TestClient(app, raise_server_exceptions=False)
+        with mock.patch.object(rate_limits, "_limiter", rate_limits.SlidingWindowLimiter()), mock.patch.object(rbp, "_assert_rbp_project", noop):
+            codes = [client.post(f"/api/rbp/session/{A}/projects/p1/ask", json={"prompt": "Which desk?"}).status_code for _ in range(13)]
+        self.assertEqual(codes.count(200), 12)
+        self.assertEqual(codes[-1], 429)
+
+
 class NoDuplicateRoutes(unittest.TestCase):
     """P1: a second definition of the same method + path is dead code (FastAPI serves the first)."""
 
