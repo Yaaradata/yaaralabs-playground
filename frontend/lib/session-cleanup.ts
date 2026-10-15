@@ -142,6 +142,70 @@ export const cleanupSessionWithReason = async (
   await cleanupSession(sessionId);
 };
 
+/* ───────── checking the session (one place for every page) ───────── */
+
+interface GuestSessionBody {
+  success?: boolean;
+  data?: { active?: boolean; expiresAt?: string } | null;
+}
+
+/**
+ * What a session check found:
+ *   valid    the backend has the session and it is active and not expired
+ *   gone     the backend says it really is gone: 404, or a 200 that says inactive / expired
+ *   unknown  we could not tell (5xx, 429, a timeout, a network error, an unreadable body):
+ *            keep the session and every project in it
+ */
+export type SessionCheck<R> =
+  | { kind: 'valid'; response: R }
+  | { kind: 'gone'; reason: SessionCleanupReason; detail: string }
+  | { kind: 'unknown'; detail: string };
+
+/** Classify a session check from its HTTP status (null = the request itself failed) and parsed body. */
+export function classifySessionCheck<R extends GuestSessionBody>(
+  status: number | null,
+  body: R | null,
+  now: Date = new Date(),
+): SessionCheck<R> {
+  if (status === null) return { kind: 'unknown', detail: 'the request failed (network)' };
+  if (status === 404) return { kind: 'gone', reason: SessionCleanupReason.NOT_FOUND_BACKEND, detail: 'not found (404)' };
+  if (status < 200 || status >= 300) return { kind: 'unknown', detail: `the server answered ${status}` };
+  if (!body || body.success !== true || !body.data) return { kind: 'unknown', detail: 'unreadable session response' };
+  if (!body.data.active) return { kind: 'gone', reason: SessionCleanupReason.INACTIVE_BACKEND, detail: 'inactive' };
+  const expires = new Date(body.data.expiresAt ?? '');
+  if (Number.isNaN(expires.getTime())) return { kind: 'unknown', detail: 'session has no expiry date' };
+  if (now >= expires) return { kind: 'gone', reason: SessionCleanupReason.EXPIRED_BACKEND, detail: 'expired' };
+  return { kind: 'valid', response: body };
+}
+
+/** GET the session from the backend and classify it. Never throws. */
+export async function checkGuestSession<R extends GuestSessionBody>(sessionId: string): Promise<SessionCheck<R>> {
+  let res: Response;
+  try {
+    res = await fetch(`${config.apiBaseUrl}${config.api.guests.sessionById(sessionId)}`);
+  } catch {
+    return classifySessionCheck<R>(null, null);
+  }
+  const body = res.ok ? ((await res.json().catch(() => null)) as R | null) : null;
+  return classifySessionCheck<R>(res.status, body);
+}
+
+/**
+ * After a check that wasn't valid: clean up only when the session is really gone, then go back to
+ * /projects. "Unknown" keeps everything (ERROR_FALLBACK), so a slow or restarting server can't wipe
+ * a learner's projects.
+ */
+export async function leaveAfterFailedCheck(check: Exclude<SessionCheck<unknown>, { kind: 'valid' }>): Promise<void> {
+  if (check.kind === 'gone') {
+    console.error(`Session ${check.detail}`);
+    await cleanupSessionWithReason(check.reason);
+  } else {
+    console.warn(`Could not check the session (${check.detail}); keeping it.`);
+    await cleanupSessionWithReason(SessionCleanupReason.ERROR_FALLBACK);
+  }
+  window.location.href = '/projects';
+}
+
 /**
  * Update session activity timestamp to extend the 7-day window
  */

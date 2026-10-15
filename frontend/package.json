@@ -11,7 +11,8 @@
     "test:sample-labelling": "npx tsx scripts/test-sample-labelling.ts",
     "test:evaluate": "npx tsx scripts/test-evaluate.ts",
     "test:agent-studio": "npx tsx scripts/test-agent-studio.ts",
-    "test:copilot-lab": "npx tsx scripts/test-copilot-lab.ts"
+    "test:copilot-lab": "npx tsx scripts/test-copilot-lab.ts",
+    "test:session-check": "npx tsx scripts/test-session-check.ts"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",

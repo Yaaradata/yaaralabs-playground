@@ -13,7 +13,7 @@ import {
   isMaskedProjectId,
   isProjectId
 } from '../../../../../lib/session-utils';
-import { cleanupSessionWithReason, SessionCleanupReason } from '../../../../../lib/session-cleanup';
+import { checkGuestSession, leaveAfterFailedCheck } from '../../../../../lib/session-cleanup';
 import { SCRATCH_EDITOR_URL } from '@/config/scratch-editor';
 import ProjectAI from '../../../../../components/ProjectAI';
 import VideoAI from '../../../../../components/ProjectAI/VideoAI';
@@ -213,52 +213,30 @@ export default function MakePage() {
         return;
       }
 
-      // Validate session with backend API
-      const response = await fetch(`${config.apiBaseUrl}${config.api.guests.sessionById(sessionId)}`);
-      
-      if (response.ok) {
-        const sessionResponse: GuestSessionResponse = await response.json();
-        if (sessionResponse.success && sessionResponse.data.active) {
-          const now = new Date();
-          const expiresAt = new Date(sessionResponse.data.expiresAt);
-          
-          if (now < expiresAt) {
-            setActualSessionId(sessionId);
-            setActualProjectId(projectId);
-            setIsValidSession(true);
-            
-            // Clear any existing ML extension data when session becomes valid
-            const mlExtensionKeys = [
-              'ml_extension_project_id',
-              'ml_extension_session_id',
-              'ml_extension_project_name',
-              'ml_extension_project_labels'
-            ];
-            
-            mlExtensionKeys.forEach(key => localStorage.removeItem(key));
-            console.log('Session validated - cleared existing ML extension data');
-            
-            // Load project after setting session as valid
-            await loadProject(sessionId, projectId);
-          } else {
-            console.error('Session expired');
-            await cleanupSessionWithReason(SessionCleanupReason.EXPIRED_BACKEND);
-            window.location.href = '/projects';
-            return;
-          }
-        } else {
-          console.error('Session inactive');
-          localStorage.removeItem('yaaralabs_playground_session_id');
-          localStorage.removeItem('yaaralabs_playground_session_created');
-          window.location.href = '/projects';
-          return;
-        }
-      } else {
-        console.error('Session validation failed:', response.status);
-        await cleanupSessionWithReason(SessionCleanupReason.ERROR_FALLBACK);
-        window.location.href = '/projects';
+      // Validate session with backend API. Only a session the backend says is gone (404, inactive,
+      // expired) is cleaned up; a server error or network blip keeps it (see checkGuestSession).
+      const check = await checkGuestSession<GuestSessionResponse>(sessionId);
+      if (check.kind !== 'valid') {
+        await leaveAfterFailedCheck(check);
         return;
       }
+      setActualSessionId(sessionId);
+      setActualProjectId(projectId);
+      setIsValidSession(true);
+      
+      // Clear any existing ML extension data when session becomes valid
+      const mlExtensionKeys = [
+        'ml_extension_project_id',
+        'ml_extension_session_id',
+        'ml_extension_project_name',
+        'ml_extension_project_labels'
+      ];
+      
+      mlExtensionKeys.forEach(key => localStorage.removeItem(key));
+      console.log('Session validated - cleared existing ML extension data');
+      
+      // Load project after setting session as valid
+      await loadProject(sessionId, projectId);
     } catch (error) {
       // Could not reach the server (network blip, server restarting): keep the session, so the
       // learner's projects are still there when they come back
