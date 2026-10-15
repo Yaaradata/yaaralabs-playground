@@ -469,7 +469,7 @@ class LabelNames(unittest.TestCase):
     def test_labels_that_could_never_be_deleted_are_refused(self):
         from app.labels import LabelError, clean_label
 
-        for bad in ("cats/dogs", "Q&A?", "#1", "100%", "a\\b", "   ", "", "x" * 51, "tab\there"):
+        for bad in ("cats/dogs", "Q&A?", "#1", "100%", "a\\b", "   ", "", "x" * 51):
             with self.assertRaises(LabelError, msg=repr(bad)):
                 clean_label(bad)
 
@@ -479,7 +479,7 @@ class LabelNames(unittest.TestCase):
         for ok in ("கட்டணம்", "शिकायत", "Fees & billing", "Onboarding and KYC", "Desk-2_b", "x" * 50):
             self.assertEqual(clean_label(ok), ok)
         self.assertEqual(clean_label("  Corporate   action "), "Corporate action")
-        self.assertEqual(clean_label("tab	here"), "tab here")  # whitespace is normalised, not refused
+        self.assertEqual(clean_label("tab\there"), "tab here")  # whitespace is normalised, not refused
 
     def test_a_case_only_duplicate_is_refused(self):
         from app.labels import LabelError, clean_label
