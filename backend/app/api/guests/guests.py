@@ -34,6 +34,7 @@ from ...text_embed_service import embed_text_trainer, MODEL_TYPE as EMBED_MODEL_
 from ..slots import HEAVY_TRAINING
 from . import training_lock
 from ...labels import LabelError, clean_label
+from ...filenames import content_disposition, storage_name
 from ...services.project_service import ExampleLimitError
 from ...image_training_service import image_trainer, ImageRecognitionTrainer, get_cached_predictor
 from ...services.image_url_fetcher import fetch_image_from_url, ImageUrlError
@@ -743,7 +744,7 @@ async def upload_guest_images(
                     detail=f"File {file.filename} is too large. Maximum size is 10MB per image."
                 )
             
-            gcs_path = f"images/{project_id}/{file_label}/{file.filename}"
+            gcs_path = f"images/{project_id}/{file_label}/{storage_name(file.filename)}"
             pending.append((gcs_path, file_content, file.content_type))
             uploaded_images.append({
                 "image_url": f"gs://{project_service.bucket.name}/{gcs_path}",
@@ -812,7 +813,7 @@ async def upload_guest_images_from_url(
             raise HTTPException(status_code=400, detail=str(e))
         
         # Upload to GCS
-        gcs_path = f"images/{project_id}/{label}/{filename}"
+        gcs_path = f"images/{project_id}/{label}/{storage_name(filename)}"
         blob = project_service.bucket.blob(gcs_path)
         blob.upload_from_string(file_content, content_type=content_type)
         
@@ -894,7 +895,7 @@ async def upload_image_for_prediction_only(
             )
         
         # Upload to GCS with prediction-specific path (not in training data)
-        gcs_path = f"predictions/{project_id}/{file.filename}"
+        gcs_path = f"predictions/{project_id}/{storage_name(file.filename)}"
         blob = project_service.bucket.blob(gcs_path)
         blob.upload_from_string(file_content, content_type=file.content_type)
         
@@ -1076,7 +1077,7 @@ async def get_guest_image(
             media_type=content_type,
             headers={
                 "Cache-Control": "public, max-age=3600",  # Cache for 1 hour
-                "Content-Disposition": f"inline; filename={image_path.split('/')[-1]}"
+                "Content-Disposition": content_disposition(image_path.split('/')[-1])
             }
         )
         

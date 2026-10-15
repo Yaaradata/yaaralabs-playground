@@ -503,5 +503,42 @@ class LabelNames(unittest.TestCase):
             asyncio.run(svc.add_examples("p1", [ExampleAdd(text="hello", label="FEES")]))
 
 
+# ── 10. uploaded file names: unique storage, a header any name fits in ───────
+
+
+class FileNames(unittest.TestCase):
+    NAMES = ["image.png", "Screenshot 2026-10-15 at 9.49.12 AM.png", "கட்டணம்.jpg", "\U0001F600.webp", "../../etc/passwd", "a" * 200 + ".jpeg", "noext"]
+
+    def test_two_pastes_of_image_png_get_different_storage_names(self):
+        from app.filenames import storage_name
+
+        names = {storage_name("image.png") for _ in range(50)}
+        self.assertEqual(len(names), 50, "a second image.png must not overwrite the first")
+        self.assertTrue(all(n.endswith("_image.png") for n in names))
+
+    def test_storage_names_are_safe(self):
+        import re
+
+        from app.filenames import MAX_NAME, storage_name
+
+        for n in self.NAMES:
+            s = storage_name(n)
+            self.assertRegex(s, r"^[0-9a-f]{8}_[A-Za-z0-9._-]+$", n)
+            self.assertNotIn("/", s)
+            self.assertNotIn("..", s.split("_", 1)[1][:2])
+            self.assertLessEqual(len(s), 9 + MAX_NAME)
+        self.assertTrue(re.search(r"\.jpeg$", storage_name("a" * 200 + ".jpeg")))
+
+    def test_the_header_fits_any_name(self):
+        from app.filenames import content_disposition
+
+        for n in self.NAMES:
+            header = content_disposition(n)
+            header.encode("latin-1")  # HTTP headers must be latin-1: the old raw name raised (a 500)
+            self.assertIn("filename*=UTF-8''", header)
+        with self.assertRaises(UnicodeEncodeError):
+            f"inline; filename={self.NAMES[2]}".encode("latin-1")  # what the old code sent
+
+
 if __name__ == "__main__":
     unittest.main()
