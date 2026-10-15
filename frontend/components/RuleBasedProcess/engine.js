@@ -1154,6 +1154,38 @@ export function mountRuleBasedProcess(root, options) {
       select(copy.id);
     }
   
+    // Ctrl+C / Ctrl+V: copy the selected block (with what is inside it), paste a fresh copy
+    var clip = null, pasteN = 0;
+    function copyBlock(id) {
+      var loc = locate(id);
+      if (!loc) return false;
+      clip = BL.clone(loc.kind === "slot" ? loc.parent.inputs[loc.name] : loc.arr[loc.idx]);
+      pasteN = 0;
+      return true;
+    }
+    function pasteBlock() {
+      if (!clip) return;
+      snapshot();
+      var copy = BL.clone(clip);
+      var shape = BL.SPEC[copy.op].shape;
+      var loc = selId && locate(selId);
+      var after = loc && loc.kind === "list" && loc.arr[loc.idx];
+      // a stack block goes right under the selected block, like Duplicate
+      if (after && shape !== "hat" && shape !== "rep" && shape !== "bool" &&
+          BL.SPEC[after.op].shape !== "cap" && !BL.SPEC[after.op].noBottom) {
+        loc.arr.splice(loc.idx + 1, 0, copy);
+      } else {
+        // otherwise its own stack, a little further down each time so copies don't overlap
+        pasteN++;
+        var st = selId && stackContaining(selId);
+        var x = st ? st.x : Math.round((60 - pan.x) / zoom);
+        var y = st ? st.y : Math.round((60 - pan.y) / zoom);
+        W.stacks.push({ id: sid(), x: x + 30 * pasteN, y: y + 30 * pasteN, blocks: [copy] });
+      }
+      render();
+      select(copy.id);
+    }
+
     $("#xbtn").addEventListener("pointerdown", function (e) { e.stopPropagation(); });
     $("#xbtn").onclick = function () { if (selId) deleteBlock(selId, false); };
   
@@ -1307,6 +1339,14 @@ export function mountRuleBasedProcess(root, options) {
         return;
       }
       if (mod && e.key.toLowerCase() === "d" && selId) { e.preventDefault(); duplicateBlock(selId); return; }
+      if (mod && e.key.toLowerCase() === "c" && selId) {
+        // text highlighted somewhere (e.g. the chat): let the browser copy that instead
+        var tsel = window.getSelection && window.getSelection();
+        if (tsel && !tsel.isCollapsed && String(tsel).trim()) return;
+        if (copyBlock(selId)) e.preventDefault();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "v" && clip) { e.preventDefault(); pasteBlock(); return; }
       if ((e.key === "Delete" || e.key === "Backspace") && selId) {
         e.preventDefault();
         deleteBlock(selId, e.shiftKey);
