@@ -14,7 +14,7 @@ import {
   isMaskedProjectId,
   isProjectId
 } from '../../../../../lib/session-utils';
-import { cleanupSessionWithReason, SessionCleanupReason } from '../../../../../lib/session-cleanup';
+import { cleanupSessionWithReason, SessionCleanupReason, checkGuestSession, leaveAfterFailedCheck } from '../../../../../lib/session-cleanup';
 import SampleTestMessages, { useSampleTestSet, type Prediction } from '../../../../../components/SampleLabelling/SampleTestMessages';
 import SampleImageTest, { type ImagePrediction } from '../../../../../components/SampleImages/SampleImageTest';
 import { labelNamesKey } from '../../../../../components/SampleImages/sampleImages';
@@ -305,41 +305,22 @@ export default function LearnPage() {
         return;
       }
 
-      // Validate session with backend API
-      const response = await fetch(`${config.apiBaseUrl}${config.api.guests.sessionById(sessionId)}`);
-      
-      if (response.ok) {
-        const sessionResponse: GuestSessionResponse = await response.json();
-        if (sessionResponse.success && sessionResponse.data.active) {
-          const now = new Date();
-          const expiresAt = new Date(sessionResponse.data.expiresAt);
-          
-          if (now < expiresAt) {
-            setActualSessionId(sessionId);
-            setActualProjectId(projectId);
-            setGuestSession(sessionResponse.data);
-            setIsValidSession(true);
-            
-            // Load project and training data after setting session as valid
-            await loadProjectAndTrainingData(sessionId, projectId);
-          } else {
-            console.error('Session expired');
-            await cleanupSessionWithReason(SessionCleanupReason.EXPIRED_BACKEND);
-            window.location.href = '/projects';
-            return;
-          }
-        } else {
-          console.error('Session inactive');
-          await cleanupSessionWithReason(SessionCleanupReason.INACTIVE_BACKEND);
-          window.location.href = '/projects';
-          return;
-        }
-      } else {
-        console.error('Session validation failed:', response.status);
-        await cleanupSessionWithReason(SessionCleanupReason.NOT_FOUND_BACKEND);
-        window.location.href = '/projects';
+      // Validate session with backend API. Only a session the backend says is gone (404, inactive,
+      // expired) is cleaned up; a server error or network blip keeps it (see checkGuestSession).
+      const check = await checkGuestSession<GuestSessionResponse>(sessionId);
+      if (check.kind !== 'valid') {
+        await leaveAfterFailedCheck(check);
         return;
       }
+      const sessionResponse = check.response;
+
+      setActualSessionId(sessionId);
+      setActualProjectId(projectId);
+      setGuestSession(sessionResponse.data);
+      setIsValidSession(true);
+      
+      // Load project and training data after setting session as valid
+      await loadProjectAndTrainingData(sessionId, projectId);
     } catch (error) {
       console.error('Error validating session:', error);
       await cleanupSessionWithReason(SessionCleanupReason.ERROR_FALLBACK);

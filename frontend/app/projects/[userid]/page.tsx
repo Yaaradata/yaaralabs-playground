@@ -15,7 +15,7 @@ import {
   getProjectIdFromMaskedId,
   isMaskedProjectId
 } from '../../../lib/session-utils';
-import { cleanupSessionWithReason, SessionCleanupReason, updateSessionActivity } from '../../../lib/session-cleanup';
+import { cleanupSessionWithReason, SessionCleanupReason, updateSessionActivity, checkGuestSession, leaveAfterFailedCheck } from '../../../lib/session-cleanup';
 import { DAY2_OPTIONS, TYPE_STAGE, defaultStartFrom, startFromOptions, stageToType, isStage, type Stage } from '../../../components/AgentStudio/stages';
 
 /**
@@ -201,45 +201,25 @@ function CreateProjectPage() {
         return;
       }
 
-      // Validate session with backend API
-      const response = await fetch(`${config.apiBaseUrl}${config.api.guests.sessionById(sessionId)}`);
-      
-      if (response.ok) {
-        const sessionResponse: GuestSessionResponse = await response.json();
-        if (sessionResponse.success && sessionResponse.data.active) {
-          // Check if session is still valid
-          const now = new Date();
-          const expiresAt = new Date(sessionResponse.data.expiresAt);
-          
-          if (now < expiresAt) {
-            setActualSessionId(sessionId);
-            setGuestSession(sessionResponse.data);
-            setIsValidSession(true);
-            
-            // Update session activity
-            updateSessionActivity();
-            
-            // Start loading projects immediately
-            setIsLoadingProjects(true);
-            loadGuestProjects(sessionResponse.data.session_id);
-          } else {
-            // Session expired
-                        await cleanupSessionWithReason(SessionCleanupReason.EXPIRED_BACKEND);
-            window.location.href = '/projects';
-            return;
-          }
-        } else {
-          // Session inactive
-                      await cleanupSessionWithReason(SessionCleanupReason.INACTIVE_BACKEND);
-          window.location.href = '/projects';
-          return;
-        }
-      } else {
-        // Session not found on server
-                    await cleanupSessionWithReason(SessionCleanupReason.EXPIRED_BACKEND);
-        window.location.href = '/projects';
+      // Validate session with backend API. Only a session the backend says is gone (404, inactive,
+      // expired) is cleaned up; a server error or network blip keeps it (see checkGuestSession).
+      const check = await checkGuestSession<GuestSessionResponse>(sessionId);
+      if (check.kind !== 'valid') {
+        await leaveAfterFailedCheck(check);
         return;
       }
+      const sessionResponse = check.response;
+
+      setActualSessionId(sessionId);
+      setGuestSession(sessionResponse.data);
+      setIsValidSession(true);
+      
+      // Update session activity
+      updateSessionActivity();
+      
+      // Start loading projects immediately
+      setIsLoadingProjects(true);
+      loadGuestProjects(sessionResponse.data.session_id);
     } catch (error) {
       console.error('Error validating session:', error);
       await cleanupSessionWithReason(SessionCleanupReason.ERROR_FALLBACK);

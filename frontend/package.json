@@ -13,7 +13,8 @@
     "test:agent-studio": "npx tsx scripts/test-agent-studio.ts",
     "test:copilot-lab": "npx tsx scripts/test-copilot-lab.ts",
     "test:responsive": "tsx scripts/responsive-audit.ts",
-    "seed:responsive": "tsx scripts/responsive-seed.ts"
+    "seed:responsive": "tsx scripts/responsive-seed.ts",
+    "test:session-check": "npx tsx scripts/test-session-check.ts"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",

@@ -13,7 +13,7 @@ import {
   isMaskedProjectId,
   isProjectId
 } from '../../../../../lib/session-utils';
-import { cleanupSessionWithReason, SessionCleanupReason } from '../../../../../lib/session-cleanup';
+import { checkGuestSession, leaveAfterFailedCheck } from '../../../../../lib/session-cleanup';
 import Link from 'next/link';
 import { ImageUpload, ImageGallery } from '../../../../../components/ImageCollection';
 import SampleLabeller from '../../../../../components/SampleLabelling/SampleLabeller';
@@ -229,51 +229,31 @@ export default function TrainPage() {
         return;
       }
 
-      // Validate session with backend API
-      const response = await fetch(`${config.apiBaseUrl}${config.api.guests.sessionById(sessionId)}`);
-      
-      if (response.ok) {
-        const sessionResponse: GuestSessionResponse = await response.json();
-        if (sessionResponse.success && sessionResponse.data.active) {
-          const now = new Date();
-          const expiresAt = new Date(sessionResponse.data.expiresAt);
-          
-          if (now < expiresAt) {
-            // Check if this is a new session or if we're returning to an existing valid session
-            const isReturningToValidSession = actualSessionId === sessionId && actualProjectId === projectId && isValidSession;
-            
-            setActualSessionId(sessionId);
-            setActualProjectId(projectId);
-            setGuestSession(sessionResponse.data);
-            setIsValidSession(true);
-            
-            if (isReturningToValidSession && hasInitialDataLoaded) {
-              // We're returning to a valid session, just refresh the data
-              console.log('🔄 Returning to valid session, refreshing data...');
-              await refreshExamplesFromAPI();
-            } else {
-              // New session or first time loading, load project and labels
-              console.log('🔄 New session or first time loading, loading project and labels...');
-              await loadProjectAndLabels(sessionId, projectId);
-            }
-          } else {
-            console.error('Session expired');
-            await cleanupSessionWithReason(SessionCleanupReason.EXPIRED_BACKEND);
-            window.location.href = '/projects';
-            return;
-          }
-        } else {
-          console.error('Session inactive');
-          localStorage.removeItem('yaaralabs_playground_session_id');
-          localStorage.removeItem('yaaralabs_playground_session_created');
-          window.location.href = '/projects';
-          return;
-        }
-      } else {
-        console.error('Session validation failed:', response.status);
-        await cleanupSessionWithReason(SessionCleanupReason.ERROR_FALLBACK);
-        window.location.href = '/projects';
+      // Validate session with backend API. Only a session the backend says is gone (404, inactive,
+      // expired) is cleaned up; a server error or network blip keeps it (see checkGuestSession).
+      const check = await checkGuestSession<GuestSessionResponse>(sessionId);
+      if (check.kind !== 'valid') {
+        await leaveAfterFailedCheck(check);
         return;
+      }
+      const sessionResponse = check.response;
+
+      // Check if this is a new session or if we're returning to an existing valid session
+      const isReturningToValidSession = actualSessionId === sessionId && actualProjectId === projectId && isValidSession;
+      
+      setActualSessionId(sessionId);
+      setActualProjectId(projectId);
+      setGuestSession(sessionResponse.data);
+      setIsValidSession(true);
+      
+      if (isReturningToValidSession && hasInitialDataLoaded) {
+        // We're returning to a valid session, just refresh the data
+        console.log('🔄 Returning to valid session, refreshing data...');
+        await refreshExamplesFromAPI();
+      } else {
+        // New session or first time loading, load project and labels
+        console.log('🔄 New session or first time loading, loading project and labels...');
+        await loadProjectAndLabels(sessionId, projectId);
       }
     } catch (error) {
       // Could not reach the server (network blip, server restarting): keep the session, so the

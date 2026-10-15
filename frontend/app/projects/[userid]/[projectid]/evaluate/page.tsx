@@ -21,7 +21,7 @@ import {
   isProjectId,
   isSessionId,
 } from '../../../../../lib/session-utils';
-import { cleanupSessionWithReason, SessionCleanupReason } from '../../../../../lib/session-cleanup';
+import { checkGuestSession, leaveAfterFailedCheck } from '../../../../../lib/session-cleanup';
 
 interface Project {
   id: string;
@@ -70,16 +70,9 @@ export default function EvaluatePage() {
       if (stored !== sessionId) return void (window.location.href = `/projects/${getOrCreateMaskedId(stored)}`);
 
       try {
-        const s = await fetch(`${config.apiBaseUrl}${config.api.guests.sessionById(sessionId)}`);
-        if (!s.ok) {
-          await cleanupSessionWithReason(SessionCleanupReason.ERROR_FALLBACK);
-          return void (window.location.href = '/projects');
-        }
-        const session = await s.json();
-        if (!session?.success || !session.data?.active || new Date() >= new Date(session.data.expiresAt)) {
-          await cleanupSessionWithReason(SessionCleanupReason.EXPIRED_BACKEND);
-          return void (window.location.href = '/projects');
-        }
+        // only a session the backend says is gone is cleaned up; a server error keeps it
+        const check = await checkGuestSession(sessionId);
+        if (check.kind !== 'valid') return void (await leaveAfterFailedCheck(check));
         const p = await fetch(`${config.apiBaseUrl}/api/guests/session/${sessionId}/projects`);
         const list = p.ok ? await p.json() : null;
         const found: Project | undefined = list?.data?.find((x: Project) => x.id === projectId);

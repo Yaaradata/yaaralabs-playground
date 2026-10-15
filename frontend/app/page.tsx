@@ -3,11 +3,10 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '../components/Header';
-import config from '../lib/config';
 import { 
   getOrCreateMaskedId
 } from '../lib/session-utils';
-import { cleanupSessionWithReason, SessionCleanupReason } from '../lib/session-cleanup';
+import { cleanupSessionWithReason, SessionCleanupReason, checkGuestSession } from '../lib/session-cleanup';
 import { logNetworkError } from '../lib/log-network-error';
 
 interface GuestSession {
@@ -88,70 +87,28 @@ export default function Home() {
         }
       }
 
-      // Validate session with backend
+      // Validate session with backend. Only a session the backend says is gone (404, inactive,
+      // expired) is cleaned up; a server error or network blip keeps it (see checkGuestSession).
       console.log('🌐 Validating session with backend API...');
-      const response = await fetch(`${config.apiBaseUrl}${config.api.guests.sessionById(storedSessionId)}`);
-      
-      console.log('📡 API Response:', {
-        status: response.status,
-        ok: response.ok,
-        url: response.url
-      });
-      
-      if (response.ok) {
-        const sessionResponse: GuestSessionResponse = await response.json();
-        console.log('📄 Session response:', {
-          success: sessionResponse.success,
-          active: sessionResponse.data?.active,
-          expiresAt: sessionResponse.data?.expiresAt
-        });
+      const check = await checkGuestSession<GuestSessionResponse>(storedSessionId);
+      if (check.kind === 'valid') {
+        // Session is valid, generate masked ID and set state
+        // Get or create masked ID (reuses existing if available)
+        const maskedId = getOrCreateMaskedId(storedSessionId);
         
-        if (sessionResponse.success && sessionResponse.data.active) {
-          const now = new Date();
-          const expiresAt = new Date(sessionResponse.data.expiresAt);
-          
-          console.log('⏱️ Time check:', {
-            now: now.toISOString(),
-            expiresAt: expiresAt.toISOString(),
-            isValid: now < expiresAt
-          });
-          
-          if (now < expiresAt) {
-            // Session is valid, generate masked ID and set state
-            // Get or create masked ID (reuses existing if available)
-            const maskedId = getOrCreateMaskedId(storedSessionId);
-            
-            // Update last activity time
-            localStorage.setItem('yaaralabs_playground_session_last_activity', Date.now().toString());
-            
-            setUserSessionId(maskedId);
-            setHasActiveSession(true);
-            console.log('✅ Session is valid! Setting hasActiveSession to true');
-            console.log('🔗 Using masked ID:', maskedId);
-            console.log('⏰ Updated last activity time');
-          } else {
-            // Session expired on backend
-            console.log('⏰ Session expired on backend');
-            await handleSessionCleanup(SessionCleanupReason.EXPIRED_BACKEND, storedSessionId);
-          }
-        } else {
-          // Session inactive
-          console.log('❌ Session inactive on backend');
-          await handleSessionCleanup(SessionCleanupReason.INACTIVE_BACKEND, storedSessionId);
-        }
+        // Update last activity time
+        localStorage.setItem('yaaralabs_playground_session_last_activity', Date.now().toString());
+        
+        setUserSessionId(maskedId);
+        setHasActiveSession(true);
+        console.log('✅ Session is valid! Setting hasActiveSession to true');
+        console.log('🔗 Using masked ID:', maskedId);
+        console.log('⏰ Updated last activity time');
+      } else if (check.kind === 'gone') {
+        console.log(`❌ Session ${check.detail} on backend`);
+        await handleSessionCleanup(check.reason, storedSessionId);
       } else {
-        // Session not found on server
-        console.log('❌ Session not found on server, status:', response.status);
-        
-        // Get error details
-        try {
-          const errorText = await response.text();
-          console.log('Error details:', errorText);
-        } catch {
-          console.log('Could not read error response');
-        }
-        
-        await handleSessionCleanup(SessionCleanupReason.NOT_FOUND_BACKEND, storedSessionId);
+        console.warn(`Could not check the session (${check.detail}); keeping it.`);
       }
     } catch (error) {
       logNetworkError('Could not validate the guest session', error);
