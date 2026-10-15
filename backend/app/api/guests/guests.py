@@ -33,6 +33,7 @@ from ...text_ovr_service import ovr_text_trainer, MODEL_TYPE as OVR_MODEL_TYPE
 from ...text_embed_service import embed_text_trainer, MODEL_TYPE as EMBED_MODEL_TYPE
 from ..slots import HEAVY_TRAINING
 from . import training_lock
+from ...services.project_service import ExampleLimitError
 from ...image_training_service import image_trainer, ImageRecognitionTrainer, get_cached_predictor
 from ...services.image_url_fetcher import fetch_image_from_url, ImageUrlError
 from ...training_job_service import training_job_service
@@ -645,9 +646,12 @@ async def add_guest_examples(
             )
         
         # Add examples to project
-        result = await project_service.add_examples(
-            project_id, examples_data.examples, split=examples_data.split, skip_existing=examples_data.skip_existing
-        )
+        try:
+            result = await project_service.add_examples(
+                project_id, examples_data.examples, split=examples_data.split, skip_existing=examples_data.skip_existing
+            )
+        except ExampleLimitError as e:
+            raise HTTPException(status_code=400, detail=str(e))
         
         # Calculate how many examples were actually created
         input_examples_count = len(examples_data.examples)

@@ -236,9 +236,16 @@ class TrainingConfig(BaseModel):
     )
 
 
+# Limits that keep a project document far below Firestore's 1 MiB (docs/hardening.md, item 8)
+MAX_EXAMPLE_TEXT = 500
+MAX_LABEL = 50
+MAX_EXAMPLES_PER_REQUEST = 50
+MAX_EXAMPLES_PER_PROJECT = 500
+
+
 class ExampleAdd(BaseModel):
-    text: str = Field(..., description="Text example to add")
-    label: str = Field(..., description="Label for this example")
+    text: str = Field(..., max_length=MAX_EXAMPLE_TEXT, description="Text example to add (500 characters at most)")
+    label: str = Field(..., max_length=MAX_LABEL, description="Label for this example (50 characters at most)")
 
 class ExamplesBulkAdd(BaseModel):
     examples: List[ExampleAdd] = Field(..., description="List of examples to add")
@@ -286,7 +293,7 @@ class TrainingResponse(BaseModel):
     jobId: Optional[str] = Field(None, description="Training job ID")
 
 class PredictionRequest(BaseModel):
-    text: str = Field(..., description="Text to predict")
+    text: str = Field(..., max_length=500, description="Text to predict (500 characters at most), or an image's gs:// URL")
 
 class PredictionResponse(BaseModel):
     success: bool

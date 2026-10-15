@@ -12,6 +12,10 @@ from ..config import gcp_clients
 logger = logging.getLogger(__name__)
 
 
+
+class ExampleLimitError(ValueError):
+    """Too many examples for one request or one project (shown to the learner as the message)."""
+
 class ProjectService:
     """Service layer for project management operations"""
     
@@ -372,7 +376,24 @@ class ProjectService:
             existing = {key(e.label, e.text) for e in project.dataset.examples} if skip_existing else set()
             skipped = 0
 
-            # Add new examples
+            # Count after splitting on commas: one pasted CSV row used to become thousands of examples
+            # and push the project document towards Firestore's 1 MiB limit
+            from ..models import MAX_EXAMPLES_PER_PROJECT, MAX_EXAMPLES_PER_REQUEST
+
+            def parts(example_data):
+                if split:
+                    return [text.strip() for text in example_data.text.split(',') if text.strip()]
+                return [example_data.text.strip()] if example_data.text.strip() else []
+
+            # Check the limits before changing anything: a refused request adds nothing
+            incoming = sum(len(parts(e)) for e in examples)
+            if incoming > MAX_EXAMPLES_PER_REQUEST:
+                raise ExampleLimitError(
+                    f"Add at most {MAX_EXAMPLES_PER_REQUEST} examples at a time (each comma starts a new example)."
+                )
+            if len(project.dataset.examples) + incoming > MAX_EXAMPLES_PER_PROJECT:
+                raise ExampleLimitError(f"A project can hold at most {MAX_EXAMPLES_PER_PROJECT} examples.")
+
             for example_data in examples:
                 if split:
                     # Split comma-separated text into multiple examples
@@ -426,6 +447,8 @@ class ProjectService:
                 'labels': project.dataset.labels,
                 'skipped': skipped,
             }
+        except ExampleLimitError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to add examples: {str(e)}")
     

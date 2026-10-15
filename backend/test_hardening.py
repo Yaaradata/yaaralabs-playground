@@ -377,5 +377,90 @@ class TrainingGuard(unittest.TestCase):
         self.assertFalse(tl.lock_is_held(None, 1000.0))
 
 
+# ── 8. text examples have limits (a pasted CSV row can't brick a project) ──────
+
+
+class ExampleLimits(unittest.TestCase):
+    def project_service(self, existing=0):
+        from app.models import TextExample
+        from app.services.project_service import ProjectService
+
+        svc = ProjectService.__new__(ProjectService)  # no GCP clients
+        project = SimpleNamespace(
+            dataset=SimpleNamespace(examples=[TextExample(text=f"t{i}", label="Fees") for i in range(existing)], labels=["Fees"], records=existing),
+            model_dump=lambda: {},
+        )
+        svc.get_project = mock.AsyncMock(return_value=project)
+        written = []
+        doc = SimpleNamespace(set=lambda d: written.append(d))
+        type(svc).collection = property(lambda self: SimpleNamespace(document=lambda _id: doc))
+        return svc, project, written
+
+    def add(self, svc, text, label="Fees", split=True):
+        import asyncio
+
+        from app.models import ExampleAdd
+
+        return asyncio.run(svc.add_examples("p1", [ExampleAdd(text=text, label=label)], split=split))
+
+    def test_text_and_label_lengths(self):
+        from pydantic import ValidationError
+
+        from app.models import ExampleAdd, PredictionRequest
+
+        with self.assertRaises(ValidationError):
+            ExampleAdd(text="x" * 501, label="Fees")
+        with self.assertRaises(ValidationError):
+            ExampleAdd(text="ok", label="L" * 51)
+        with self.assertRaises(ValidationError):
+            PredictionRequest(text="x" * 501)
+        ExampleAdd(text="x" * 500, label="L" * 50)  # the limits themselves are fine
+
+    def test_a_csv_row_is_capped_after_splitting(self):
+        from app.services.project_service import ExampleLimitError
+
+        svc, project, written = self.project_service()
+        with self.assertRaises(ExampleLimitError) as e:
+            self.add(svc, "a," * 240)  # 240 examples in 480 characters
+        self.assertIn("at most 50", str(e.exception))
+        self.assertEqual(written, [], "nothing is saved when the request is over the limit")
+        self.assertEqual(self.add(svc, ",".join(f"e{i}" for i in range(50)))["totalExamples"], 50)
+
+    def test_a_project_holds_at_most_500(self):
+        from app.services.project_service import ExampleLimitError
+
+        svc, project, written = self.project_service(existing=500)
+        with self.assertRaises(ExampleLimitError) as e:
+            self.add(svc, "one more")
+        self.assertIn("at most 500", str(e.exception))
+
+    def test_the_route_answers_400_not_500(self):
+        from app.api.guests import guests as g
+        from app.services.project_service import ExampleLimitError
+
+        app = FastAPI()
+        app.include_router(g.router)
+        app.dependency_overrides[g.validate_session_dependency] = lambda: {"session_id": A}
+        svc = SimpleNamespace(
+            get_project=mock.AsyncMock(return_value=SimpleNamespace(student_id=A)),
+            add_examples=mock.AsyncMock(side_effect=ExampleLimitError("Add at most 50 examples at a time (each comma starts a new example).")),
+        )
+        app.dependency_overrides[g.get_project_service] = lambda: svc
+        client = TestClient(app, raise_server_exceptions=False)
+        url = f"/api/guests/session/{A}/projects/p1/examples"
+        r = client.post(url, json={"examples": [{"text": "a," * 240, "label": "Fees"}]})
+        self.assertEqual(r.status_code, 400, r.text)
+        self.assertIn("at most 50", r.json()["detail"])
+        r = client.post(url, json={"examples": [{"text": "x" * 10_000, "label": "Fees"}]})
+        self.assertEqual(r.status_code, 422)
+
+    def test_evaluate_on_own_examples_is_capped(self):
+        from app.services import text_evaluate_service as te
+
+        examples = [{"text": f"t{i}", "label": "A" if i % 2 else "B"} for i in range(te.MAX_LEAVE_ONE_OUT + 1)]
+        with self.assertRaises(te.EvaluateError):
+            te.evaluate(lambda t: {"A": 0.5, "B": 0.5}, te.EMBED_MODEL_TYPE, ["A", "B"], examples, [], own_examples=lambda ex: [])
+
+
 if __name__ == "__main__":
     unittest.main()

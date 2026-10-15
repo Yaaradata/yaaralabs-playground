@@ -27,6 +27,7 @@ from ..text_ovr_service import DEFAULT_C, MODEL_TYPE as OVR_MODEL_TYPE, _fit, _s
 
 NONE_OF_THESE = "None of these"
 MAX_ITEMS = 50
+MAX_LEAVE_ONE_OUT = 200  # one refit per example: 200 is already about a minute of CPU
 MAX_TEXT = 500
 
 Scorer = Callable[[str], Dict[str, float]]
@@ -184,6 +185,8 @@ def evaluate(
     else:
         if model_type not in (OVR_MODEL_TYPE, EMBED_MODEL_TYPE):
             raise EvaluateError("Use the workshop labels, or the default model, to evaluate.")
+        if len(examples) > MAX_LEAVE_ONE_OUT:
+            raise EvaluateError(f"The exam on your own examples works with at most {MAX_LEAVE_ONE_OUT} examples.")
         source, scored = "own-examples", (own_examples or leave_one_out)(examples)
 
     return {

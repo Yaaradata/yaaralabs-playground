@@ -614,16 +614,23 @@ export default function TrainPage() {
           errorDetails = { message: errorText };
         }
 
-        // Show user-friendly error
-        if (response.status === 422) {
-          const errorMsg = errorDetails.message || 'Invalid data format';
-          alert(`Validation Error: ${errorMsg}`);
-        } else if (response.status === 404) {
+        // Show the server's reason: a string (limits: "Add at most 50 examples at a time", "at most 500
+        // examples"), or FastAPI's list of field errors (e.g. an example over 500 characters)
+        const detail = errorDetails?.detail;
+        const reason =
+          typeof detail === 'string'
+            ? detail
+            : Array.isArray(detail)
+              ? detail.some((d: { type?: string }) => String(d?.type).includes('too_long'))
+                ? 'An example can be at most 500 characters, and a label at most 50.'
+                : detail.map((d: { msg?: string }) => d?.msg).filter(Boolean).join('; ')
+              : errorDetails?.message;
+        if (response.status === 404) {
           alert('API endpoint not found. Please check if the server is running.');
-        } else if (response.status === 500) {
+        } else if (response.status >= 500) {
           alert('Server error. Please try again later.');
         } else {
-          alert(`API Error (${response.status}): ${errorDetails.message || 'Failed to submit examples'}`);
+          alert(reason || 'Could not add these examples.');
         }
 
         return false;
@@ -765,8 +772,14 @@ export default function TrainPage() {
     reader.onload = async (e) => {
       const text = e.target?.result as string;
       if (text) {
-        // Split text by lines and filter out empty lines
-        const lines = text.split('\n').filter(line => line.trim().length > 0);
+        // Split text by lines and filter out empty lines; at most 500 lines (a project's limit)
+        const MAX_LINES = 500;
+        const BATCH = 50; // the server takes at most 50 examples per request
+        const allLines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+        if (allLines.length > MAX_LINES) {
+          alert(`This file has ${allLines.length} lines. Only the first ${MAX_LINES} are added.`);
+        }
+        const lines = allLines.slice(0, MAX_LINES);
         
         // Find the label name for API submission
         const label = labels.find(l => l.id === labelId);
@@ -784,16 +797,15 @@ export default function TrainPage() {
           createdAt: new Date().toLocaleDateString()
         }));
 
-        const success = await submitExamplesToAPI(label.name, newExamples);
-        
-        if (success) {
-                   // Refresh from API to ensure sync - this will update the UI with the correct state
-         await refreshExamplesFromAPI(true);
-         
-         console.log(`✅ Successfully uploaded ${newExamples.length} examples from file`);
-        } else {
-          alert(`Failed to upload examples from file. Please try again.`);
+        let success = true;
+        for (let i = 0; i < newExamples.length && success; i += BATCH) {
+          success = await submitExamplesToAPI(label.name, newExamples.slice(i, i + BATCH));
         }
+        
+        // Refresh from the API either way: batches added before a refused one are kept and shown
+        // (submitExamplesToAPI already told the learner why a batch was refused)
+        await refreshExamplesFromAPI(true);
+        if (success) console.log(`✅ Successfully uploaded ${newExamples.length} examples from file`);
       }
     };
     reader.readAsText(file);
