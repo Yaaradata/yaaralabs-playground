@@ -1000,7 +1000,7 @@ function CreateProjectPage() {
       <main className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
         <div>
           {/* Back to Home Button */}
-          <div className="flex justify-start mb-8">
+          <div className="flex justify-start mb-8 short:mb-3">
             <Link
               href="/"
               className="p-2 text-fg/70 hover:text-white hover:bg-purple-brand/10 rounded-lg transition-all duration-300 flex items-center gap-2 text-sm"
@@ -1013,7 +1013,7 @@ function CreateProjectPage() {
           </div>
           
           {/* Navigation Breadcrumb */}
-          <div className="mb-6 flex items-center justify-between">
+          <div className="mb-6 short:mb-3 flex items-center justify-between">
             <div className="text-lg font-semibold text-fg">
               {currentSection === 'projects-list' && (
                 <span>Projects List</span>
@@ -1049,7 +1049,7 @@ function CreateProjectPage() {
           </div>
           {isLoading ? (
             /* Loading State */
-            <div className="flex items-center justify-center min-h-[400px]">
+            <div className="flex items-center justify-center min-h-[25rem]">
               <div className="text-fg text-xl">Loading...</div>
             </div>
           ) : !isValidSession ? (
@@ -1214,7 +1214,7 @@ function CreateProjectPage() {
           ) : currentSection === 'projects-list' && isLoadingProjects ? (
             /* Loading Projects State */
             <div className="max-w-4xl mx-auto text-center">
-              <div className="flex flex-col items-center justify-center min-h-[400px]">
+              <div className="flex flex-col items-center justify-center min-h-[25rem]">
                 {/* Loading Spinner */}
                 <div className="mx-auto w-12 h-12 border-4 border-magenta-brand/20 border-t-pink-brand rounded-full animate-spin mb-4"></div>
                 <div className="text-fg text-xl">Loading projects...</div>
@@ -1275,7 +1275,7 @@ function CreateProjectPage() {
             /* Projects Grid */
             <div>
               {/* Projects Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {projects.map((project) => (
                   <div
                     key={project.id}
@@ -1430,7 +1430,7 @@ function CreateProjectPage() {
                        )}
                        
                        {/* Date Information */}
-                       <div className="text-right flex-shrink-0">
+                       <div className="text-right min-w-0">
                          <div className="text-xs text-fg/50">
                            Created: {new Date(project.createdAt).toLocaleDateString('en-US')}
                          </div>
@@ -1451,8 +1451,8 @@ function CreateProjectPage() {
           ) : currentSection === 'new-project' ? (
             /* Project Creation Form */
             <div className="max-w-md mx-auto">
-              <div className="text-center mb-8">
-                <h1 className="text-3xl md:text-4xl font-semibold text-fg mb-4">
+              <div className="text-center mb-8 short:mb-4">
+                <h1 className="text-3xl md:text-4xl short:md:text-3xl font-semibold text-fg mb-4 short:mb-1">
                   Create New Project
                 </h1>
                 <p className="text-lg text-fg">
@@ -1460,7 +1460,7 @@ function CreateProjectPage() {
                 </p>
               </div>
 
-              <form onSubmit={handleFormSubmit} className="space-y-6">
+              <form onSubmit={handleFormSubmit} className="space-y-6 short:space-y-4">
                 {/* Project Name Input */}
                 <div>
                   <label htmlFor="projectName" className="block text-sm font-medium text-fg mb-2">

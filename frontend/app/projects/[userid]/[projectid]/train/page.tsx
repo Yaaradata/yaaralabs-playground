@@ -1654,7 +1654,7 @@ export default function TrainPage() {
       <div className="min-h-screen bg-canvas text-fg">
         <Header />
         <main className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex items-center justify-center min-h-[25rem]">
             <div className="text-fg text-xl">Loading...</div>
           </div>
         </main>
@@ -1690,11 +1690,11 @@ export default function TrainPage() {
     <div className="min-h-screen bg-canvas text-fg">
       <Header />
 
-      <main className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
+      <main className="pt-24 short:pt-20 pb-20 px-4 sm:px-6 lg:px-8">
         <div>
           
 
-                               <div className="mb-8 flex items-center justify-between">
+                               <div className="mb-8 short:mb-4 flex items-center justify-between">
             <Link
               href={`/projects/${urlUserId}/${urlProjectId}`}
               className="px-3 py-1.5 text-fg/70 hover:text-white hover:bg-purple-brand/10 rounded-lg transition-all duration-300 flex items-center gap-1.5 text-xs"
@@ -1770,8 +1770,8 @@ export default function TrainPage() {
                   )}
                 </div>
 
-                <div className="grid gap-5 lg:grid-cols-[22rem_minmax(0,1fr)] items-start">
-                  <section className="rounded-xl border border-magenta-brand/20 bg-card p-5 lg:sticky lg:top-24" aria-labelledby="add-images-h">
+                <div className="grid gap-5 md:grid-cols-[22rem_minmax(0,1fr)] items-start">
+                  <section className="rounded-xl border border-magenta-brand/20 bg-card p-5 md:sticky md:top-24" aria-labelledby="add-images-h">
                     <h3 id="add-images-h" className="font-semibold text-fg mb-3">Add images</h3>
                     <ImageUpload
                       onUpload={handleImageUpload}
@@ -1831,12 +1831,12 @@ export default function TrainPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
                     </svg>
                     <div>
-                      <h3 className="text-pink-brand font-medium mb-2 lg:whitespace-nowrap">Note: Before you can proceed to next step</h3>
+                      <h3 className="text-pink-brand font-medium mb-2 md:whitespace-nowrap">Note: Before you can proceed to next step</h3>
                       <div className="text-fg text-sm space-y-1">
-                        <p className="lg:whitespace-nowrap">
+                        <p className="md:whitespace-nowrap">
                           <strong>1.</strong> Create the standard labels (or at least <strong>2 labels</strong> of your own)
                         </p>
-                        <p className="lg:whitespace-nowrap">
+                        <p className="md:whitespace-nowrap">
                           <strong>2.</strong> Fill in at least <strong>5 examples</strong> for each label: use &lsquo;Input sample label data&rsquo; or add your own
                         </p>
                       </div>
@@ -1897,11 +1897,11 @@ export default function TrainPage() {
                       }`}>
                 {labels.map((label) => (
                   <div key={label.id} className={`bg-canvas border-2 border-magenta-brand/20 rounded-lg overflow-hidden relative ${
-                             labels.length === 1 ? 'h-[600px]' :
-                             labels.length === 2 ? 'h-[550px]' :
-                             labels.length === 3 ? 'h-[500px]' :
-                             labels.length === 4 ? 'h-[450px]' :
-                             'h-[400px]'
+                             labels.length === 1 ? 'h-[37.5rem]' :
+                             labels.length === 2 ? 'h-[34.375rem]' :
+                             labels.length === 3 ? 'h-[31.25rem]' :
+                             labels.length === 4 ? 'h-[28.125rem]' :
+                             'h-[25rem]'
                            }`}>
                                        <div className="bg-purple-brand/20 px-3 py-2 flex justify-between items-center">
                       <h3 className="text-fg font-semibold text-base">

@@ -6,26 +6,26 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 12px;
+  gap: 0.75rem;
   min-width: 0;
 }
 
 .ex-lab-brand-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.625rem;
   display: grid;
   place-items: center;
   flex: none;
   color: #dbfe87;
   background: rgba(219, 254, 135, 0.16);
   border: 1px solid rgba(219, 254, 135, 0.42);
-  box-shadow: 0 0 12px rgba(219, 254, 135, 0.18);
+  box-shadow: 0 0 0.75rem rgba(219, 254, 135, 0.18);
 }
 
 .ex-lab-brand-icon svg {
-  width: 18px;
-  height: 18px;
+  width: 1.125rem;
+  height: 1.125rem;
   display: block;
 }
 
@@ -49,7 +49,7 @@
   font-family: 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
   font-weight: 700;
   letter-spacing: -0.025em;
-  font-size: 20px;
+  font-size: 1.25rem;
   line-height: 1.15;
   white-space: nowrap;
 }
@@ -57,7 +57,7 @@
 .ex8-root .title {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 0.75rem;
 }
 
 .ex8-root .title .ex-lab-brand-icon {
@@ -74,7 +74,7 @@
   color: #4b7a00;
   background: rgba(198, 244, 50, 0.18);
   border-color: rgba(75, 122, 0, 0.35);
-  box-shadow: 0 0 10px rgba(198, 244, 50, 0.15);
+  box-shadow: 0 0 0.625rem rgba(198, 244, 50, 0.15);
 }
 
 /* Light mount labs use --lime-t / darker accents */
@@ -101,7 +101,7 @@
   .ex8-root .title,
   .e2 .e2-brand-title,
   .lod-studio .ex-lab-brand-title {
-    font-size: 17px;
+    font-size: 1.0625rem;
   }
 }
 
@@ -114,7 +114,7 @@
 .ex13-root .brand.ex-lab-brand,
 .ex3-root .brand.ex-lab-brand,
 .exLimit-root .brand.ex-lab-brand {
-  gap: 12px;
+  gap: 0.75rem;
 }
 
 .ex6-root .brand .dot,

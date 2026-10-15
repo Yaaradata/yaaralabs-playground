@@ -1,7 +1,7 @@
 /* Shared floating robot mascot — SVG body + mood faces via data-mood. */
 
 .lab-buddy {
-  --lab-buddy-size: 96px;
+  --lab-buddy-size: 6rem;
   --lab-buddy-accent: #5ee7ff;
   position: relative;
   width: var(--lab-buddy-size);
@@ -29,7 +29,7 @@
 }
 
 .lab-buddy-fig {
-  transform-origin: 60px 110px;
+  transform-origin: 3.75rem 6.875rem;
   animation: lab-buddy-float 3.2s ease-in-out infinite;
 }
 
@@ -103,7 +103,7 @@
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-5px);
+    transform: translateY(-0.3125rem);
   }
 }
 
@@ -125,7 +125,7 @@
     transform: translateY(0) scale(1);
   }
   35% {
-    transform: translateY(-12px) scale(1.05);
+    transform: translateY(-0.75rem) scale(1.05);
   }
   55% {
     transform: translateY(-2px) scale(0.98);
@@ -151,7 +151,7 @@
     transform: translateY(0) rotate(0deg);
   }
   50% {
-    transform: translateY(-3px) rotate(-7deg);
+    transform: translateY(-0.1875rem) rotate(-7deg);
   }
 }
 
@@ -194,7 +194,7 @@
     transform: translateX(0);
   }
   50% {
-    transform: translateX(3px);
+    transform: translateX(0.1875rem);
   }
 }
 
@@ -206,7 +206,7 @@
   }
   50% {
     opacity: 1;
-    transform: translateY(-3px);
+    transform: translateY(-0.1875rem);
   }
 }
 
@@ -265,7 +265,7 @@
 
 .lab-buddy[data-mood='sleep'] .lab-buddy-fig {
   animation: none;
-  transform: translateY(5px);
+  transform: translateY(0.3125rem);
   opacity: 0.88;
 }
 

@@ -225,7 +225,7 @@ export default function ProjectEvaluate({ sessionId, projectId, learnHref, kind 
   return (
     <div className="max-w-7xl mx-auto">
       {/* The exam, explained before it runs ("how do you know whether it was right?") */}
-      <section className={`${card} !py-4 mb-[18px] flex flex-col md:flex-row md:items-center gap-4 md:gap-5`} aria-label="The exam">
+      <section className={`${card} !py-4 mb-[1.125rem] flex flex-col md:flex-row md:items-center gap-4 md:gap-5`} aria-label="The exam">
         <div className="flex-1 min-w-0 space-y-1 text-base">
           {kind === 'image' ? (
             <>
@@ -310,7 +310,7 @@ function Term({ sci, biz }: { sci: string; biz: string }) {
   );
 }
 
-const panel = 'bg-card border border-magenta-brand/20 rounded-2xl p-[22px]';
+const panel = 'bg-card border border-magenta-brand/20 rounded-2xl p-[1.375rem]';
 
 function Results({ res, unit = 'messages', onAgain }: { res: EvalResponse; unit?: Unit; onAgain?: () => void }) {
   // text: the standard desks first; images: the sample's own order (KYC, Corporate action, Invoice, Cheque)
@@ -329,12 +329,12 @@ function Results({ res, unit = 'messages', onAgain }: { res: EvalResponse; unit?
 
   return (
     <div className="text-base">
-      <div className="grid gap-[18px] lg:grid-cols-2">
-        <div className="flex flex-col gap-[18px] min-w-0">
+      <div className="grid gap-[1.125rem] md:grid-cols-2">
+        <div className="flex flex-col gap-[1.125rem] min-w-0">
           {/* 1. Overall score */}
           <section className={panel} aria-labelledby="b1">
             <h2 id="b1" className="sr-only">Overall score</h2>
-            <p className="text-3xl md:text-[38px] font-extrabold leading-[1.15] tracking-tight">
+            <p className="text-3xl md:text-[2.375rem] font-extrabold leading-[1.15] tracking-tight">
               Your bot got <span className="text-pink-brand">{acc.right} of {acc.total}</span> {what} right
             </p>
             <p className="mt-4 flex flex-wrap items-center gap-2.5">
@@ -353,13 +353,13 @@ function Results({ res, unit = 'messages', onAgain }: { res: EvalResponse; unit?
           <Confusion key={desk} items={items} labels={labels} unit={unit} desk={desk} className="flex-1" />
         </div>
 
-        <div className="flex flex-col gap-[18px] min-w-0">
+        <div className="flex flex-col gap-[1.125rem] min-w-0">
           {/* 3. Graph: right per desk, also the desk picker */}
           <PerDeskChart items={items} labels={labels} unit={unit} desk={desk} onDesk={setDesk} />
 
           {/* 4. The chosen desk, as dots */}
           <section className={`${panel} flex-1`} aria-labelledby="b4">
-            <h2 id="b4" className="text-[21px] font-bold">{shortName(desk)}: how well did it do?</h2>
+            <h2 id="b4" className="text-[1.3125rem] font-bold">{shortName(desk)}: how well did it do?</h2>
             <DeskDots items={items} desk={desk} result={normal} unit={unit} />
             <p className="mt-3">{hiddenWeakDeskLine(acc, desk, normal, unit)}</p>
           </section>
@@ -367,17 +367,17 @@ function Results({ res, unit = 'messages', onAgain }: { res: EvalResponse; unit?
       </div>
 
       {/* 5. The scientific terms, in business words (the next scroll) */}
-      <section className={`${panel} mt-[18px]`} aria-labelledby="b5">
+      <section className={`${panel} mt-[1.125rem]`} aria-labelledby="b5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h2 id="b5" className="text-[21px] font-bold">The scientific terms, in business words</h2>
-          <span className="text-[13px] text-fg/50">Desk shown: {shortName(desk)}</span>
+          <h2 id="b5" className="text-[1.3125rem] font-bold">The scientific terms, in business words</h2>
+          <span className="text-[length:max(0.8125rem,13.5px)] text-fg/50">Desk shown: {shortName(desk)}</span>
         </div>
         <table className="mt-3 w-full text-sm border border-fg/10 rounded-xl border-separate border-spacing-0 overflow-hidden">
           <thead>
             <tr className="bg-purple-brand/5 text-xs font-bold uppercase tracking-wide text-fg/50">
-              <th scope="col" className="text-left px-3.5 py-2.5 w-[200px]">Scientific term</th>
+              <th scope="col" className="text-left px-3.5 py-2.5 w-[12.5rem]">Scientific term</th>
               <th scope="col" className="text-left px-3.5 py-2.5">What it means at work</th>
-              <th scope="col" className="text-right px-3.5 py-2.5 w-[200px]">How your bot did</th>
+              <th scope="col" className="text-right px-3.5 py-2.5 w-[12.5rem]">How your bot did</th>
             </tr>
           </thead>
           <tbody>
@@ -408,8 +408,8 @@ function PerDeskChart({ items, labels, unit, desk, onDesk }: { items: EvalItem[]
   return (
     <section className={panel} aria-labelledby="b3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 id="b3" className="text-[21px] font-bold">Right per desk</h2>
-        <span className="text-[13px] text-fg/50">Click a desk to look closer</span>
+        <h2 id="b3" className="text-[1.3125rem] font-bold">Right per desk</h2>
+        <span className="text-[length:max(0.8125rem,13.5px)] text-fg/50">Click a desk to look closer</span>
       </div>
       <div className="mt-3 space-y-1" role="radiogroup" aria-label="Desk">
         {bars.map((b) => (
@@ -421,7 +421,7 @@ function PerDeskChart({ items, labels, unit, desk, onDesk }: { items: EvalItem[]
             onClick={() => onDesk(b.label)}
             title={tip(b)}
             aria-label={`${shortName(b.label)}: ${b.right} of ${b.total} right${b.missed.length ? `, ${b.missed.length} sent to another desk` : ''}`}
-            className={`w-full grid grid-cols-[9.5rem_minmax(0,1fr)_4rem] items-center gap-3 rounded-lg px-2 py-[7px] text-left transition-colors ${
+            className={`w-full grid grid-cols-[9.5rem_minmax(0,1fr)_4rem] items-center gap-3 rounded-lg px-2 py-[0.4375rem] text-left transition-colors ${
               desk === b.label ? 'bg-purple-brand/10 ring-[1.5px] ring-inset ring-purple-brand/40' : 'hover:bg-fg/5'
             }`}
           >
@@ -454,7 +454,7 @@ function Dot({ ok, kind, text }: { ok: boolean; kind: 'real' | 'flagged'; text: 
   const look = ok
     ? 'bg-[var(--success)] text-white'
     : kind === 'real'
-      ? 'border-[3px] border-red-500 bg-transparent'
+      ? 'border-[0.1875rem] border-red-500 bg-transparent'
       : 'bg-red-500/15 text-red-500 border-2 border-red-500';
   return (
     <span className={`${base} ${look}`} title={text} role="img" aria-label={text}>
@@ -497,7 +497,7 @@ function DeskDots({ items, desk, result, unit }: { items: EvalItem[]; desk: stri
         ) : (
           <span className="text-fg/60">{empty}</span>
         )}
-        <span className="ml-1.5 text-[22px] font-bold">{summary}</span>
+        <span className="ml-1.5 text-[1.375rem] font-bold">{summary}</span>
       </div>
     </div>
   );
@@ -539,7 +539,7 @@ function Confusion({ items, labels, unit, desk, className = '' }: { items: EvalI
   return (
     <section className={`${panel} ${className}`} aria-labelledby="b2">
       <div className="flex flex-wrap items-center justify-between gap-2.5">
-        <h2 id="b2" className="text-[21px] font-bold">Where it got confused</h2>
+        <h2 id="b2" className="text-[1.3125rem] font-bold">Where it got confused</h2>
         <Term sci="Confusion matrix" biz="the error table" />
       </div>
       <div className="overflow-x-auto mt-3">
@@ -586,13 +586,13 @@ function Confusion({ items, labels, unit, desk, className = '' }: { items: EvalI
                         onClick={() => setOpen(selected ? null : { r: ri, c: ci })}
                         disabled={n === 0}
                         aria-label={`Really ${shortName(r)}, bot said ${shortName(c)}: ${n}${n && role === 'missed' ? ', missed' : n && role === 'alarm' ? ', false alarm' : ''}`}
-                        className={`w-full h-[52px] rounded-lg flex flex-col items-center justify-center text-xl font-extrabold tabular-nums leading-tight transition-shadow ${look} ${
+                        className={`w-full h-[3.25rem] rounded-lg flex flex-col items-center justify-center text-xl font-extrabold tabular-nums leading-tight transition-shadow ${look} ${
                           n > 0 ? 'hover:ring-2 hover:ring-purple-brand/40 cursor-pointer' : 'cursor-default'
-                        } ${selected ? 'ring-[3px] ring-purple-brand/50' : ''}`}
+                        } ${selected ? 'ring-[0.1875rem] ring-purple-brand/50' : ''}`}
                       >
                         {n}
-                        {n > 0 && role === 'missed' && <span className="text-[10.5px] font-extrabold uppercase tracking-wide">Missed</span>}
-                        {n > 0 && role === 'alarm' && <span className="text-[10.5px] font-extrabold uppercase tracking-wide">False alarm</span>}
+                        {n > 0 && role === 'missed' && <span className="text-[length:max(0.6562rem,13.5px)] font-extrabold uppercase tracking-wide">Missed</span>}
+                        {n > 0 && role === 'alarm' && <span className="text-[length:max(0.6562rem,13.5px)] font-extrabold uppercase tracking-wide">False alarm</span>}
                       </button>
                     </td>
                   );
@@ -630,7 +630,7 @@ function Confusion({ items, labels, unit, desk, className = '' }: { items: EvalI
             <p className="mt-3 font-semibold">No mistakes on the {unit === 'images' ? 'test images' : 'desk messages'}.</p>
           )}
           {off && <p className="mt-2 text-fg/70">{off}</p>}
-          <p className="mt-2 text-[13px] text-fg/50">Click a number to see those {unit}.</p>
+          <p className="mt-2 text-[length:max(0.8125rem,13.5px)] text-fg/50">Click a number to see those {unit}.</p>
         </>
       )}
     </section>

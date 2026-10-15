@@ -102,7 +102,7 @@ export default function EvaluatePage() {
   return (
     <div className="min-h-screen bg-canvas text-fg">
       <Header />
-      <main className="pt-[88px] pb-12 px-4 sm:px-6 lg:px-8">
+      <main className="pt-[5.5rem] pb-12 px-4 sm:px-6 lg:px-8">
         {state === 'loading' && <p className="text-center text-xl text-fg/70 py-24">Loading…</p>}
 
         {state === 'invalid' && (

@@ -31,38 +31,38 @@ html.lod-fs-open .lod-right {
   flex: none;
   display: flex;
   align-items: center;
-  min-height: 52px;
-  padding: 8px 16px;
+  min-height: 3.25rem;
+  padding: 0.5rem 1rem;
   border-bottom: 1px solid var(--lod-line);
   background: var(--lod-bg);
 }
 
 .lod-studio ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 0.625rem;
+  height: 0.625rem;
 }
 .lod-studio ::-webkit-scrollbar-track {
   background: var(--lod-bg);
 }
 .lod-studio ::-webkit-scrollbar-thumb {
   background: #3A3A47;
-  border-radius: 6px;
+  border-radius: 0.375rem;
   border: 2px solid var(--lod-bg);
 }
 
 .lod-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .lod-btn {
   border: 0;
   cursor: pointer;
   font-weight: 700;
-  font-size: 13px;
-  border-radius: 8px;
-  padding: 8px 14px;
+  font-size: max(0.8125rem, 13.5px);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.875rem;
   color: #010101;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -96,8 +96,8 @@ html.lod-fs-open .lod-right {
   color: #010101;
 }
 .lod-btn.icon {
-  width: 36px;
-  height: 36px;
+  width: 2.25rem;
+  height: 2.25rem;
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -107,25 +107,25 @@ html.lod-fs-open .lod-right {
 .lod-btn.close {
   background: var(--lod-close);
   color: #fff;
-  font-size: 18px;
+  font-size: 1.125rem;
   line-height: 1;
 }
 .lod-btn.close svg {
-  width: 20px;
-  height: 20px;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 .lod-btn.close:hover:not(:disabled) {
   background: #f87171;
 }
 .lod-btn.lod-undo-btn {
-  width: 34px;
-  min-width: 34px;
+  width: 2.125rem;
+  min-width: 2.125rem;
   padding: 0;
 }
 .lod-btn.lod-undo-btn svg {
   display: block;
-  width: 16px;
-  height: 16px;
+  width: 1rem;
+  height: 1rem;
 }
 
 .lod-btn.export {
@@ -148,20 +148,20 @@ html.lod-fs-open .lod-right {
 }
 
 .lod-btn.compact {
-  padding: 4px 10px;
-  font-size: 11px;
+  padding: 0.25rem 0.625rem;
+  font-size: max(0.6875rem, 13.5px);
 }
 
 .lod-btn.icon.compact {
-  width: 30px;
-  height: 30px;
+  width: 1.875rem;
+  height: 1.875rem;
   padding: 0;
 }
 
 .lod-camera-tools {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0.375rem;
   flex-shrink: 0;
   position: relative;
   z-index: 2;
@@ -175,9 +175,9 @@ html.lod-fs-open .lod-right {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.7fr);
-  gap: 12px;
-  padding: 12px;
+  grid-template-columns: minmax(0, 1.45fr) minmax(17.5rem, 0.7fr);
+  gap: 0.75rem;
+  padding: 0.75rem;
 }
 
 .lod-left,
@@ -185,21 +185,21 @@ html.lod-fs-open .lod-right {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0.75rem;
 }
 
 .lod-card {
   background: var(--lod-card);
   border: 1px solid var(--lod-line);
-  border-radius: 12px;
+  border-radius: 0.75rem;
 }
 
 .lod-camera-card {
   position: relative;
   z-index: 3;
   flex: 1;
-  min-height: 280px;
-  padding: 10px;
+  min-height: 17.5rem;
+  padding: 0.625rem;
   display: flex;
   flex-direction: column;
 }
@@ -207,9 +207,9 @@ html.lod-fs-open .lod-right {
 .lod-camera-label {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 2px 8px 8px;
-  font-size: 11px;
+  gap: 0.75rem;
+  padding: 2px 0.5rem 0.5rem;
+  font-size: max(0.6875rem, 13.5px);
   font-weight: 800;
   letter-spacing: 0.12em;
   color: var(--lod-muted);
@@ -218,16 +218,16 @@ html.lod-fs-open .lod-right {
 .lod-camera-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .lod-camera-chip {
   display: inline-flex;
   align-items: center;
-  height: 22px;
-  padding: 0 8px;
-  border-radius: 4px;
-  font-size: 11px;
+  height: 1.375rem;
+  padding: 0 0.5rem;
+  border-radius: 0.25rem;
+  font-size: max(0.6875rem, 13.5px);
   font-weight: 800;
   letter-spacing: 0.02em;
   line-height: 1;
@@ -246,19 +246,19 @@ html.lod-fs-open .lod-right {
 .lod-stage-meta {
   display: none;
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: 0.75rem;
+  left: 0.75rem;
   z-index: 8;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
   pointer-events: none;
 }
 
 .lod-camera-stage {
   position: relative;
   flex: 1;
-  min-height: 240px;
-  border-radius: 12px;
+  min-height: 15rem;
+  border-radius: 0.75rem;
   overflow: visible;
   background: var(--lod-camera);
   border: 1px dashed rgba(147, 51, 234, 0.35);
@@ -289,14 +289,14 @@ html.lod-fs-open .lod-right {
 
 .lod-stage-tools {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 0.75rem;
+  right: 0.75rem;
   z-index: 8;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px;
-  border-radius: 12px;
+  gap: 0.375rem;
+  padding: 0.375rem;
+  border-radius: 0.75rem;
   background: rgba(1, 1, 1, 0.78);
   border: 1px solid var(--lod-line);
 }
@@ -304,18 +304,18 @@ html.lod-fs-open .lod-right {
 .lod-stage-tools .lod-btn.start,
 .lod-stage-tools .lod-btn.stop,
 .lod-stage-tools .lod-btn.close {
-  width: 30px;
-  height: 30px;
+  width: 1.875rem;
+  height: 1.875rem;
 }
 
 .lod-stage-tools .lod-btn.close svg {
-  width: 22px;
-  height: 22px;
+  width: 1.375rem;
+  height: 1.375rem;
 }
 
 .lod-stage-tools .lod-settings-panel {
   z-index: 9;
-  top: calc(100% + 8px);
+  top: calc(100% + 0.5rem);
   right: 0;
   left: auto;
 }
@@ -359,47 +359,47 @@ html.lod-fs-open .lod-right {
 .lod-camera-stage:-webkit-full-screen .lod-banner,
 .lod-camera-stage:-moz-full-screen .lod-banner,
 .lod-camera-stage.is-fullscreen .lod-banner {
-  top: 48px;
+  top: 3rem;
 }
 
 .lod-banner {
   position: absolute;
-  left: 12px;
-  right: 280px;
-  top: 12px;
+  left: 0.75rem;
+  right: 17.5rem;
+  top: 0.75rem;
   z-index: 6;
   background: rgba(239, 111, 94, 0.92);
   color: #010101;
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 12px;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  font-size: max(0.75rem, 13.5px);
   font-weight: 700;
   text-align: center;
 }
 
 .lod-rec {
   position: absolute;
-  left: 12px;
-  bottom: 12px;
+  left: 0.75rem;
+  bottom: 0.75rem;
   z-index: 3;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 0.375rem;
   background: rgba(1, 1, 1, 0.75);
   color: #fff;
   border: 1px solid var(--lod-line);
-  border-radius: 999px;
-  padding: 5px 10px;
-  font-size: 12px;
+  border-radius: 62.4375rem;
+  padding: 0.3125rem 0.625rem;
+  font-size: max(0.75rem, 13.5px);
   font-weight: 700;
 }
 
 .lod-rec-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 99px;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 6.1875rem;
   background: var(--lod-lime);
-  box-shadow: 0 0 0 4px rgba(219, 254, 135, 0.18);
+  box-shadow: 0 0 0 0.25rem rgba(219, 254, 135, 0.18);
 }
 
 .lod-rec.stopped .lod-rec-dot {
@@ -417,28 +417,28 @@ html.lod-fs-open .lod-right {
   background: rgba(1, 1, 1, 0.82);
   color: #fff;
   text-align: center;
-  padding: 56px 24px 24px;
+  padding: 3.5rem 1.5rem 1.5rem;
   pointer-events: none;
 }
 
 .lod-overlay h2 {
-  margin: 0 0 8px;
-  font-size: 22px;
+  margin: 0 0 0.5rem;
+  font-size: 1.375rem;
 }
 
 .lod-overlay p {
   margin: 0;
   color: rgba(255, 255, 255, 0.66);
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .lod-overlay p + p {
-  margin-top: 10px;
+  margin-top: 0.625rem;
 }
 
 .lod-card h2 {
   margin: 0;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 800;
   color: #fff;
 }
@@ -447,32 +447,32 @@ html.lod-fs-open .lod-right {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 0.5rem;
+  margin-bottom: 0.625rem;
 }
 
 .lod-insights {
-  padding: 14px;
+  padding: 0.875rem;
 }
 
 .lod-metrics {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-top: 10px;
+  gap: 0.5rem;
+  margin-top: 0.625rem;
 }
 
 .lod-metric {
   background: rgba(147, 51, 234, 0.06);
   border: 1px solid var(--lod-line);
-  border-radius: 12px;
-  padding: 10px 8px;
+  border-radius: 0.75rem;
+  padding: 0.625rem 0.5rem;
   text-align: center;
 }
 
 .lod-metric b {
   display: block;
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 800;
   color: var(--lod-lime);
 }
@@ -480,16 +480,16 @@ html.lod-fs-open .lod-right {
 .lod-metric span {
   display: block;
   margin-top: 2px;
-  font-size: 11px;
+  font-size: max(0.6875rem, 13.5px);
   color: var(--lod-muted);
 }
 
 .lod-stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px 12px;
-  margin-top: 12px;
-  font-size: 12px;
+  gap: 0.375rem 0.75rem;
+  margin-top: 0.75rem;
+  font-size: max(0.75rem, 13.5px);
   color: rgba(255, 255, 255, 0.7);
 }
 
@@ -503,23 +503,23 @@ html.lod-fs-open .lod-right {
 .lod-status-error { color: #ef6f5e; }
 
 .lod-memory {
-  margin-top: 12px;
-  max-height: 132px;
+  margin-top: 0.75rem;
+  max-height: 8.25rem;
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0.375rem;
 }
 
 .lod-memory-row {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
-  font-size: 12px;
-  padding: 6px 8px;
+  gap: 0.5rem;
+  font-size: max(0.75rem, 13.5px);
+  padding: 0.375rem 0.5rem;
   background: var(--lod-surface);
   border: 1px solid var(--lod-line);
-  border-radius: 10px;
+  border-radius: 0.625rem;
   color: rgba(255, 255, 255, 0.8);
 }
 
@@ -531,7 +531,7 @@ html.lod-fs-open .lod-right {
 .lod-captures {
   flex: 1;
   min-height: 0;
-  padding: 14px;
+  padding: 0.875rem;
   display: flex;
   flex-direction: column;
 }
@@ -540,14 +540,14 @@ html.lod-fs-open .lod-right {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 10px;
+  gap: 0.375rem;
+  margin-bottom: 0.625rem;
 }
 
 .lod-filter-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -556,9 +556,9 @@ html.lod-fs-open .lod-right {
 .lod-filters select {
   border: 1px solid var(--lod-line);
   background: var(--lod-bg);
-  border-radius: 8px;
-  padding: 6px 8px;
-  font-size: 12px;
+  border-radius: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  font-size: max(0.75rem, 13.5px);
   color: #fff;
 }
 
@@ -580,21 +580,21 @@ html.lod-fs-open .lod-right {
 .lod-actions-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 0.375rem;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: max(0.75rem, 13.5px);
   color: var(--lod-muted);
   border: 1px solid var(--lod-line);
-  border-radius: 8px;
-  padding: 6px 8px;
+  border-radius: 0.5rem;
+  padding: 0.375rem 0.5rem;
   background: var(--lod-bg);
 }
 
 .lod-filters label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 0.375rem;
+  font-size: max(0.75rem, 13.5px);
   color: var(--lod-muted);
 }
 
@@ -602,60 +602,60 @@ html.lod-fs-open .lod-right {
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.5rem;
   min-height: 0;
 }
 
 .lod-capture {
   display: grid;
-  grid-template-columns: 72px 1fr;
-  gap: 10px;
-  padding: 8px;
+  grid-template-columns: 4.5rem 1fr;
+  gap: 0.625rem;
+  padding: 0.5rem;
   border: 1px solid var(--lod-line);
-  border-radius: 12px;
+  border-radius: 0.75rem;
   background: rgba(147, 51, 234, 0.05);
 }
 
 .lod-capture img {
-  width: 72px;
-  height: 54px;
+  width: 4.5rem;
+  height: 3.375rem;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: 0.5rem;
   background: #111;
 }
 
 .lod-capture h3 {
   margin: 0 0 2px;
-  font-size: 12px;
+  font-size: max(0.75rem, 13.5px);
   font-weight: 700;
   color: var(--lod-lime);
 }
 
 .lod-capture p {
   margin: 0;
-  font-size: 12px;
+  font-size: max(0.75rem, 13.5px);
   color: #fff;
 }
 
 .lod-capture small {
   color: var(--lod-muted);
-  font-size: 11px;
+  font-size: max(0.6875rem, 13.5px);
 }
 
 .lod-empty {
   color: var(--lod-muted);
-  font-size: 13px;
-  padding: 18px 8px;
+  font-size: max(0.8125rem, 13.5px);
+  padding: 1.125rem 0.5rem;
   text-align: center;
 }
 
 .lod-spin {
-  width: 36px;
-  height: 36px;
-  border: 3px solid rgba(147, 51, 234, 0.25);
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0.1875rem solid rgba(147, 51, 234, 0.25);
   border-top-color: var(--lod-lime);
-  border-radius: 99px;
-  margin: 0 auto 12px;
+  border-radius: 6.1875rem;
+  margin: 0 auto 0.75rem;
   animation: lod-spin 0.8s linear infinite;
 }
 
@@ -668,28 +668,28 @@ html.lod-fs-open .lod-right {
 }
 
 .lod-engine-toggle {
-  height: 30px;
-  padding: 0 10px;
+  height: 1.875rem;
+  padding: 0 0.625rem;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: max(0.6875rem, 13.5px);
   font-weight: 700;
 }
 
 .lod-settings-panel {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 0.5rem);
   right: 0;
   z-index: 30;
   display: grid;
-  gap: 4px;
+  gap: 0.25rem;
   width: max-content;
-  min-width: 132px;
+  min-width: 8.25rem;
   overflow: visible;
   background: #010101;
   border: 1px solid var(--lod-line);
-  border-radius: 10px;
-  padding: 6px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  border-radius: 0.625rem;
+  padding: 0.375rem;
+  box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.45);
 }
 
 .lod-engine-card {
@@ -700,9 +700,9 @@ html.lod-fs-open .lod-right {
   border: 1px solid transparent;
   background: transparent;
   color: #fff;
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 13px;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  font-size: max(0.8125rem, 13.5px);
   font-weight: 700;
   line-height: 1.2;
   white-space: nowrap;
@@ -722,7 +722,7 @@ html.lod-fs-open .lod-right {
   background: rgba(17, 17, 17, 0.55);
 }
 
-@media (max-width: 980px) {
+@media (max-width: 759px) { /* phones only: laptops keep the desktop layout (docs/responsive.md) */
   .lod-body {
     grid-template-columns: 1fr;
     overflow: auto;
@@ -732,8 +732,8 @@ html.lod-fs-open .lod-right {
   }
   .lod-camera-card {
     flex: none;
-    height: min(56vh, 520px);
-    min-height: 280px;
+    height: min(56vh, 32.5rem);
+    min-height: 17.5rem;
   }
 }
 
@@ -754,17 +754,17 @@ html.lod-fs-open .lod-right {
 .lod-live-caption {
   position: absolute;
   left: 50%;
-  bottom: 14px;
+  bottom: 0.875rem;
   transform: translateX(-50%);
   z-index: 4;
   width: max-content;
-  max-width: calc(100% - 48px);
+  max-width: calc(100% - 3rem);
   margin: 0;
-  padding: 8px 16px;
-  border-radius: 10px;
+  padding: 0.5rem 1rem;
+  border-radius: 0.625rem;
   background: rgba(1, 1, 1, 0.72);
   color: #fff;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
   line-height: 1.4;
   text-align: center;
@@ -773,8 +773,8 @@ html.lod-fs-open .lod-right {
 
 .lod-camera-stage.is-fullscreen .lod-live-caption,
 .lod-camera-stage:fullscreen .lod-live-caption {
-  bottom: 28px;
-  font-size: 22px;
+  bottom: 1.75rem;
+  font-size: 1.375rem;
 }
 
 @media (max-width: 640px) {
@@ -783,7 +783,7 @@ html.lod-fs-open .lod-right {
     display: none;
   }
   .lod-live-caption {
-    max-width: calc(100% - 24px);
-    font-size: 14px;
+    max-width: calc(100% - 1.5rem);
+    font-size: 0.875rem;
   }
 }

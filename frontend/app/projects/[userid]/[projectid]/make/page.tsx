@@ -439,7 +439,7 @@ export default function MakePage() {
       <div className="min-h-screen bg-canvas text-fg">
         <Header />
         <main className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex items-center justify-center min-h-[25rem]">
             <div className="text-fg text-xl">Loading...</div>
           </div>
         </main>
@@ -536,7 +536,7 @@ export default function MakePage() {
           </div>
 
           {/* Integration Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             
             {/* Scratch 3 Card */}
             <div className="bg-canvas border-2 border-magenta-brand/20 rounded-lg p-6 shadow-lg">

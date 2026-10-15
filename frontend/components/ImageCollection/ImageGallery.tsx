@@ -97,7 +97,7 @@ export default function ImageGallery({
 
   if (isLoading && images.length === 0) {
     return (
-      <div className="grid grid-cols-4 sm:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2" aria-busy="true" aria-label="Loading images">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-2" aria-busy="true" aria-label="Loading images">
         {Array.from({ length: 8 }, (_, i) => (
           <div key={i} className="aspect-[3/4] rounded-md bg-fg/5 animate-pulse" />
         ))}
@@ -182,7 +182,7 @@ export default function ImageGallery({
             {labelImages.length === 0 ? (
               <p className="text-sm text-fg/50 py-3">No images in this label yet.</p>
             ) : (
-              <div className="grid grid-cols-4 sm:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-2">
                 {labelImages.map((image, index) => (
                   <div key={`${image.label}-${index}`} className="relative group">
                     <button

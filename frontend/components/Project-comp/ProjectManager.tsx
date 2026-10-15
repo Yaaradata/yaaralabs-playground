@@ -175,7 +175,7 @@ const ProjectManager: React.FC = () => {
                 ) : projects.error ? (
                     <div className="text-red-600 text-center py-4">{projects.error}</div>
                 ) : (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-4 md:grid-cols-3">
                         {projects.data?.map((project) => (
                             <div
                                 key={project.id}

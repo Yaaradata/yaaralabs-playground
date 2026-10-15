@@ -44,6 +44,7 @@ export const MATRIX: Size[] = [
   { n: 11, name: '1024x768 window', width: 1024, height: 640, dpr: 1, must: false },
   { n: 12, name: 'zoom 125% on #5', width: 1229, height: 592, dpr: 1.25, must: false },
   { n: 13, name: 'zoom 90% on #3', width: 1518, height: 711, dpr: 0.9, must: false },
+  { n: 14, name: 'small window (review, 15 Oct)', width: 870, height: 830, dpr: 1, must: false },
 ];
 
 export const READABLE_PX = 13.5;
@@ -96,10 +97,13 @@ function measurePage(input: { primary: string[]; mustNotClip: string[]; workspac
     return s.visibility !== 'hidden' && s.display !== 'none' && Number(s.opacity) > 0.05;
   };
   // inside something that scrolls or clips sideways on purpose (tables, code, Blockly, carousels)
+  // (overflow-y: auto makes overflow-x compute to auto too, so only count containers that really
+  // scroll or clip sideways)
   const inScroller = (e: Element) => {
     for (let p = e.parentElement; p && p !== body; p = p.parentElement) {
       const s = getComputedStyle(p);
-      if (['auto', 'scroll', 'hidden', 'clip'].includes(s.overflowX)) return true;
+      if (s.overflowX === 'hidden' || s.overflowX === 'clip') return true;
+      if ((s.overflowX === 'auto' || s.overflowX === 'scroll') && p.scrollWidth > p.clientWidth + 1) return true;
     }
     return false;
   };

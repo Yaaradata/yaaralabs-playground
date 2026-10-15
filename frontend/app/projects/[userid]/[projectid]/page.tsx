@@ -1459,7 +1459,7 @@ export default function ProjectDetailsPage() {
               target="_blank"
               rel="noopener noreferrer"
               title={source.title || getDisplayUrl(source)}
-              className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 mx-0.5 text-[10px] font-bold bg-purple-brand/30 text-purple-brand rounded hover:bg-purple-brand hover:text-white transition-all cursor-pointer align-super"
+              className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 mx-0.5 text-[length:max(0.625rem,13.5px)] font-bold bg-purple-brand/30 text-purple-brand rounded hover:bg-purple-brand hover:text-white transition-all cursor-pointer align-super"
             >
               {sourceIndex + 1}
             </a>
@@ -1674,7 +1674,7 @@ export default function ProjectDetailsPage() {
       <div className="min-h-screen bg-canvas text-fg">
         <Header />
         <main className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex items-center justify-center min-h-[25rem]">
             <div className="text-fg text-xl">Loading...</div>
           </div>
         </main>
@@ -1927,7 +1927,7 @@ export default function ProjectDetailsPage() {
                                           target="_blank"
                                           rel="noopener noreferrer"
                                           title={source.title || getDisplayUrl(source)}
-                                          className="inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-purple-brand/20 text-purple-brand rounded-full hover:bg-purple-brand hover:text-white transition-all cursor-pointer"
+                                          className="inline-flex items-center justify-center w-5 h-5 text-[length:max(0.625rem,13.5px)] font-bold bg-purple-brand/20 text-purple-brand rounded-full hover:bg-purple-brand hover:text-white transition-all cursor-pointer"
                                         >
                                           {idx + 1}
                                         </a>
@@ -1984,7 +1984,7 @@ export default function ProjectDetailsPage() {
                                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                                             <div className="absolute bottom-0 left-0 right-0 p-3">
                                               <p className="text-xs text-fg font-medium line-clamp-2">{img.title}</p>
-                                              <p className="text-[10px] text-fg/80 mt-1 flex items-center gap-1">
+                                              <p className="text-[length:max(0.625rem,13.5px)] text-fg/80 mt-1 flex items-center gap-1">
                                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                                 </svg>
@@ -2021,10 +2021,10 @@ export default function ProjectDetailsPage() {
                                             rel="noopener noreferrer"
                                             className="inline-flex items-center gap-2 px-3 py-1.5 bg-canvas border border-magenta-brand/30 rounded-full hover:bg-purple-brand/20 hover:border-magenta-brand transition-all group"
                                           >
-                                            <span className="inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-purple-brand text-white rounded-full">
+                                            <span className="inline-flex items-center justify-center w-5 h-5 text-[length:max(0.625rem,13.5px)] font-bold bg-purple-brand text-white rounded-full">
                                               {idx + 1}
                                             </span>
-                                            <span className="text-sm text-fg/80 group-hover:text-fg max-w-[150px] truncate">
+                                            <span className="text-sm text-fg/80 group-hover:text-fg max-w-[9.375rem] truncate">
                                               {source.title || getDisplayUrl(source)}
                                             </span>
                                             <svg className="w-3 h-3 text-fg/50 group-hover:text-purple-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2654,7 +2654,7 @@ export default function ProjectDetailsPage() {
                                     <p className="text-xs text-fg/60 mt-1">{knowledgeList.length} entries</p>
                                   </div>
                                   
-                                  <div className="overflow-y-auto max-h-[500px] p-3 space-y-3">
+                                  <div className="overflow-y-auto max-h-[31.25rem] p-3 space-y-3">
                                     {isLoadingKnowledge ? (
                                       <div className="flex items-center justify-center py-8">
                                         <svg className="w-6 h-6 animate-spin text-fg/60" fill="none" viewBox="0 0 24 24">
@@ -2916,7 +2916,7 @@ export default function ProjectDetailsPage() {
                               </div>
 
                               {/* Right side - Uploaded Files List */}
-                              <div className="w-80 bg-card border border-magenta-brand/20 rounded-xl p-4 h-fit max-h-[500px] overflow-y-auto">
+                              <div className="w-80 bg-card border border-magenta-brand/20 rounded-xl p-4 h-fit max-h-[31.25rem] overflow-y-auto">
                                 <div className="flex items-center justify-between mb-4">
                                   <h3 className="font-semibold text-fg">Uploaded Files</h3>
                                   <span className="text-sm text-purple-brand">{groupedFileList.length} {groupedFileList.length === 1 ? 'file' : 'files'}</span>
@@ -3077,7 +3077,7 @@ export default function ProjectDetailsPage() {
                               </div>
 
                               {/* Right side - Added Links List */}
-                              <div className="w-80 bg-card border border-magenta-brand/20 rounded-xl p-4 h-fit max-h-[500px] overflow-y-auto">
+                              <div className="w-80 bg-card border border-magenta-brand/20 rounded-xl p-4 h-fit max-h-[31.25rem] overflow-y-auto">
                                 <div className="flex items-center justify-between mb-4">
                                   <h3 className="font-semibold text-fg">Added Links</h3>
                                   <span className="text-sm text-purple-brand">{groupedLinkList.length} {groupedLinkList.length === 1 ? 'link' : 'links'}</span>
@@ -3819,7 +3819,7 @@ export default function ProjectDetailsPage() {
                         </div>
                       ) : trainSection === 'teach' ? (
                         /* TEACH YOUR AGENT Section */
-                        <div className="h-full min-h-[600px]">
+                        <div className="h-full min-h-[37.5rem]">
                           {selectedProject?.agent_id ? (
                             <TeachYourAgent
                               agentId={selectedProject.agent_id}
@@ -3970,7 +3970,7 @@ export default function ProjectDetailsPage() {
             </h1>
           </div>
                 <div className={`grid grid-cols-1 gap-8 mx-auto ${
-                  ['text-recognition', 'image-recognition'].includes(selectedProject.type) ? 'md:grid-cols-2 xl:grid-cols-4 max-w-7xl' : 'md:grid-cols-2 max-w-4xl'}`}>
+                  ['text-recognition', 'image-recognition'].includes(selectedProject.type) ? 'md:grid-cols-4 max-w-7xl' : 'md:grid-cols-2 max-w-4xl'}`}>
             {/* Train Card */}
             <div className="bg-canvas border border-magenta-brand/20 rounded-xl p-8 text-center hover:bg-purple-brand/5 transition-all duration-300 flex flex-col">
               <h2 className="text-2xl md:text-3xl font-bold text-blue-400 mb-6">

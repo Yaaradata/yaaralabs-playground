@@ -22,34 +22,34 @@
 }
 
 .ex-landing {
-  padding: 24px 28px 40px;
-  max-width: 1280px;
+  padding: 1.5rem 1.75rem 2.5rem;
+  max-width: 80rem;
   margin: 0 auto;
 }
 
 .ex-kicker {
   color: #dbfe87;
-  font-size: 12px;
+  font-size: max(0.75rem, 13.5px);
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  margin-bottom: 8px;
+  margin-bottom: 0.5rem;
 }
 
 .ex-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(17.5rem, 1fr));
+  gap: 1rem;
 }
 
 .ex-card {
   background: var(--ex-panel, #0A0A0F);
   border: 1px solid rgba(147, 51, 234, 0.22);
-  border-radius: 16px;
-  padding: 18px;
+  border-radius: 1rem;
+  padding: 1.125rem;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  min-height: 230px;
+  gap: 0.625rem;
+  min-height: 14.375rem;
   transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
 
@@ -70,19 +70,19 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .ex-num {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   color: #dbfe87;
-  font-size: 12px;
+  font-size: max(0.75rem, 13.5px);
 }
 
 .ex-status {
-  font-size: 11px;
-  border-radius: 999px;
-  padding: 3px 9px;
+  font-size: max(0.6875rem, 13.5px);
+  border-radius: 62.4375rem;
+  padding: 0.1875rem 0.5625rem;
   border: 1px solid transparent;
 }
 
@@ -124,16 +124,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 16px;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
   border-bottom: 1px solid var(--ex-line, rgba(147, 51, 234, 0.2));
   background: var(--ex-surface, #151515);
 }
 
 .ex-fs-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.625rem;
   border: 1px solid rgba(219, 254, 135, 0.45);
   background: rgba(219, 254, 135, 0.14);
   color: #dbfe87;
@@ -148,7 +148,7 @@
   border-color: #dbfe87;
   color: #f5ffb8;
   background: rgba(219, 254, 135, 0.22);
-  box-shadow: 0 0 0 1px rgba(219, 254, 135, 0.35), 0 0 14px rgba(219, 254, 135, 0.28);
+  box-shadow: 0 0 0 1px rgba(219, 254, 135, 0.35), 0 0 0.875rem rgba(219, 254, 135, 0.28);
 }
 
 .ex-shell:fullscreen,
@@ -160,9 +160,9 @@
 
 .ex-body {
   display: grid;
-  grid-template-columns: minmax(240px, 24%) minmax(0, 1fr) minmax(240px, 28%);
-  gap: 12px;
-  padding: 12px;
+  grid-template-columns: minmax(15rem, 24%) minmax(0, 1fr) minmax(15rem, 28%);
+  gap: 0.75rem;
+  padding: 0.75rem;
   min-height: 0;
 }
 
@@ -181,7 +181,7 @@
 .ex-panel {
   background: #141414;
   border: 1px solid rgba(147, 51, 234, 0.18);
-  border-radius: 14px;
+  border-radius: 0.875rem;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -189,8 +189,8 @@
 }
 
 .ex-panel-h {
-  padding: 10px 12px;
-  font-size: 12px;
+  padding: 0.625rem 0.75rem;
+  font-size: max(0.75rem, 13.5px);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #dbfe87;
@@ -198,7 +198,7 @@
 }
 
 .ex-panel-b {
-  padding: 12px;
+  padding: 0.75rem;
   overflow: auto;
   flex: 1;
   min-height: 0;
@@ -206,28 +206,28 @@
 
 .ex-notes {
   border-top: 1px solid rgba(147, 51, 234, 0.2);
-  padding: 10px 16px 12px;
+  padding: 0.625rem 1rem 0.75rem;
   background: #151515;
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 12px;
+  gap: 0.75rem;
   align-items: end;
 }
 
 .ex-notes-compact {
-  padding: 8px 16px;
+  padding: 0.5rem 1rem;
 }
 
 .ex-chip-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 0.375rem;
 }
 
 .ex-token {
-  border-radius: 8px;
-  padding: 2px 7px;
-  font-size: 12px;
+  border-radius: 0.5rem;
+  padding: 2px 0.4375rem;
+  font-size: max(0.75rem, 13.5px);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
@@ -242,18 +242,18 @@
 }
 
 .ex-heat-cell {
-  min-width: 28px;
-  height: 28px;
-  border-radius: 4px;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.25rem;
   display: grid;
   place-items: center;
-  font-size: 10px;
+  font-size: max(0.625rem, 13.5px);
   color: #111;
 }
 
 .ex-progress {
-  height: 12px;
-  border-radius: 999px;
+  height: 0.75rem;
+  border-radius: 62.4375rem;
   background: #13131A;
   overflow: hidden;
   position: relative;
@@ -262,7 +262,7 @@
 .ex-progress > span {
   display: block;
   height: 100%;
-  border-radius: 999px;
+  border-radius: 62.4375rem;
 }
 
 @media (max-width: 1100px) {
@@ -271,7 +271,7 @@
     overflow: auto;
   }
   .ex-panel {
-    min-height: 280px;
+    min-height: 17.5rem;
   }
   .ex-notes {
     grid-template-columns: 1fr;

@@ -303,7 +303,7 @@ function VideoStage({ video, transparency, loaded, status, probs, bubble, onProb
           <span className="flex items-center gap-1.5 min-w-0">
             <span className={`w-2 h-2 rounded-full ${status.kind === 'ready' ? 'bg-[var(--success)]' : 'bg-fg/30'}`} aria-hidden="true" />
             <span className="font-semibold text-fg whitespace-nowrap">{loaded.name}</span>
-            <span className="truncate font-mono text-[11px]" title={loaded.url}>{loaded.url}</span>
+            <span className="truncate font-mono text-[length:max(0.6875rem,13.5px)]" title={loaded.url}>{loaded.url}</span>
           </span>
         )}
         {status.kind === 'idle' && !loaded && <span>Your model loads when the &ldquo;use model&rdquo; block runs.</span>}

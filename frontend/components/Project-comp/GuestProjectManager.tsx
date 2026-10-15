@@ -468,7 +468,7 @@ const GuestProjectManager: React.FC<GuestProjectManagerProps> = ({ sessionId }) 
                 ) : guestProjects.error ? (
                     <div className="text-red-600 text-center py-4">{guestProjects.error}</div>
                 ) : (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-4 md:grid-cols-3">
                         {guestProjects.data?.map((project) => (
                             <div
                                 key={project.id}

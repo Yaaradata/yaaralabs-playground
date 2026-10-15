@@ -1445,7 +1445,7 @@ export default function LearnPage() {
         <Header />
         <main className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
           <div>
-            <div className="flex items-center justify-center min-h-[400px]">
+            <div className="flex items-center justify-center min-h-[25rem]">
               <div className="text-center">
                 <div className="w-16 h-16 border-4 border-magenta-brand/20 border-t-pink-brand rounded-full animate-spin mx-auto mb-4"></div>
                 <div className="text-fg text-xl">Loading project data...</div>
@@ -1487,7 +1487,7 @@ export default function LearnPage() {
     <div className="min-h-screen bg-canvas text-fg">
       <Header />
 
-      <main className="pt-[88px] pb-6 px-4 sm:px-6 lg:px-8">
+      <main className="pt-[5.5rem] pb-6 px-4 sm:px-6 lg:px-8">
         <div className="min-h-[calc(100dvh-112px)] flex flex-col">
           {/* Back to Project + title, one row */}
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 mb-4">
@@ -1519,7 +1519,7 @@ export default function LearnPage() {
             ) : <span />}
           </div>
 
-          <div className={isCompact ? 'grid gap-4 lg:grid-cols-[minmax(0,25rem)_minmax(0,1fr)] items-start' : undefined}>
+          <div className={isCompact ? 'grid gap-4 md:grid-cols-[minmax(0,25rem)_minmax(0,1fr)] items-start' : undefined}>
           {isCompact ? (
             /* Text: one compact card: what you collected, which model, train, status */
             (() => {
@@ -1669,7 +1669,7 @@ export default function LearnPage() {
             })()
           ) : (
           /* Images: two columns, what you have done and what's next */
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             {/* Left Box: What have you done? */}
             <div className="bg-canvas border border-magenta-brand/20 rounded-xl px-5 py-4 shadow-lg">
               <h2 className="text-lg md:text-xl font-bold text-fg mb-2 text-left">
@@ -1710,7 +1710,7 @@ export default function LearnPage() {
           )}
 
             {/* Bottom section: training state, the test card, model details (text: the right column, scrolls inside the window) */}
-            <div className={isCompact ? 'min-w-0 space-y-4 lg:max-h-[calc(100dvh-11rem)] lg:overflow-y-auto lg:pr-1' : undefined}>
+            <div className={isCompact ? 'min-w-0 space-y-4 md:max-h-[calc(100dvh-11rem)] md:overflow-y-auto md:pr-1' : undefined}>
 
              {/* Text: the right column before testing opens: an empty state, or the training stages */}
              {isCompact && !isInitializing && (!trainedModel || isTraining || trainPhase !== null) && (() => {
@@ -1723,10 +1723,10 @@ export default function LearnPage() {
                ];
                const steps = busy ? TRAIN_STEPS : (['Train', isImageProject ? 'Test your own image' : 'Test your own text', 'Evaluate on sample data'] as const);
                return (
-                 <div className="bg-canvas border border-magenta-brand/20 rounded-xl px-6 py-10 lg:min-h-[26rem] flex flex-col items-center justify-center text-center" aria-live="polite">
+                 <div className="bg-canvas border border-magenta-brand/20 rounded-xl px-6 py-10 md:min-h-[26rem] flex flex-col items-center justify-center text-center" aria-live="polite">
                    <div className="w-14 h-14 rounded-full bg-purple-brand/15 flex items-center justify-center mb-4">
                      {busy && stage < 2 ? (
-                       <span className="w-8 h-8 border-[3px] border-magenta-brand/20 border-t-pink-brand rounded-full animate-spin" aria-hidden="true" />
+                       <span className="w-8 h-8 border-[0.1875rem] border-magenta-brand/20 border-t-pink-brand rounded-full animate-spin" aria-hidden="true" />
                      ) : busy ? (
                        <span className="text-2xl text-[var(--success)]" aria-hidden="true">✓</span>
                      ) : (

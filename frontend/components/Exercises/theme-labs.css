@@ -321,7 +321,7 @@
   background: #ffffff;
   color: var(--tx);
   border-color: var(--b2);
-  box-shadow: 0 12px 40px rgba(21, 32, 51, 0.18);
+  box-shadow: 0 0.75rem 2.5rem rgba(21, 32, 51, 0.18);
 }
 
 .ex8-root[data-theme='light'] .modal,
@@ -339,7 +339,7 @@
 .ex11-root[data-theme='light'] .brand .dot,.ex12-root[data-theme='light'] .brand .dot,.ex13-root[data-theme='light'] .brand .dot,.ex14-root[data-theme='light'] .brand .dot,
 .exLimit-root[data-theme='light'] .brand .dot {
   background: #84cc16;
-  box-shadow: 0 0 8px rgba(132, 204, 22, 0.55);
+  box-shadow: 0 0 0.5rem rgba(132, 204, 22, 0.55);
 }
 
 .ex6-root[data-theme='light'] .go,
@@ -373,7 +373,7 @@
 .ex11-root .boot,.ex12-root .boot,.ex13-root .boot,.ex14-root .boot,
 .ex12-root .boot,
 .exLimit-root .boot {
-  gap: 14px;
+  gap: 0.875rem;
   background:
     radial-gradient(ellipse 70% 50% at 50% 40%, color-mix(in srgb, var(--lime, var(--li, #dbfe87)) 8%, transparent), transparent 60%),
     var(--bg);
@@ -387,9 +387,9 @@
 .ex11-root .boot .spin,.ex12-root .boot .spin,.ex13-root .boot .spin,.ex14-root .boot .spin,
 .ex12-root .boot .spin,
 .exLimit-root .boot .spin {
-  width: 28px;
-  height: 28px;
-  border-width: 3px;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-width: 0.1875rem;
 }
 
 .ex5-root .boot-t,
@@ -400,7 +400,7 @@
 .ex11-root .boot-t,.ex12-root .boot-t,.ex13-root .boot-t,.ex14-root .boot-t,
 .ex12-root .boot-t,
 .exLimit-root .boot-t {
-  font-size: 14px;
+  font-size: 0.875rem;
   letter-spacing: -0.01em;
 }
 
@@ -417,7 +417,7 @@
 
 .ex10-root[data-theme='light'] .lhwrap {
   background: var(--bg);
-  box-shadow: 0 10px 12px -10px rgba(21, 32, 51, 0.18);
+  box-shadow: 0 0.625rem 0.75rem -0.625rem rgba(21, 32, 51, 0.18);
 }
 
 .exLimit-root[data-theme='light'] .msg.user {
@@ -425,7 +425,7 @@
 }
 
 .exLimit-root[data-theme='light'] .beaker {
-  background: repeating-linear-gradient(0deg, transparent 0 32px, rgba(21, 32, 51, 0.04) 32px 33px), #ffffff;
+  background: repeating-linear-gradient(0deg, transparent 0 2rem, rgba(21, 32, 51, 0.04) 2rem 2.0625rem), #ffffff;
 }
 
 .exLimit-root[data-theme='light'] .seg.draft,
@@ -490,7 +490,7 @@
   background: #ffffff;
   color: var(--ink);
   border-color: var(--line2);
-  box-shadow: 0 18px 40px rgba(21, 32, 51, 0.14);
+  box-shadow: 0 1.125rem 2.5rem rgba(21, 32, 51, 0.14);
 }
 
 .rbp-root[data-theme='light'] .dlg .tip code {
@@ -520,13 +520,13 @@
   background: #ffffff;
   border-color: var(--line2);
   color: var(--ink2);
-  box-shadow: 0 8px 24px rgba(21, 32, 51, 0.12);
+  box-shadow: 0 0.5rem 1.5rem rgba(21, 32, 51, 0.12);
 }
 
 .rbp-root[data-theme='light'] .play-stage {
   --stage-teal: #0f766e;
   --stage-amber: #b45309;
-  box-shadow: 0 10px 28px rgba(21, 32, 51, 0.08);
+  box-shadow: 0 0.625rem 1.75rem rgba(21, 32, 51, 0.08);
 }
 
 .rbp-root[data-theme='light'] .play-stage.is-live {
@@ -542,7 +542,7 @@
 }
 
 .rbp-root[data-theme='light'] .speech {
-  box-shadow: 0 6px 16px rgba(21, 32, 51, 0.08);
+  box-shadow: 0 0.375rem 1rem rgba(21, 32, 51, 0.08);
 }
 
 .rbp-root[data-theme='light'] .speech p b,
@@ -570,7 +570,7 @@
 .rbp-root[data-theme='light'] .console .ph .ph-bubble {
   background: #ffffff;
   border-color: #d5dce6;
-  box-shadow: 0 8px 20px rgba(21, 32, 51, 0.08);
+  box-shadow: 0 0.5rem 1.25rem rgba(21, 32, 51, 0.08);
   color: #152033;
 }
 
@@ -581,7 +581,7 @@
 .rbp-root[data-theme='light'] .cl-card {
   background: #ffffff;
   border-color: #d5dce6;
-  box-shadow: 0 4px 12px rgba(21, 32, 51, 0.06);
+  box-shadow: 0 0.25rem 0.75rem rgba(21, 32, 51, 0.06);
 }
 
 .rbp-root[data-theme='light'] .cl.out .cl-card {
@@ -636,7 +636,7 @@
 .rbp-root[data-theme='light'] .stage-ask {
   background: rgba(255, 255, 255, 0.96);
   border-top-color: #d5dce6;
-  box-shadow: 0 -8px 20px rgba(21, 32, 51, 0.06);
+  box-shadow: 0 -0.5rem 1.25rem rgba(21, 32, 51, 0.06);
 }
 
 .rbp-root[data-theme='light'] .askbar input {
@@ -711,11 +711,11 @@
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='6'><path d='M0 0h8L4 6z' fill='%23152033'/></svg>");
   /* keep one arrow on the right (without these the arrow tiles across the field) */
   background-repeat: no-repeat;
-  background-position: right 7px center;
+  background-position: right 0.4375rem center;
 }
 
 .rbp-root[data-theme='light'] #menu {
-  box-shadow: 0 12px 30px rgba(21, 32, 51, 0.16);
+  box-shadow: 0 0.75rem 1.875rem rgba(21, 32, 51, 0.16);
 }
 
 .ex-root[data-theme='light'] .ex-shell-head .ex-lab-brand-title {
@@ -777,10 +777,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 2.125rem;
+  height: 2.125rem;
   padding: 0;
-  border-radius: 10px;
+  border-radius: 0.625rem;
   background: var(--s0);
   border: 1px solid var(--b1);
   color: var(--mu);
@@ -829,10 +829,10 @@
    Colored chrome buttons + light glow on hover (all exercises)
    ============================================================ */
 :root {
-  --ex-btn-glow-lime: 0 0 0 1px rgba(219, 254, 135, 0.35), 0 0 14px rgba(219, 254, 135, 0.28);
-  --ex-btn-glow-purple: 0 0 0 1px rgba(147, 51, 234, 0.4), 0 0 14px rgba(147, 51, 234, 0.3);
-  --ex-btn-glow-cyan: 0 0 0 1px rgba(185, 10, 189, 0.4), 0 0 14px rgba(185, 10, 189, 0.28);
-  --ex-btn-glow-amber: 0 0 0 1px rgba(236, 72, 153, 0.45), 0 0 14px rgba(236, 72, 153, 0.3);
+  --ex-btn-glow-lime: 0 0 0 1px rgba(219, 254, 135, 0.35), 0 0 0.875rem rgba(219, 254, 135, 0.28);
+  --ex-btn-glow-purple: 0 0 0 1px rgba(147, 51, 234, 0.4), 0 0 0.875rem rgba(147, 51, 234, 0.3);
+  --ex-btn-glow-cyan: 0 0 0 1px rgba(185, 10, 189, 0.4), 0 0 0.875rem rgba(185, 10, 189, 0.28);
+  --ex-btn-glow-amber: 0 0 0 1px rgba(236, 72, 153, 0.45), 0 0 0.875rem rgba(236, 72, 153, 0.3);
 }
 
 /* Shell fullscreen / undo in ExerciseShell */
@@ -855,7 +855,7 @@
   color: #4b7a00 !important;
 }
 .ex-root[data-theme='light'] .ex-fs-btn:hover {
-  box-shadow: 0 0 0 1px rgba(75, 122, 0, 0.35), 0 0 14px rgba(75, 122, 0, 0.22);
+  box-shadow: 0 0 0 1px rgba(75, 122, 0, 0.35), 0 0 0.875rem rgba(75, 122, 0, 0.22);
   color: #3a6200 !important;
   border-color: #4b7a00 !important;
 }
@@ -995,7 +995,7 @@
 }
 .ex5-root .btn.stop:hover:not(:disabled) {
   filter: brightness(1.08);
-  box-shadow: 0 0 0 1px rgba(147, 51, 234, 0.5), 0 0 14px rgba(147, 51, 234, 0.35);
+  box-shadow: 0 0 0 1px rgba(147, 51, 234, 0.5), 0 0 0.875rem rgba(147, 51, 234, 0.35);
 }
 
 /* Exercise 2 / 3 / 4 colored buttons — soft glow on hover */
@@ -1110,20 +1110,20 @@
 .ex10-root .send.stop:hover:not(:disabled),
 .ex11-root .send.stop:hover:not(:disabled),.ex12-root .send.stop:hover:not(:disabled),.ex13-root .send.stop:hover:not(:disabled),.ex14-root .send.stop:hover:not(:disabled),
 .exLimit-root .send.stop:hover:not(:disabled) {
-  box-shadow: 0 0 0 1px rgba(236, 72, 153, 0.45), 0 0 14px rgba(236, 72, 153, 0.3);
+  box-shadow: 0 0 0 1px rgba(236, 72, 153, 0.45), 0 0 0.875rem rgba(236, 72, 153, 0.3);
 }
 
 /* Light-theme glow softening */
 [data-theme='light'] {
-  --ex-btn-glow-lime: 0 0 0 1px rgba(75, 122, 0, 0.3), 0 0 12px rgba(75, 122, 0, 0.18);
-  --ex-btn-glow-purple: 0 0 0 1px rgba(139, 58, 168, 0.3), 0 0 12px rgba(139, 58, 168, 0.18);
-  --ex-btn-glow-cyan: 0 0 0 1px rgba(37, 99, 235, 0.28), 0 0 12px rgba(37, 99, 235, 0.16);
-  --ex-btn-glow-amber: 0 0 0 1px rgba(180, 120, 20, 0.3), 0 0 12px rgba(180, 120, 20, 0.16);
+  --ex-btn-glow-lime: 0 0 0 1px rgba(75, 122, 0, 0.3), 0 0 0.75rem rgba(75, 122, 0, 0.18);
+  --ex-btn-glow-purple: 0 0 0 1px rgba(139, 58, 168, 0.3), 0 0 0.75rem rgba(139, 58, 168, 0.18);
+  --ex-btn-glow-cyan: 0 0 0 1px rgba(37, 99, 235, 0.28), 0 0 0.75rem rgba(37, 99, 235, 0.16);
+  --ex-btn-glow-amber: 0 0 0 1px rgba(180, 120, 20, 0.3), 0 0 0.75rem rgba(180, 120, 20, 0.16);
 }
 .e2.e2-light {
-  --ex-btn-glow-lime: 0 0 0 1px rgba(75, 122, 0, 0.3), 0 0 12px rgba(75, 122, 0, 0.18);
-  --ex-btn-glow-purple: 0 0 0 1px rgba(139, 58, 168, 0.3), 0 0 12px rgba(139, 58, 168, 0.18);
-  --ex-btn-glow-cyan: 0 0 0 1px rgba(37, 99, 235, 0.28), 0 0 12px rgba(37, 99, 235, 0.16);
-  --ex-btn-glow-amber: 0 0 0 1px rgba(180, 120, 20, 0.3), 0 0 12px rgba(180, 120, 20, 0.16);
+  --ex-btn-glow-lime: 0 0 0 1px rgba(75, 122, 0, 0.3), 0 0 0.75rem rgba(75, 122, 0, 0.18);
+  --ex-btn-glow-purple: 0 0 0 1px rgba(139, 58, 168, 0.3), 0 0 0.75rem rgba(139, 58, 168, 0.18);
+  --ex-btn-glow-cyan: 0 0 0 1px rgba(37, 99, 235, 0.28), 0 0 0.75rem rgba(37, 99, 235, 0.16);
+  --ex-btn-glow-amber: 0 0 0 1px rgba(180, 120, 20, 0.3), 0 0 0.75rem rgba(180, 120, 20, 0.16);
 }
 

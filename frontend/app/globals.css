@@ -17,6 +17,58 @@
 
   --font-sans: var(--font-inter), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
+
+  /* Readable on a projector: text-xs never computes below 13.5px (docs/responsive.md) */
+  --text-xs: max(0.75rem, 13.5px);
+}
+
+/*
+ * One sizing system for every screen (docs/responsive.md, part C).
+ * The root size follows the window width, so everything in rem (all of Tailwind, and the labs'
+ * CSS) scales together: 15.5px at 1280 wide, 16px at 1536, 17.7px at 1920, 18px from ~2000.
+ * 15.5px is the floor that keeps text-sm (0.875rem) at 13.5px or more. Browser zoom still works.
+ * A page keeps the same arrangement on every laptop and monitor; a smaller window makes it smaller.
+ */
+html {
+  font-size: clamp(15.5px, calc(9.1px + 0.45vw), 18px);
+}
+
+:root {
+  --gutter: clamp(16px, 2.2vw, 48px); /* page side padding */
+  --gap: clamp(12px, 1.2vw, 24px); /* between cards */
+  --card-pad: clamp(14px, 1.3vw, 26px); /* inside cards */
+  --page-max: 1600px; /* widest page */
+  --read-max: 72ch; /* widest paragraph */
+}
+
+/* Short windows (1280x600, 1229x592): less vertical padding so the main action stays on screen */
+@media (max-height: 700px) {
+  :root {
+    --card-pad: 12px;
+    --gap: 10px;
+  }
+}
+
+/* short: Tailwind variant for windows under 700px tall (1280x600, 1229x592): tighter vertical spacing */
+@custom-variant short (@media (max-height: 700px));
+
+/* Page wrapper: full width up to --page-max, centred, with the fluid gutter */
+@utility page {
+  width: 100%;
+  max-width: min(var(--page-max), 100%);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/* Paragraphs inside wide workspace pages stop at a readable line length */
+@utility read {
+  max-width: var(--read-max);
+}
+
+/* Headings that scale with the window's width and height (short windows get smaller headings) */
+@utility h-fluid {
+  font-size: clamp(1.6rem, 1rem + 2vh, 2.4rem);
+  line-height: 1.15;
 }
 
 /*

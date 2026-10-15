@@ -130,8 +130,8 @@ export default function KnowledgePanel({ agentId, sessionId }: { agentId: string
         <div className="flex items-center gap-2 text-fg/60 text-sm"><Spinner /> Loading…</div>
       ) : sample ? (
         <div className="border border-magenta-brand/20 rounded-xl overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-            <div className="p-4 space-y-3 border-b lg:border-b-0 lg:border-r border-magenta-brand/15">
+          <div className="grid grid-cols-1 md:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+            <div className="p-4 space-y-3 border-b md:border-b-0 md:border-r border-magenta-brand/15">
               <p className="text-sm text-fg/70">Two public SEBI documents. Tick the ones to use.</p>
               {library.map((d) => (
                 <div
@@ -186,7 +186,7 @@ export default function KnowledgePanel({ agentId, sessionId }: { agentId: string
         </div>
       ) : (
         // View opens the PDF on the right of the document list (one column on narrow screens)
-        <div className={viewer ? 'grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] items-start' : undefined}>
+        <div className={viewer ? 'grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] items-start' : undefined}>
         <div className="space-y-3 min-w-0">
           <p className="text-sm text-fg/70">
             {docs.length} document{docs.length === 1 ? '' : 's'}, {totalPassages(docs)} passages. Each passage is one numbered paragraph with the heading above it.
@@ -229,7 +229,7 @@ export default function KnowledgePanel({ agentId, sessionId }: { agentId: string
           ))}
         </div>
           {viewer && (
-            <div className="border border-magenta-brand/20 rounded-xl overflow-hidden lg:sticky lg:top-4">
+            <div className="border border-magenta-brand/20 rounded-xl overflow-hidden md:sticky md:top-4">
               <div className="flex justify-end px-3 py-1.5 bg-card border-b border-magenta-brand/15">
                 <button type="button" className="text-sm text-fg/60 hover:text-fg" onClick={() => setViewer(null)}>Close ✕</button>
               </div>

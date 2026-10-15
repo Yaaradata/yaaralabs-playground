@@ -157,7 +157,7 @@ export default function SampleImageTest({ projectLabels, namesKey, predict }: Pr
       )}
 
       {open && (
-        <div className="grid gap-4 border-t border-magenta-brand/20 p-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="grid gap-4 border-t border-magenta-brand/20 p-4 md:grid-cols-[minmax(0,1fr)_20rem]">
           {/* left: the picked image, Test, result */}
           <div className="min-w-0 rounded-lg border border-fg/10 bg-canvas p-4 flex flex-col">
             {!picked ? (
@@ -220,7 +220,7 @@ export default function SampleImageTest({ projectLabels, namesKey, predict }: Pr
           </div>
 
           {/* right: the test images */}
-          <ul className="grid grid-cols-3 lg:grid-cols-2 gap-2 lg:max-h-[32rem] lg:overflow-y-auto pr-1" aria-label="Test images">
+          <ul className="grid grid-cols-3 md:grid-cols-2 gap-2 md:max-h-[32rem] md:overflow-y-auto pr-1" aria-label="Test images">
             {items.map((t) => {
               const r = results[t.file];
               const p = r && typeof r !== 'string' ? r : null;

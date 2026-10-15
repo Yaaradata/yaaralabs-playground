@@ -42,7 +42,7 @@ const useAi = click('button:text-is("USE AI")', 2500);
 
 export const ROUTES: Route[] = [
   /* ── start ── */
-  { id: 'home', title: 'Home', path: () => '/', ready: 'h1', primary: ['a:has-text("Go to your projects")'], mustNotClip: ['h1'] },
+  { id: 'home', title: 'Home', path: () => '/', ready: 'a:has-text("Go to your projects")', primary: ['a:has-text("Go to your projects")'], mustNotClip: ['h1'] },
   {
     id: 'projects', title: 'Project list', path: (s) => `/projects/${s.masked}`, ready: 'button:has-text("Launch")',
     primary: ['button:has-text("Add a new project")'], mustNotClip: ['h3'], workspace: true,
