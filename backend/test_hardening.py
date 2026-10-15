@@ -187,5 +187,47 @@ class EventLoopNotBlocked(unittest.TestCase):
         self.assertEqual(blocking, [], "async handlers that never await run blocking calls on the event loop")
 
 
+# ── 4. calculator tool: nested powers can't tie up a thread ──────────────
+
+
+class CalculatorBomb(unittest.TestCase):
+    def run_with_limit(self, expr, seconds=2.0):
+        import threading
+        import time
+
+        from app.services.agent_tools import calculator
+
+        out = {}
+
+        def go():
+            t0 = time.perf_counter()
+            out["r"] = calculator(expr)
+            out["ms"] = (time.perf_counter() - t0) * 1000
+
+        th = threading.Thread(target=go, daemon=True)  # daemon: a runaway old version can't hang the test run
+        th.start()
+        th.join(seconds)
+        self.assertFalse(th.is_alive(), f"{expr} still running after {seconds}s")
+        return out
+
+    def test_nested_power_is_refused_fast(self):
+        out = self.run_with_limit("(((9**100)**100)**100)**100")
+        self.assertEqual(out["r"].get("error"), "Number too large")
+        self.assertLess(out["ms"], 100)
+
+    def test_huge_products_are_refused(self):
+        self.assertEqual(self.run_with_limit("(2**100)*(2**100)")["r"].get("error"), "Number too large")
+        self.assertEqual(self.run_with_limit("9**100**100")["r"].get("error"), "exponent too large")
+
+    def test_normal_arithmetic_still_works(self):
+        from app.services.agent_tools import calculator
+
+        self.assertEqual(calculator("2*3+4")["result"], 10)
+        self.assertEqual(calculator("4500 * 1.5")["result"], 6750)
+        self.assertEqual(calculator("sqrt(16)+2**10")["result"], 1028)
+        self.assertEqual(calculator("1e12*5")["result"], 5000000000000)
+        self.assertEqual(len(str(calculator("9**100")["result"])), 96)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -61,6 +61,27 @@ _OPS = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul, as
 _FUNCS = {"sqrt": math.sqrt, "abs": abs, "round": round, "min": min, "max": max, "log10": math.log10, "ln": math.log}
 
 
+# Nested powers and products grow without bound: (((9**100)**100)**100)**100 would tie up a thread and
+# memory. Every ** and * is checked before it runs (an int's size is known from bit_length()).
+MAX_OPERAND = 1e12
+MAX_BITS = 4096
+
+
+def _bits(x) -> int:
+    return abs(int(x)).bit_length() if isinstance(x, int) else 0
+
+
+def _check_size(op, left, right) -> None:
+    too_large = ValueError("Number too large")
+    if isinstance(op, ast.Pow):
+        if abs(left) > MAX_OPERAND:
+            raise too_large
+        if isinstance(left, int) and isinstance(right, int) and right > 0 and _bits(left) * right > MAX_BITS:
+            raise too_large
+    elif _bits(left) + _bits(right) > MAX_BITS or (abs(left) > MAX_OPERAND and abs(right) > MAX_OPERAND):
+        raise too_large
+
+
 def calculator(expression: str) -> dict:
     """Evaluates an arithmetic expression exactly: + - * / ** % ( ), sqrt, abs, round, min, max, log10, ln."""
     expr = (expression or "").replace("^", "**").replace("×", "*").replace("÷", "/").replace(",", "")
@@ -76,7 +97,10 @@ def calculator(expression: str) -> dict:
             right = ev(n.right)
             if isinstance(n.op, ast.Pow) and abs(right) > 100:
                 raise ValueError("exponent too large")
-            return _OPS[type(n.op)](ev(n.left), right)
+            left = ev(n.left)
+            if isinstance(n.op, (ast.Pow, ast.Mult)):
+                _check_size(n.op, left, right)
+            return _OPS[type(n.op)](left, right)
         if isinstance(n, ast.UnaryOp) and isinstance(n.op, (ast.USub, ast.UAdd)):
             return -ev(n.operand) if isinstance(n.op, ast.USub) else ev(n.operand)
         if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id in _FUNCS and not n.keywords:
