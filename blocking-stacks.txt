@@ -1,0 +1,9 @@
+   32  \app\api\guests\guests.py:924 upload_image_for_prediction_only
+   11  \app\image_training_service.py:599 upload_with_retry <- \app\image_training_service.py:626 save_model <- \app\api\guests\guests.py:1459 _train_image_recognition_project <- \app\api\guests\guests.py:1149 start_guest_training
+   11  \app\image_training_service.py:620 save_model <- \app\api\guests\guests.py:1459 _train_image_recognition_project <- \app\api\guests\guests.py:1149 start_guest_training
+    2  \app\api\guests\guests.py:1237 _train_text_recognition_project <- \app\api\guests\guests.py:1154 start_guest_training
+    2  (outside app code)
+    1  \app\training_service.py:4 <module> <- \app\api\projects.py:13 <module> <- \app\api\__init__.py:2 <module> <- \app\main.py:12 <module>
+    1  \app\image_training_service.py:6 <module> <- \app\api\guests\guests.py:41 <module> <- \app\api\guests\__init__.py:2 <module> <- \app\api\deployed.py:32 <module>
+    1  \app\image_training_service.py:599 upload_with_retry <- \app\image_training_service.py:613 save_model <- \app\api\guests\guests.py:1459 _train_image_recognition_project <- \app\api\guests\guests.py:1149 start_guest_training
+    1  \app\image_training_service.py:762 update_firestore_training_status <- \app\api\guests\guests.py:1464 _train_image_recognition_project <- \app\api\guests\guests.py:1149 start_guest_training
