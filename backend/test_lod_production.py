@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import unittest
+from types import SimpleNamespace
 
 from app.services.live_object_detection_service import (
     NAME_ALIASES,
@@ -74,6 +75,71 @@ class LodOverlapTests(unittest.TestCase):
         names = [item.name for item in kept]
         self.assertIn("Person", names)
         self.assertIn("Laptop", names)
+
+
+class _Guests:
+    def __init__(self):
+        self.calls = 0
+
+    async def validate_session(self, session_id):
+        self.calls += 1
+        if session_id == "gone":
+            raise ValueError(f"Guest session {session_id} not found")
+        return {"session_id": session_id}
+
+
+class _Projects:
+    def __init__(self):
+        self.calls = 0
+
+    async def get_project(self, project_id):
+        self.calls += 1
+        return SimpleNamespace(student_id="s1", type="live-object-detection")
+
+
+class _Lod:
+    def detect(self, image_base64):
+        return [LodVisionObject(name="Bottle", score=0.8, box=[100, 100, 400, 300])]
+
+
+class LodChecksOncePerMinute(unittest.TestCase):
+    """Every frame re-read the session and the project and wrote the session's last_active: about 1 s
+    of Firestore per frame before Cloud Vision even started, so the boxes were slow to follow."""
+
+    def setUp(self):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from app.api import live_object_detection as lod
+
+        getattr(lod, "_checked", {}).clear()
+        lod.lod_limiter._hits.clear()
+        self.guests, self.projects = _Guests(), _Projects()
+        app = FastAPI()
+        app.include_router(lod.router)
+        app.dependency_overrides[lod.get_guest_service] = lambda: self.guests
+        app.dependency_overrides[lod.get_project_service] = lambda: self.projects
+        app.dependency_overrides[lod.get_lod_service] = lambda: _Lod()
+        self.client = TestClient(app)
+        self.frame = {"image_base64": "data:image/jpeg;base64," + base64.b64encode(b"\xff\xd8" + b"0" * 64).decode()}
+
+    def detect(self, session="s1", project="p1"):
+        return self.client.post(f"/api/lod/session/{session}/projects/{project}/detect", json=self.frame)
+
+    def test_five_frames_check_once(self):
+        for _ in range(5):
+            r = self.detect()
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(r.json()["objects"][0]["name"], "Bottle")
+        self.assertEqual((self.guests.calls, self.projects.calls), (1, 1))
+
+    def test_other_session_is_still_refused(self):
+        self.assertEqual(self.detect().status_code, 200)
+        self.assertEqual(self.detect(session="s2").status_code, 403)
+        self.assertEqual(self.detect(session="s2").status_code, 403)  # a failed check is not remembered
+
+    def test_missing_session_is_refused(self):
+        self.assertEqual(self.detect(session="gone").status_code, 404)
 
 
 if __name__ == "__main__":

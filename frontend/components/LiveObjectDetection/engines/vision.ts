@@ -9,7 +9,10 @@ type DetectResponse = {
   success?: boolean;
 };
 
-const MIN_INTERVAL_MS = 400;
+// Up to two frames in flight, one every 250 ms: boxes update about twice as often as one-at-a-time
+// (each answer takes a Cloud Vision round trip). The server allows 6 detects a second per session.
+const MIN_INTERVAL_MS = 250;
+const MAX_IN_FLIGHT = 2;
 const JPEG_WIDTH = 720;
 const JPEG_QUALITY = 0.82;
 const MAX_DETECTIONS = 16;
@@ -70,11 +73,14 @@ function parseObjects(
 
 export function createCloudVisionDetector(endpoint: string): ObjectDetectorModel {
   let last: Detection[] = [];
-  let pending: Promise<void> | null = null;
+  let inFlight = 0;
+  let first: Promise<void> | null = null;
   let lastSentAt = 0;
   let lastHitAt = 0;
+  let sent = 0;
+  let applied = 0;
 
-  const run = async (video: HTMLVideoElement) => {
+  const run = async (video: HTMLVideoElement, seq: number) => {
     const frameWidth = video.videoWidth;
     const frameHeight = video.videoHeight;
     const imageBase64 = grabVisionJpeg(video);
@@ -89,6 +95,8 @@ export function createCloudVisionDetector(endpoint: string): ObjectDetectorModel
       throw new Error(`Cloud Vision detect failed (${response.status})`);
     }
     const payload = (await response.json()) as DetectResponse;
+    if (seq < applied) return; // a newer frame already answered: don't move boxes back in time
+    applied = seq;
     const next = parseObjects(payload, frameWidth, frameHeight);
     if (next.length) {
       last = smoothDetections(last, next, 0.72);
@@ -105,16 +113,20 @@ export function createCloudVisionDetector(endpoint: string): ObjectDetectorModel
     detect: async (video: HTMLVideoElement) => {
       if (video.readyState < 2 || video.videoWidth < 8) return last;
       const now = Date.now();
-      if (!pending && now - lastSentAt >= MIN_INTERVAL_MS) {
+      if (inFlight < MAX_IN_FLIGHT && now - lastSentAt >= MIN_INTERVAL_MS) {
         lastSentAt = now;
-        pending = run(video)
+        inFlight += 1;
+        const request = run(video, ++sent)
           .catch(() => undefined)
           .finally(() => {
-            pending = null;
+            inFlight -= 1;
           });
+        if (!last.length) first = request;
       }
-      if (pending && !last.length) {
-        await pending;
+      // Nothing on screen yet: wait for an answer so the first boxes appear as soon as they can.
+      if (first && !last.length) {
+        await first;
+        first = null;
       }
       return last;
     },

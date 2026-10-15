@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
+from typing import Dict, Tuple
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from .off_loop import off_loop
@@ -79,6 +82,28 @@ async def _assert_lod_project(session_id: str, project_id: str, project_service:
     return project
 
 
+# (session_id, project_id) -> when the session and project checks last passed. Detect runs several
+# times a second per camera: re-reading the session and the project (and writing the session's
+# last_active, about 1 write a second to one document) for every frame made each frame wait ~1 s on
+# Firestore before Cloud Vision even started. Per instance; a new instance just checks again.
+CHECKS_TTL_S = 60.0
+_checked: Dict[Tuple[str, str], float] = {}
+
+
+async def _check_session_and_project(
+    session_id: str, project_id: str, guest_service: GuestService, project_service: ProjectService
+) -> None:
+    key = (session_id, project_id)
+    now = time.monotonic()
+    if now - _checked.get(key, -CHECKS_TTL_S) < CHECKS_TTL_S:
+        return
+    await validate_session(session_id, guest_service)
+    await _assert_lod_project(session_id, project_id, project_service)
+    if len(_checked) > 5000:
+        _checked.clear()
+    _checked[key] = now
+
+
 def _enforce_limit(session_id: str, action: str, max_hits: int, window_s: float) -> None:
     if not lod_limiter.allow(session_id, action, max_hits, window_s):
         raise HTTPException(
@@ -95,12 +120,12 @@ async def detect_objects(
     session_id: str,
     project_id: str,
     body: LodDetectRequest,
-    session: dict = Depends(validate_session),
+    guest_service: GuestService = Depends(get_guest_service),
     project_service: ProjectService = Depends(get_project_service),
     lod_service: LiveObjectDetectionService = Depends(get_lod_service),
 ):
     """Run Cloud Vision object localization on a live webcam frame."""
-    await _assert_lod_project(session_id, project_id, project_service)
+    await _check_session_and_project(session_id, project_id, guest_service, project_service)
     _enforce_limit(session_id, "detect", DETECT_MAX_HITS, DETECT_WINDOW_S)
     try:
         objects = await asyncio.to_thread(lod_service.detect, body.image_base64)
@@ -121,12 +146,12 @@ async def caption_scene(
     session_id: str,
     project_id: str,
     body: LodCaptionRequest,
-    session: dict = Depends(validate_session),
+    guest_service: GuestService = Depends(get_guest_service),
     project_service: ProjectService = Depends(get_project_service),
     lod_service: LiveObjectDetectionService = Depends(get_lod_service),
 ):
     """Generate a one-sentence live action caption from a camera frame."""
-    await _assert_lod_project(session_id, project_id, project_service)
+    await _check_session_and_project(session_id, project_id, guest_service, project_service)
     _enforce_limit(session_id, "caption", CAPTION_MAX_HITS, CAPTION_WINDOW_S)
     try:
         caption, objects = await asyncio.to_thread(lod_service.caption, body)
