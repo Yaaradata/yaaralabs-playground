@@ -274,6 +274,8 @@ def add_link_knowledge(
             "extracted_chars": result["extracted_chars"],
             "message": f"Link knowledge added successfully ({result['chunks_added']} chunks)"
         }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"❌ Link KB failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))

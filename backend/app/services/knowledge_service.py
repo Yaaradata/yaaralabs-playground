@@ -443,7 +443,9 @@ class KnowledgeService:
                 }
                 
                 # First make a request to establish session/cookies
-                response = session.get(url, timeout=30, headers=headers, allow_redirects=True)
+                from ..url_guard import safe_requests_get
+
+                response = safe_requests_get(session, url, timeout=30, headers=headers)  # public addresses only
                 
                 # Check for blocking
                 if response.status_code == 403:
@@ -535,6 +537,9 @@ class KnowledgeService:
         """Add link knowledge to agent using BrightData API (preferred) or BeautifulSoup fallback"""
         try:
             logger.info(f"🔗 Adding link knowledge for agent: {request.agent_id}, URL: {request.url}")
+            from ..url_guard import check_public_url
+
+            check_public_url(request.url)  # UnsafeUrlError (a ValueError): 400 with the reason
             
             # Try BrightData first (better for JS-rendered content), then fallback to BeautifulSoup
             scrape_result = self._scrape_with_brightdata(request.url)
@@ -611,6 +616,8 @@ class KnowledgeService:
                 "scrape_method": scrape_method
             }
             
+        except ValueError:  # a refused link (private address, blocked site): 400 with the reason
+            raise
         except requests.exceptions.RequestException as e:
             logger.error(f"❌ Failed to fetch URL {request.url}: {e}")
             raise Exception(f"Failed to fetch URL: {str(e)}")

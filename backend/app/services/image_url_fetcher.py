@@ -109,10 +109,33 @@ def _decode_data_url(url: str) -> Tuple[bytes, str, str]:
 
 
 async def _get(session: aiohttp.ClientSession, url: str, limit: int) -> Tuple[bytes, str, str]:
-    """GET url, returning (body, content_type, final_url). Body is capped at limit + 1 bytes."""
+    """GET url, returning (body, content_type, final_url). Body is capped at limit + 1 bytes.
+
+    Only public http(s) addresses, and every redirect hop is checked again (app/url_guard.py)."""
+    import asyncio
+
+    from ..url_guard import MAX_REDIRECTS, UnsafeUrlError, check_public_url, next_hop
+
+    try:
+        url = await asyncio.to_thread(check_public_url, url)
+    except UnsafeUrlError as e:
+        raise ImageUrlError(str(e))
     status = None
     for headers in _HEADER_SETS:
-        async with session.get(url, headers=headers, allow_redirects=True) as response:
+        hops = 0
+        while True:
+            response = await session.get(url, headers=headers, allow_redirects=False)
+            if response.status in (301, 302, 303, 307, 308) and hops < MAX_REDIRECTS:
+                hops += 1
+                try:
+                    url = await asyncio.to_thread(next_hop, url, response.headers.get("Location"))
+                except UnsafeUrlError as e:
+                    response.release()
+                    raise ImageUrlError(str(e))
+                response.release()
+                continue
+            break
+        async with response:
             status = response.status
             if status == 200:
                 # read(n) returns whatever is buffered, so loop until EOF or past the limit

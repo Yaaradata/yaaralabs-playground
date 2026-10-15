@@ -631,6 +631,53 @@ HOSTILE = {
 }
 
 
+class LinksStayOutside(unittest.TestCase):
+    """P1 SSRF: pasted links (image URL, knowledge-base link) never reach private or local addresses."""
+
+    BAD = ["http://127.0.0.1:8765/health", "http://localhost/", "http://169.254.169.254/computeMetadata/v1/",
+           "http://10.0.0.5/", "http://192.168.1.1/", "http://[::1]/", "http://[::ffff:127.0.0.1]/", "http://0.0.0.0/",
+           "file:///etc/passwd", "ftp://example.com/x", "gopher://x"]
+
+    def test_private_and_local_addresses_are_refused(self):
+        from app.url_guard import UnsafeUrlError, check_public_url
+
+        for url in self.BAD:
+            with self.assertRaises(UnsafeUrlError, msg=url):
+                check_public_url(url)
+
+    def test_a_redirect_to_a_private_address_is_refused(self):
+        from app.url_guard import UnsafeUrlError, next_hop
+
+        with self.assertRaises(UnsafeUrlError):
+            next_hop("https://example.com/a.jpg", "http://169.254.169.254/latest/meta-data/")
+        with self.assertRaises(UnsafeUrlError):
+            next_hop("https://example.com/a.jpg", "//127.0.0.1/x")
+
+    def test_the_scraper_stops_at_a_private_redirect(self):
+        from app import url_guard
+
+        hops = []
+
+        class Session:
+            def get(self, url, **kw):
+                hops.append(url)
+                return SimpleNamespace(status_code=302, headers={"Location": "http://169.254.169.254/"})
+
+        with mock.patch.object(url_guard, "check_public_url", side_effect=lambda u: (_ for _ in ()).throw(url_guard.UnsafeUrlError("private")) if "169.254" in u else u):
+            with self.assertRaises(url_guard.UnsafeUrlError):
+                url_guard.safe_requests_get(Session(), "https://public.example/page")
+        self.assertEqual(hops, ["https://public.example/page"], "the private hop is never requested")
+
+    def test_the_image_fetcher_refuses_our_own_server(self):
+        import asyncio
+
+        from app.services.image_url_fetcher import ImageUrlError, fetch_image_from_url
+
+        with self.assertRaises(ImageUrlError) as e:
+            asyncio.run(fetch_image_from_url("http://127.0.0.1:8765/health"))
+        self.assertIn("private or local", str(e.exception))
+
+
 class NoDuplicateRoutes(unittest.TestCase):
     """P1: a second definition of the same method + path is dead code (FastAPI serves the first)."""
 
