@@ -435,6 +435,10 @@ Return ONLY a valid JSON object, no other text."""
     
     def generate_embedding(self, text: str, embedding_model_name: Optional[str] = None) -> List[float]:
         """Generate embedding for text using Vertex AI"""
+        from . import mock_ai
+
+        if mock_ai.enabled():  # load tests (mock_ai.py)
+            return mock_ai.vectors([text], 768)[0].tolist()
         try:
             model = self._get_embedding_model(embedding_model_name)
             if embedding_model_name:
@@ -447,6 +451,10 @@ Return ONLY a valid JSON object, no other text."""
     
     def generate_embeddings_batch(self, texts: List[str], embedding_model_name: Optional[str] = None) -> List[List[float]]:
         """Generate embeddings for multiple texts"""
+        from . import mock_ai
+
+        if mock_ai.enabled():  # load tests (mock_ai.py)
+            return mock_ai.vectors(texts, 768).tolist()
         try:
             model = self._get_embedding_model(embedding_model_name)
             if embedding_model_name:

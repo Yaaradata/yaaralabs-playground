@@ -50,3 +50,8 @@ nuvama_document_images/raw/
 
 # responsive screen test output (npm run test:responsive)
 frontend/responsive-report/
+
+# load test and break-it reports
+load-report/
+break-it-report/
+frontend/break-it-report/

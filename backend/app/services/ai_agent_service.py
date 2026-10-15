@@ -223,6 +223,11 @@ def stream_text(vertex_model: str, system: str, contents: List[Dict[str, str]], 
         body["generationConfig"]["thinkingConfig"] = thinking
     url = (f"https://aiplatform.googleapis.com/v1/projects/{clients.project_id}/locations/global/publishers/google/"
            f"models/{vertex_model}:streamGenerateContent?alt=sse")
+    from . import mock_ai
+
+    if mock_ai.enabled():  # load tests (mock_ai.py)
+        yield from mock_ai.stream_pieces(system, contents)
+        return
     try:
         r = _session().post(url, json=body, timeout=120, stream=True)
     except Exception as e:
@@ -249,6 +254,10 @@ def stream_text(vertex_model: str, system: str, contents: List[Dict[str, str]], 
 
 
 def _post(url: str, body: Dict[str, Any], label: str) -> Dict[str, Any]:
+    from . import mock_ai
+
+    if mock_ai.enabled():  # load tests (mock_ai.py)
+        return mock_ai.rest_out(json.dumps(body.get("systemInstruction")), body.get("contents"))
     try:
         r = _session().post(url, json=body, timeout=120)
     except Exception as e:

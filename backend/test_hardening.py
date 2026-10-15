@@ -584,5 +584,30 @@ class AdminOnlyRoutes(unittest.TestCase):
                 self.assertEqual(client.get(path).status_code, 404, path)
 
 
+# ── B. the load test's mock AI can never switch on in production ─────────────
+
+
+class MockAiSafety(unittest.TestCase):
+    def test_only_with_the_flag_and_never_in_production(self):
+        from app.services import mock_ai
+
+        with mock.patch.dict("os.environ", {"MOCK_AI": "1", "NODE_ENV": "production"}):
+            self.assertFalse(mock_ai.enabled())
+        with mock.patch.dict("os.environ", {"MOCK_AI": "", "NODE_ENV": "development"}):
+            self.assertFalse(mock_ai.enabled())
+        with mock.patch.dict("os.environ", {"MOCK_AI": "1", "NODE_ENV": "development"}):
+            self.assertTrue(mock_ai.enabled())
+
+    def test_shapes(self):
+        from app.services import mock_ai
+
+        with mock.patch.object(mock_ai, "delay", lambda *a, **k: None):
+            self.assertTrue(mock_ai.generate_content(model="m", contents="hello").text)
+            self.assertIn('"name"', mock_ai.generate_content(model="m", contents="Reply as JSON").text)
+            out = mock_ai.rest_out("system", [])
+            self.assertEqual((out["calls"], bool(out["text"])), ([], True))
+        self.assertEqual(mock_ai.vectors(["a", "b"], 768).shape, (2, 768))
+
+
 if __name__ == "__main__":
     unittest.main()

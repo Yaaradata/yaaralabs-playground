@@ -433,6 +433,10 @@ class RoutedModels:
         self._models = models
 
     def _route(self, method: str, args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> Any:
+        from . import mock_ai
+
+        if mock_ai.enabled():  # load tests: canned replies, never outside development (mock_ai.py)
+            return getattr(mock_ai, method)(*args, **kwargs)
         model = _model_arg(args, kwargs)
         if is_openrouter_model(model):
             fn = {"generate_content": generate_content, "generate_content_stream": generate_content_stream,

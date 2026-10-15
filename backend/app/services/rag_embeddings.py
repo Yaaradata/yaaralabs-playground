@@ -69,6 +69,10 @@ def _normalise(m: np.ndarray) -> np.ndarray:
 
 def embed(texts: Sequence[str], model: str = DEFAULT_MODEL, task: str = "RETRIEVAL_DOCUMENT") -> np.ndarray:
     """(len(texts), dims) normalised float32 matrix."""
+    from . import mock_ai
+
+    if mock_ai.enabled():  # load tests (mock_ai.py)
+        return mock_ai.vectors(texts, int(MODELS[model]["dims"]))
     from vertexai.language_models import TextEmbeddingInput
 
     if not texts:
