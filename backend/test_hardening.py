@@ -631,6 +631,23 @@ HOSTILE = {
 }
 
 
+class NoDuplicateRoutes(unittest.TestCase):
+    """P1: a second definition of the same method + path is dead code (FastAPI serves the first)."""
+
+    def test_each_method_and_path_is_defined_once(self):
+        import app.main as main
+
+        seen, dups = set(), []
+        for r in main.app.routes:
+            for m in getattr(r, "methods", None) or []:
+                k = (m, getattr(r, "path", ""))
+                # /health is defined in main.py and health.py; both answer ok and Cloud Run depends on it: left alone
+                if k in seen and m != "HEAD" and k[1] != "/health":
+                    dups.append(f"{m} {k[1]}")
+                seen.add(k)
+        self.assertEqual(dups, [])
+
+
 class TooLargeIs413(unittest.TestCase):
     """A save over Firestore's 1 MiB document limit answers 413 with a friendly message, not 500."""
 

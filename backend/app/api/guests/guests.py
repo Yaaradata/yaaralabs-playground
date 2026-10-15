@@ -3130,116 +3130,12 @@ async def start_all_scratch_services():
 # MACHINE LEARNING ENDPOINTS FOR SCRATCH EXTENSION
 # ============================================================================
 
-@router.get("/session/{session_id}/projects/{project_id}/examples", response_model=dict)
-async def get_guest_examples(
-    session_id: str,
-    project_id: str,
-    session: dict = Depends(validate_session_dependency),
-    project_service: ProjectService = Depends(get_project_service)
-):
-    """Get examples and model information for Scratch extension"""
-    try:
-        # Validate that the project belongs to this session
-        project = await project_service.get_project(project_id)
-        if not project:
-            raise HTTPException(status_code=404, detail="Project not found")
-        
-        # Check if project belongs to this session
-        if project.guest_session_id != session_id and project.createdBy != f"guest:{session_id}":
-            raise HTTPException(status_code=403, detail="Project does not belong to this session")
-        
-        # Get examples for this project
-        examples = await project_service.get_project_examples(project_id)
-        
-        # Extract unique labels from examples
-        labels = list(set([ex.label for ex in examples if ex.label]))
-        
-        # Check if model is ready (has training data)
-        model_ready = len(examples) > 0
-        
-        return {
-            "success": True,
-            "data": {
-                "labels": labels,
-                "examples_count": len(examples),
-                "model_ready": model_ready,
-                "project_name": project.name,
-                "project_type": project.type
-            }
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting examples for project {project_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# (removed: a second get_guest_examples for the same path; FastAPI only ever served the first one, above)
 
 
 
 
 
-@router.post("/session/{session_id}/projects/{project_id}/train", response_model=dict)
-async def train_guest_project(
-    session_id: str,
-    project_id: str,
-    request: dict,
-    session: dict = Depends(validate_session_dependency),
-    project_service: ProjectService = Depends(get_project_service)
-):
-    """Add training data or start training for Scratch extension"""
-    try:
-        # Validate that the project belongs to this session
-        project = await project_service.get_project(project_id)
-        if not project:
-            raise HTTPException(status_code=404, detail="Project not found")
-        
-        # Check if project belongs to this session
-        if project.guest_session_id != session_id:
-            raise HTTPException(status_code=403, detail="Project does not belong to this session")
-        
-        # Check if this is adding training data or starting training
-        if 'text' in request and 'label' in request:
-            # Adding training data
-            example = ExampleAdd(
-                text=request['text'],
-                label=request['label']
-            )
-            
-            await project_service.add_example_to_project(project_id, example)
-            
-            return {
-                "success": True,
-                "data": {
-                    "message": "Training data added successfully",
-                    "action": "add_data",
-                    "text": request['text'],
-                    "label": request['label']
-                }
-            }
-        elif request.get('action') == 'train':
-            # Starting training process
-            examples = await project_service.get_project_examples(project_id)
-            
-            if len(examples) < 5:
-                raise HTTPException(status_code=400, detail="Need at least 5 examples to start training")
-            
-            # In a real implementation, you would start an async training job here
-            # For now, we'll just return success
-            return {
-                "success": True,
-                "data": {
-                    "message": "Training started successfully",
-                    "action": "train",
-                    "examples_count": len(examples),
-                    "status": "training"
-                }
-            }
-        else:
-            raise HTTPException(status_code=400, detail="Invalid request. Must include 'text' and 'label' or 'action': 'train'")
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error training project {project_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# (removed: a second train_guest_project for the same path; FastAPI only ever served the first one, above)
 
 
