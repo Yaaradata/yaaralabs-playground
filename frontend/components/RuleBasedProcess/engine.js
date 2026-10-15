@@ -1154,35 +1154,57 @@ export function mountRuleBasedProcess(root, options) {
       select(copy.id);
     }
   
-    // Ctrl+C / Ctrl+V: copy the selected block (with what is inside it), paste a fresh copy
-    var clip = null, pasteN = 0;
+    // Ctrl+C / Ctrl+V: copy the selected block (with what is inside it). Every paste is its own free
+    // block beside the script it came from, one under the other, never joined to a script.
+    var clip = null, pasteAt = null;
     function copyBlock(id) {
       var loc = locate(id);
       if (!loc) return false;
       clip = BL.clone(loc.kind === "slot" ? loc.parent.inputs[loc.name] : loc.arr[loc.idx]);
-      pasteN = 0;
+      // canvas position: just right of the whole script, level with the copied block
+      var wr = wrapRect();
+      var el = world.querySelector('.blk[data-id="' + id + '"]');
+      var stEl = el && el.closest(".stack");
+      if (el && stEl) {
+        var r = el.getBoundingClientRect(), sr = stEl.getBoundingClientRect();
+        pasteAt = { x: Math.round((sr.right - wr.left - pan.x) / zoom) + 40,
+                    y: Math.round((r.top - wr.top - pan.y) / zoom) };
+      } else pasteAt = null;
       return true;
     }
     function pasteBlock() {
       if (!clip) return;
       snapshot();
       var copy = BL.clone(clip);
-      var shape = BL.SPEC[copy.op].shape;
-      var loc = selId && locate(selId);
-      var after = loc && loc.kind === "list" && loc.arr[loc.idx];
-      // a stack block goes right under the selected block, like Duplicate
-      if (after && shape !== "hat" && shape !== "rep" && shape !== "bool" &&
-          BL.SPEC[after.op].shape !== "cap" && !BL.SPEC[after.op].noBottom) {
-        loc.arr.splice(loc.idx + 1, 0, copy);
-      } else {
-        // otherwise its own stack, a little further down each time so copies don't overlap
-        pasteN++;
-        var st = selId && stackContaining(selId);
-        var x = st ? st.x : Math.round((60 - pan.x) / zoom);
-        var y = st ? st.y : Math.round((60 - pan.y) / zoom);
-        W.stacks.push({ id: sid(), x: x + 30 * pasteN, y: y + 30 * pasteN, blocks: [copy] });
-      }
+      var at = pasteAt || { x: Math.round((60 - pan.x) / zoom), y: Math.round((60 - pan.y) / zoom) };
+      W.stacks.push({ id: sid(), x: at.x, y: at.y, blocks: [copy] });
       render();
+      // never on top of another block: move down until the spot is free
+      var el = world.querySelector('.blk[data-id="' + copy.id + '"]');
+      var w = el ? el.offsetWidth : 200, h = el ? el.offsetHeight : 40;
+      var boxes = [];
+      for (var i = 0; i < W.stacks.length - 1; i++) {
+        var sEl = world.children[i];
+        if (sEl) boxes.push({ x: W.stacks[i].x, y: W.stacks[i].y, w: sEl.offsetWidth, h: sEl.offsetHeight });
+      }
+      var y = at.y;
+      for (var tries = 0; tries < 200; tries++) {
+        var hit = boxes.filter(function (bx) {
+          return at.x < bx.x + bx.w && at.x + w > bx.x && y < bx.y + bx.h && y + h > bx.y;
+        })[0];
+        if (!hit) break;
+        y = hit.y + hit.h + 14;
+      }
+      if (y !== at.y) { W.stacks[W.stacks.length - 1].y = y; render(); }
+      // the next paste goes just below this one
+      pasteAt = { x: at.x, y: y + h + 14 };
+      // off the edge of the canvas: scroll so the copy is in view
+      el = world.querySelector('.blk[data-id="' + copy.id + '"]');
+      if (el) {
+        var er = el.getBoundingClientRect(), wr2 = wrapRect();
+        var dx = Math.max(0, er.right - wr2.right + 30), dy = Math.max(0, er.bottom - wr2.bottom + 50);
+        if (dx || dy) { pan.x -= dx; pan.y -= dy; applyView(); }
+      }
       select(copy.id);
     }
 
