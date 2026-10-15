@@ -16,6 +16,10 @@ from ..services.lod_limiter import SlidingWindowLimiter
 from .agent_access import _body
 
 PER_MINUTE = 12
+# Conversations (agent chat, RAG ask, AI agent turns): a trainer demoing the 10 Ex 6 sample questions
+# clicks the next one as soon as an answer arrives (3-7 s each), up to about 20 a minute; 30 leaves
+# room for that and still stops a script or a stuck loop.
+CHAT_PER_MINUTE = 30
 WINDOW_S = 60.0
 SLOW_DOWN = "You're going a bit fast. Wait a few seconds and try again."
 

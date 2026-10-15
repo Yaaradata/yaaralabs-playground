@@ -702,12 +702,20 @@ class RateLimits(unittest.TestCase):
                 mock.patch.object(agent_access.AgentService, "get_agent", side_effect=lambda aid: legacy(A if aid == AGENT_A else B)), \
                 mock.patch.object(chat, "AgentService") as svc:
             svc.return_value.get_agent.side_effect = lambda aid: legacy(A if aid == AGENT_A else B)
-            codes = [client.post("/chat", json={"agent_id": AGENT_A, "session_id": A, "message": f"q{i}"}).status_code for i in range(13)]
-            self.assertEqual(codes[:12], [200] * 12)
+            n = rate_limits.CHAT_PER_MINUTE
+            codes = [client.post("/chat", json={"agent_id": AGENT_A, "session_id": A, "message": f"q{i}"}).status_code for i in range(n)]
+            self.assertEqual(codes, [200] * n)
             r = client.post("/chat", json={"agent_id": AGENT_A, "session_id": A, "message": "one more"})
             self.assertEqual((r.status_code, r.json()["detail"]), (429, rate_limits.SLOW_DOWN))
             other = client.post("/chat", json={"agent_id": "AGENT_B", "session_id": B, "message": "hi"})
             self.assertEqual(other.status_code, 200, "another session is not affected")
+
+    def test_ex6_sample_questions_at_demo_speed_are_not_limited(self):
+        # a trainer clicks all 10 Ex 6 sample questions, the next as soon as each answer arrives, then
+        # asks 10 more of their own: 20 in a minute must not hit "You're going a bit fast"
+        from app.api import rate_limits
+
+        self.assertGreaterEqual(rate_limits.CHAT_PER_MINUTE, 20)
 
     def test_rbp_ask_is_limited(self):
         import time
@@ -889,6 +897,15 @@ class HostileInputs(unittest.TestCase):
         self.send("copilot answer", "PUT", f"/api/copilot-lab/session/{s}/projects/{self.cop}",
                   lambda v: {"json": {"answers": {"e1": {"notes": [v]}}, "completedSteps": []}})
         self.assertEqual(self.failures, [], "\n".join(self.failures))
+
+    def test_ex6_sample_questions_at_full_speed_are_not_rate_limited(self):
+        # the Ex 6 flow through the real routes: every sample question, back to back, then 10 more
+        groups = self.c.get(f"/agent/{self.agent}/sample-questions", params={"session_id": self.sid}).json().get("groups") or []
+        questions = [q["text"] for g in groups for q in g.get("questions", [])]
+        self.assertGreaterEqual(len(questions), 5, "the Ex 6 assistant offers sample questions")
+        codes = [self.c.post("/chat", json={"agent_id": self.agent, "session_id": self.sid, "message": q}).status_code
+                 for q in questions + [f"follow-up {i}" for i in range(10)]]
+        self.assertNotIn(429, codes, f"{len(codes)} questions in a row: {codes}")
 
     def test_prompt_injection_cannot_reach_the_blocked_tool(self):
         from app.services import agent_tools

@@ -30,7 +30,7 @@ import logging
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 
-from .rate_limits import rate_limit
+from .rate_limits import CHAT_PER_MINUTE, rate_limit
 from ..models import (
     ProjectType,
     RagAskRequest,
@@ -214,7 +214,7 @@ def _over(body) -> dict:
     return out
 
 
-@router.post(P + "/ask", dependencies=[Depends(rate_limit("rag ask"))])
+@router.post(P + "/ask", dependencies=[Depends(rate_limit("rag ask", CHAT_PER_MINUTE))])
 async def ask(body: RagAskRequest, ctx: _Ctx = Depends()):
     await ctx.check()
     return await _run(ctx.service.ask, ctx.pid, ctx.sid, body.question, _over(body), body.testQuestionId)
