@@ -6,6 +6,7 @@ import asyncio
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 
+from .off_loop import off_loop
 from ..models import (
     LodCaptionRequest,
     LodCaptionResponse,
@@ -43,7 +44,7 @@ def get_lod_service() -> LiveObjectDetectionService:
 
 async def validate_session(session_id: str, guest_service: GuestService = Depends(get_guest_service)):
     try:
-        return await guest_service.validate_session(session_id)
+        return await off_loop(guest_service.validate_session, session_id)
     except ValueError as e:
         msg = str(e)
         if "not found" in msg:
@@ -58,7 +59,7 @@ async def validate_session(session_id: str, guest_service: GuestService = Depend
 
 
 async def _assert_lod_project(session_id: str, project_id: str, project_service: ProjectService):
-    project = await project_service.get_project(project_id)
+    project = await off_loop(project_service.get_project, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     if project.student_id != session_id:

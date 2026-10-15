@@ -9,6 +9,7 @@ import secrets
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
+from ..off_loop import off_loop
 from ...models import (
     Project, ProjectCreate, ProjectUpdate, ProjectListResponse, 
     ProjectResponse, ProjectStatusResponseWrapper, TrainingConfig,
@@ -62,7 +63,7 @@ def get_project_service():
 async def validate_session_dependency(session_id: str, guest_service: GuestService = Depends(get_guest_service)):
     """Dependency to validate session for all guest endpoints"""
     try:
-        session = await guest_service.validate_session(session_id)
+        session = await off_loop(guest_service.validate_session, session_id)
         return session
     except ValueError as e:
         if "not found" in str(e):
@@ -101,7 +102,7 @@ async def debug_session(session_id: str):
     """Debug endpoint to check session status"""
     try:
         guest_service = GuestService()
-        session = await guest_service.get_simple_guest_session(session_id)
+        session = await off_loop(guest_service.get_simple_guest_session, session_id)
         return {
             "session_id": session_id,
             "session_exists": session is not None,
@@ -119,7 +120,7 @@ async def debug_projects(session_id: str):
     """Debug endpoint to check projects without session validation"""
     try:
         project_service = ProjectService()
-        projects = await project_service.get_projects(
+        projects = await off_loop(project_service.get_projects, 
             limit=10, 
             offset=0, 
             status=None, 
@@ -202,7 +203,7 @@ async def create_guest_session(
         user_agent = request.headers.get("user-agent")
         
         # Create simple session
-        guest_session = await guest_service.create_simple_guest_session(
+        guest_session = await off_loop(guest_service.create_simple_guest_session, 
             ip_address=ip_address,
             user_agent=user_agent
         )
@@ -219,7 +220,7 @@ async def get_guest_session(
 ):
     """Get simple guest session by session ID"""
     try:
-        guest_session = await guest_service.get_simple_guest_session(session_id)
+        guest_session = await off_loop(guest_service.get_simple_guest_session, session_id)
         if not guest_session:
             raise HTTPException(status_code=404, detail="Guest session not found")
         
@@ -256,14 +257,14 @@ async def get_guest_projects(
             if type:
                 filters['type'] = type
             
-            all_projects = await project_service.search_projects(search, filters)
+            all_projects = await off_loop(project_service.search_projects, search, filters)
             total = len(all_projects)
             
             # Apply pagination to search results
             projects = all_projects[offset:offset + limit]
         else:
             # Get projects directly with guest session filter
-            projects = await project_service.get_projects(
+            projects = await off_loop(project_service.get_projects, 
                 limit=limit, 
                 offset=offset, 
                 status=status, 
@@ -273,7 +274,7 @@ async def get_guest_projects(
             )
             
             # For total count, get all projects for this session
-            all_projects = await project_service.get_projects(
+            all_projects = await off_loop(project_service.get_projects, 
                 limit=1000,  # Get all projects to count them
                 offset=0,
                 status=status,
@@ -397,7 +398,7 @@ async def create_guest_project(
         if project_data.type in ["image-recognition-teachable-machine", "pose-recognition-teachable-machine"]:
             project_data.config = None
         
-        project = await project_service.create_project(project_data)
+        project = await off_loop(project_service.create_project, project_data)
 
         # New Rule Based Process projects open the block editor (the Rules Bot board is parked)
         if project.type == ProjectType.RULE_BASED_PROCESS:
@@ -420,7 +421,7 @@ async def get_guest_project(
 ):
     """Get project by ID for a guest session"""
     try:
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -452,7 +453,7 @@ async def update_guest_project(
     """
     try:
         # First verify project belongs to this session
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -482,7 +483,7 @@ async def update_guest_project(
                 project_data.config = None
         
         # Update project
-        updated_project = await project_service.update_project(project_id, project_data)
+        updated_project = await off_loop(project_service.update_project, project_id, project_data)
         return ProjectResponse(data=updated_project)
     except HTTPException:
         raise
@@ -500,7 +501,7 @@ async def delete_guest_project(
     """Delete project for a guest session"""
     try:
         # First verify project belongs to this session
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -559,7 +560,7 @@ async def delete_guest_project(
                 logger.warning("Exercises workspace cleanup failed for %s: %s", project_id, e)
         
         # Delete project
-        await project_service.delete_project(project_id)
+        await off_loop(project_service.delete_project, project_id)
         return {"success": True, "message": "Project deleted successfully"}
     except HTTPException:
         raise
@@ -584,7 +585,7 @@ async def upload_guest_dataset(
     """Upload dataset file for a guest project"""
     try:
         # Verify project belongs to this session
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project or project.student_id != session_id:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -623,7 +624,7 @@ async def upload_guest_dataset(
         }
         
         # Upload to service
-        result = await project_service.upload_dataset(
+        result = await off_loop(project_service.upload_dataset, 
             project_id,
             file_content,
             file.filename,
@@ -652,7 +653,7 @@ async def add_guest_examples(
     """Add text examples to a guest project"""
     try:
         # Verify project belongs to this session
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project or project.student_id != session_id:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -665,7 +666,7 @@ async def add_guest_examples(
         
         # Add examples to project
         try:
-            result = await project_service.add_examples(
+            result = await off_loop(project_service.add_examples, 
                 project_id, examples_data.examples, split=examples_data.split, skip_existing=examples_data.skip_existing
             )
         except (ExampleLimitError, LabelError) as e:
@@ -715,7 +716,7 @@ async def upload_guest_images(
             raise HTTPException(status_code=400, detail="A label is required.")
 
         # Verify project belongs to this session
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project or project.student_id != session_id:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -784,7 +785,7 @@ async def upload_guest_images(
         await asyncio.gather(*(loop.run_in_executor(None, _put, item) for item in pending))
         
         # Add image examples to project
-        result = await project_service.add_image_examples(project_id, uploaded_images)
+        result = await off_loop(project_service.add_image_examples, project_id, uploaded_images)
         
         return {
             "success": True,
@@ -813,7 +814,7 @@ async def upload_guest_images_from_url(
     """Upload image from URL to a guest project"""
     try:
         # Verify project belongs to this session
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project or project.student_id != session_id:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -853,7 +854,7 @@ async def upload_guest_images_from_url(
         }
         
         # Add image example to project
-        result = await project_service.add_image_examples(project_id, [uploaded_image])
+        result = await off_loop(project_service.add_image_examples, project_id, [uploaded_image])
         
         return {
             "success": True,
@@ -881,7 +882,7 @@ async def upload_image_for_prediction_only(
     """Upload image for prediction only - does NOT store in training dataset"""
     try:
         # Verify project belongs to this session
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project or project.student_id != session_id:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -951,7 +952,7 @@ async def upload_image_url_for_prediction_only(
     """Upload image from URL for prediction only - does NOT store in training dataset"""
     try:
         # Verify project belongs to this session
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project or project.student_id != session_id:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -1001,11 +1002,11 @@ async def get_guest_examples(
     """Get all examples for a guest project"""
     try:
         # Verify project belongs to this session
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project or project.student_id != session_id:
             raise HTTPException(status_code=404, detail="Project not found")
         
-        examples = await project_service.get_examples(project_id)
+        examples = await off_loop(project_service.get_examples, project_id)
         
         # Also get the labels list from the project
         labels = []
@@ -1034,11 +1035,11 @@ async def get_guest_images(
     """Get all image examples for a guest project"""
     try:
         # Verify project belongs to this session
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project or project.student_id != session_id:
             raise HTTPException(status_code=404, detail="Project not found")
         
-        image_examples = await project_service.get_image_examples(project_id)
+        image_examples = await off_loop(project_service.get_image_examples, project_id)
         
         # Also get the labels list from the project
         labels = []
@@ -1068,7 +1069,7 @@ async def get_guest_image(
     """Serve individual images from GCS"""
     try:
         # Verify project belongs to this session
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project or project.student_id != session_id:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -1126,7 +1127,7 @@ async def start_guest_training(
     """Start training job for a guest project using logistic regression or EfficientNet"""
     try:
         # Get guest project by project_id from the projects collection
-        guest_project = await guest_service.get_guest_project_by_id(project_id)
+        guest_project = await off_loop(guest_service.get_guest_project_by_id, project_id)
         if not guest_project:
             raise HTTPException(status_code=404, detail="Guest project not found")
         
@@ -1377,7 +1378,7 @@ async def _train_text_recognition_project(
             training_job = await training_job_service.create_training_job(project_id, config_dict)
             
             # Update guest session with job ID and status
-            await guest_service.update_guest_session(session_id, GuestUpdate(
+            await off_loop(guest_service.update_guest_session, session_id, GuestUpdate(
                 currentJobId=training_job.id,
                 training_status="training",
                 status="training"
@@ -1419,12 +1420,12 @@ async def _train_image_recognition_project(
         logger.info(f"Image examples count: {len(image_examples)}")
         
         # Update Firestore status to training
-        image_trainer.update_firestore_training_status(project_id, session_id, "training")
+        await asyncio.to_thread(image_trainer.update_firestore_training_status, project_id, session_id, "training")
         
         # Clear any existing model to prevent shape mismatch issues
         model_path = f"image_recog/{project_id}"
         logger.info(f"Clearing any existing model at: {model_path}")
-        image_trainer.clear_existing_model(gcp_clients.get_bucket(), model_path)
+        await asyncio.to_thread(image_trainer.clear_existing_model, gcp_clients.get_bucket(), model_path)
 
         # Own trainer for this request: the model/labels must not be swapped out by another
         # project's training or prediction between training and saving
@@ -1434,7 +1435,8 @@ async def _train_image_recognition_project(
 
         try:
             # Prepare training data directly from GCS
-            images, labels, class_names = trainer.prepare_training_data_direct(image_examples)
+            # downloads every training image: off the event loop
+            images, labels, class_names = await asyncio.to_thread(trainer.prepare_training_data_direct, image_examples)
 
             # Train the model directly - run in thread pool executor to allow concurrent training
             training_result = await asyncio.get_event_loop().run_in_executor(
@@ -1505,7 +1507,7 @@ async def get_guest_training_status(
     """Get training status and job information for a guest project"""
     try:
         # Get guest project by project_id from the projects collection
-        guest_project = await guest_service.get_guest_project_by_id(project_id)
+        guest_project = await off_loop(guest_service.get_guest_project_by_id, project_id)
         if not guest_project:
             raise HTTPException(status_code=404, detail="Guest project not found")
         
@@ -1548,7 +1550,7 @@ async def cancel_guest_training(
     """Cancel current training job for a guest project"""
     try:
         # Get guest project by project_id from the projects collection
-        guest_project = await guest_service.get_guest_project_by_id(project_id)
+        guest_project = await off_loop(guest_service.get_guest_project_by_id, project_id)
         if not guest_project:
             raise HTTPException(status_code=404, detail="Guest project not found")
         
@@ -1597,7 +1599,7 @@ async def predict_guest_text(
     """Make prediction using trained guest model (text or image)"""
     try:
         # Get guest project by project_id from the projects collection
-        guest_project = await guest_service.get_guest_project_by_id(project_id)
+        guest_project = await off_loop(guest_service.get_guest_project_by_id, project_id)
         if not guest_project:
             raise HTTPException(status_code=404, detail="Guest project not found")
         
@@ -1786,7 +1788,7 @@ async def deploy_guest_model(
     """Give the trained model a deployed URL (/api/deployed/{id}). The id is made once and kept, so
     the URL stays the same after retraining and always runs the latest model; deleting the project
     removes it. Returns the path; the browser adds its API host."""
-    guest_project = await guest_service.get_guest_project_by_id(project_id)
+    guest_project = await off_loop(guest_service.get_guest_project_by_id, project_id)
     if not guest_project or guest_project.get('createdBy') != f"guest:{session_id}":
         raise HTTPException(status_code=404, detail="Project not found in this session")
     if guest_project.get('type') not in DEPLOYABLE_TYPES:
@@ -1817,7 +1819,7 @@ async def get_guest_project_status(
     """Get guest project status and metadata"""
     try:
         # Get guest project by project_id from the projects collection
-        guest_project = await guest_service.get_guest_project_by_id(project_id)
+        guest_project = await off_loop(guest_service.get_guest_project_by_id, project_id)
         if not guest_project:
             raise HTTPException(status_code=404, detail="Guest project not found")
         
@@ -1864,7 +1866,7 @@ async def get_guest_job_status(
     """Get training job status for a guest project"""
     try:
         # Get guest project by project_id from the projects collection
-        guest_project = await guest_service.get_guest_project_by_id(project_id)
+        guest_project = await off_loop(guest_service.get_guest_project_by_id, project_id)
         if not guest_project:
             raise HTTPException(status_code=404, detail="Guest project not found")
         
@@ -1901,7 +1903,7 @@ async def cancel_guest_job(
     """Cancel a training job for a guest project"""
     try:
         # Verify project belongs to this session
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project or project.student_id != session_id:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -1945,7 +1947,7 @@ async def test_guest_project(
     """Test a trained guest project with new data"""
     try:
         # Verify project belongs to this session
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project or project.student_id != session_id:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -1979,7 +1981,7 @@ async def get_guest_test_results(
     """Get test results for a guest project"""
     try:
         # Verify project belongs to this session
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project or project.student_id != session_id:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -2011,7 +2013,7 @@ async def enable_guest_scratch(
     """Enable Scratch integration for a guest project"""
     try:
         # Verify project belongs to this session
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project or project.student_id != session_id:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -2038,7 +2040,7 @@ async def get_guest_scratch_status(
     """Get Scratch integration status for a guest project"""
     try:
         # Verify project belongs to this session
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project or project.student_id != session_id:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -2073,7 +2075,7 @@ async def delete_trained_model(
         logger.info(f"Session validated for project {project_id}, session {session_id}")
         
         # Get project to verify ownership and get model path
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project:
             logger.error(f"Project {project_id} not found")
             raise HTTPException(status_code=404, detail="Project not found")
@@ -2120,7 +2122,7 @@ async def delete_trained_model(
             project.updatedAt = datetime.now(timezone.utc)
             
             # Update in database
-            await project_service.update_project(project_id, ProjectUpdate(
+            await off_loop(project_service.update_project, project_id, ProjectUpdate(
                 status="draft",
                 updatedAt=datetime.now(timezone.utc)
             ))
@@ -2160,7 +2162,7 @@ async def delete_examples_by_label(
         logger.info(f"Session validated for project {project_id}, session {session_id}, label: {label}")
         
         # Get project to verify ownership
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project:
             logger.error(f"Project {project_id} not found")
             raise HTTPException(status_code=404, detail="Project not found")
@@ -2229,7 +2231,7 @@ async def delete_examples_by_label(
             project.dataset.labels = list(all_labels)
             
             # Use the save_project method to avoid any ProjectUpdate serialization issues
-            await project_service.save_project(project)
+            await off_loop(project_service.save_project, project)
             
             logger.info(f"Successfully deleted {examples_to_delete} examples with label '{label}' from project {project_id}")
             logger.info(f"Project saved to database with {project.dataset.records} examples")
@@ -2275,7 +2277,7 @@ async def delete_specific_example(
         logger.info(f"Session validated for project {project_id}, session {session_id}, label: {label}, index: {example_index}")
         
         # Get project to verify ownership
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project:
             logger.error(f"Project {project_id} not found")
             raise HTTPException(status_code=404, detail="Project not found")
@@ -2344,7 +2346,7 @@ async def delete_specific_example(
             project.dataset.labels = list(all_labels)
             
             # Use the save_project method to avoid any ProjectUpdate serialization issues
-            await project_service.save_project(project)
+            await off_loop(project_service.save_project, project)
             
             logger.info(f"Successfully deleted example '{example_to_delete.text[:50]}...' with label '{label}' from project {project_id}")
             logger.info(f"Project saved to database with {project.dataset.records} examples")
@@ -2389,7 +2391,7 @@ async def delete_label(
         logger.info(f"Session validated for project {project_id}, session {session_id}, label: {label}")
         
         # Get project to verify ownership
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project:
             logger.error(f"Project {project_id} not found")
             raise HTTPException(status_code=404, detail="Project not found")
@@ -2451,7 +2453,7 @@ async def delete_label(
                 project.dataset.labels = list(all_labels)
             
             # Use the save_project method to avoid any ProjectUpdate serialization issues
-            await project_service.save_project(project)
+            await off_loop(project_service.save_project, project)
             
             logger.info(f"Successfully deleted label '{label}' and {examples_to_delete} examples from project {project_id}")
             logger.info(f"Project saved to database with {project.dataset.records} examples")
@@ -2497,7 +2499,7 @@ async def delete_empty_label(
         logger.info(f"Session validated for project {project_id}, session {session_id}, label: {label}")
         
         # Get project to verify ownership
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project:
             logger.error(f"Project {project_id} not found")
             raise HTTPException(status_code=404, detail="Project not found")
@@ -2548,7 +2550,7 @@ async def delete_empty_label(
         # Save the complete project with updated dataset to database
         try:
             # Use the save_project method to avoid any ProjectUpdate serialization issues
-            await project_service.save_project(project)
+            await off_loop(project_service.save_project, project)
             
             logger.info(f"Successfully deleted empty label '{label}' from project {project_id}")
             logger.info(f"Project saved to database")
@@ -2592,7 +2594,7 @@ async def delete_image_label(
         logger.info(f"Deleting image label '{label}' completely from project {project_id}")
         
         # Get guest project
-        guest_project = await guest_service.get_guest_project_by_id(project_id)
+        guest_project = await off_loop(guest_service.get_guest_project_by_id, project_id)
         if not guest_project:
             raise HTTPException(status_code=404, detail="Guest project not found")
         
@@ -2634,7 +2636,7 @@ async def delete_image_label(
         remaining_examples = [ex for ex in image_examples if ex.get('label') != label]
         
         # Get the current project to preserve all existing data
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -2646,7 +2648,7 @@ async def delete_image_label(
             project.dataset.labels = [l for l in project.dataset.labels if l != label]
         
         # Save the complete project to preserve all data
-        await project_service.save_project(project)
+        await off_loop(project_service.save_project, project)
         
         logger.info(f"Successfully deleted image label '{label}' and {len(examples_with_label)} examples")
         
@@ -2681,7 +2683,7 @@ async def delete_empty_image_label(
         logger.info(f"Deleting empty image label '{label}' from project {project_id}")
         
         # Get guest project
-        guest_project = await guest_service.get_guest_project_by_id(project_id)
+        guest_project = await off_loop(guest_service.get_guest_project_by_id, project_id)
         if not guest_project:
             raise HTTPException(status_code=404, detail="Guest project not found")
         
@@ -2710,7 +2712,7 @@ async def delete_empty_image_label(
         updated_labels = [l for l in labels if l != label]
         
         # Get the current project to preserve all existing data
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -2718,7 +2720,7 @@ async def delete_empty_image_label(
         project.dataset.labels = updated_labels
         
         # Save the complete project to preserve all data
-        await project_service.save_project(project)
+        await off_loop(project_service.save_project, project)
         
         logger.info(f"Successfully deleted empty image label '{label}'")
         
@@ -2751,7 +2753,7 @@ async def delete_image_examples_by_label(
         logger.info(f"Deleting all image examples for label '{label}' in project {project_id}")
         
         # Get guest project
-        guest_project = await guest_service.get_guest_project_by_id(project_id)
+        guest_project = await off_loop(guest_service.get_guest_project_by_id, project_id)
         if not guest_project:
             raise HTTPException(status_code=404, detail="Guest project not found")
         
@@ -2825,7 +2827,7 @@ async def delete_image_examples_by_label(
             }
         )
         
-        await project_service.update_project(project_id, project_update)
+        await off_loop(project_service.update_project, project_id, project_update)
         
         logger.info(f"Successfully deleted {len(examples_with_label)} image examples with label '{label}'")
         
@@ -2860,7 +2862,7 @@ async def delete_specific_image_example(
         logger.info(f"Deleting specific image example {example_index} for label '{label}' in project {project_id}")
         
         # Get guest project
-        guest_project = await guest_service.get_guest_project_by_id(project_id)
+        guest_project = await off_loop(guest_service.get_guest_project_by_id, project_id)
         if not guest_project:
             raise HTTPException(status_code=404, detail="Guest project not found")
         
@@ -2930,7 +2932,7 @@ async def delete_specific_image_example(
             }
         )
         
-        await project_service.update_project(project_id, project_update)
+        await off_loop(project_service.update_project, project_id, project_update)
         
         logger.info(f"Successfully deleted image example with label '{label}'")
         
@@ -2964,16 +2966,16 @@ async def debug_guest_session(
     """Debug endpoint to check session and associated projects"""
     try:
         # Check session
-        session = await guest_service.get_simple_guest_session(session_id)
+        session = await off_loop(guest_service.get_simple_guest_session, session_id)
         
         # Get all projects for this session
-        projects = await project_service.get_projects(
+        projects = await off_loop(project_service.get_projects, 
             limit=1000, offset=0, status=None, type=None, 
             created_by=None, guest_session_id=session_id
         )
         
         # Also check if there are any projects with this session in createdBy field
-        projects_by_created_by = await project_service.get_projects(
+        projects_by_created_by = await off_loop(project_service.get_projects, 
             limit=1000, offset=0, status=None, type=None, 
             created_by=f"guest:{session_id}", guest_session_id=None
         )
@@ -3011,12 +3013,12 @@ async def delete_guest_session(
     """Delete a guest session and all associated projects"""
     try:
         # First check if session exists (but don't validate expiry since we're deleting)
-        session = await guest_service.get_simple_guest_session(session_id)
+        session = await off_loop(guest_service.get_simple_guest_session, session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Guest session not found")
         
         # Get all projects for this session
-        projects = await project_service.get_projects(
+        projects = await off_loop(project_service.get_projects, 
             limit=1000, offset=0, status=None, type=None, 
             created_by=None, guest_session_id=session_id
         )
@@ -3044,7 +3046,7 @@ async def delete_guest_session(
                 except Exception as e:
                     logger.warning("Cleanup of %s project %s failed: %s", kind, p.id, e)
             try:
-                deleted_projects_count = await project_service.delete_multiple_projects(project_ids)
+                deleted_projects_count = await off_loop(project_service.delete_multiple_projects, project_ids)
                 logger.info(f"Successfully deleted {deleted_projects_count} out of {len(projects)} projects")
             except Exception as e:
                 logger.error(f"Error deleting some projects for session {session_id}: {str(e)}")
@@ -3059,7 +3061,7 @@ async def delete_guest_session(
             logger.warning("Cleanup of saved image models for %s failed: %s", session_id, e)
 
         # Delete the session
-        success = await guest_service.delete_simple_guest_session(session_id)
+        success = await off_loop(guest_service.delete_simple_guest_session, session_id)
         
         if success:
             return {
@@ -3090,7 +3092,7 @@ async def start_scratch_services(
     """Start Scratch services for a guest project"""
     try:
         # Verify project belongs to this session
-        project = await project_service.get_project(project_id)
+        project = await off_loop(project_service.get_project, project_id)
         if not project or project.student_id != session_id:
             raise HTTPException(status_code=404, detail="Project not found")
         
