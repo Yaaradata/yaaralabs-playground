@@ -191,6 +191,8 @@ class RulesService:
                 updated_at=rule_data["updated_at"]
             )
             
+        except ValueError:  # an invalid rule: the learner's message (400), not a server error
+            raise
         except Exception as e:
             logger.error(f"❌ Failed to save rule: {e}")
             raise Exception(f"Failed to save rule: {str(e)}")

@@ -1,4 +1,6 @@
 from fastapi import Depends, FastAPI, Request
+from fastapi.exception_handlers import http_exception_handler as default_http_exception_handler
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse, Response
@@ -122,8 +124,29 @@ async def add_process_time_header(request: Request, call_next):
 # --------------------------------------------------
 # Global Exception Handler
 # --------------------------------------------------
+# A save bigger than Firestore's 1 MiB document limit (a huge paste into a persona, rule, chat or
+# workspace) is the learner's to fix, not a server error. Those fields keep no length limit by
+# decision; the save answers 413 with a friendly message instead of a 500 (docs/hardening.md, A).
+TOO_LARGE = "This is too large to save. Please shorten it."
+
+
+def _too_large(text: object) -> bool:
+    t = str(text or "")
+    return ("exceeds the maximum allowed size" in t or "cannot be written because its size" in t
+            or "Request payload size exceeds" in t)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code >= 500 and _too_large(exc.detail):
+        return JSONResponse(status_code=413, content={"detail": TOO_LARGE})
+    return await default_http_exception_handler(request, exc)
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    if _too_large(exc):
+        return JSONResponse(status_code=413, content={"detail": TOO_LARGE})
     logger.error("Unhandled exception", exc_info=True)
     return JSONResponse(
         status_code=500,

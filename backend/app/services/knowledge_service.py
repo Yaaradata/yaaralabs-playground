@@ -208,6 +208,8 @@ class KnowledgeService:
             logger.info(f"✅ Text knowledge added: {len(knowledge_ids)} chunks")
             return {"knowledge_ids": knowledge_ids, "chunks_added": len(knowledge_ids)}
             
+        except ValueError:  # e.g. over the existing 10,000-character limit: 400 with the reason
+            raise
         except Exception as e:
             logger.error(f"❌ Failed to add text knowledge: {e}")
             raise Exception(f"Failed to add text knowledge: {str(e)}")
