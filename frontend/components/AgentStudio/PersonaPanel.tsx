@@ -23,6 +23,7 @@ const input =
 interface Fields {
   name: string;
   role: string;
+  description: string;
   tone: string;
   length: string;
   model: string;
@@ -30,10 +31,11 @@ interface Fields {
   similarity: string;
 }
 
-/** AI PERSONA: name, role, tone, length, and the model (saved through the settings endpoint). */
+/** AI PERSONA: name, role, description, tone, length, and the model (saved through the settings endpoint). */
 export default function PersonaPanel({ agentId, stage, onSaved }: { agentId: string; stage: Stage; onSaved?: (name: string) => void }) {
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
+  const [description, setDescription] = useState('');
   const [tone, setTone] = useState('friendly');
   const [length, setLength] = useState('short');
   const [model, setModel] = useState(DEFAULT_MODEL[stage]);
@@ -44,11 +46,12 @@ export default function PersonaPanel({ agentId, stage, onSaved }: { agentId: str
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   // what is saved, to tell "Unsaved changes" and to Discard back to it
   const [saved, setSaved] = useState<Fields | null>(null);
-  const fields: Fields = { name, role, tone, length, model, embedding, similarity };
+  const fields: Fields = { name, role, description, tone, length, model, embedding, similarity };
   const dirty = saved !== null && JSON.stringify(fields) !== JSON.stringify(saved);
   const apply = (f: Fields) => {
     setName(f.name);
     setRole(f.role);
+    setDescription(f.description);
     setTone(f.tone);
     setLength(f.length);
     setModel(f.model);
@@ -64,6 +67,7 @@ export default function PersonaPanel({ agentId, stage, onSaved }: { agentId: str
         const f: Fields = {
           name: p.name || '',
           role: p.role || '',
+          description: p.description || '',
           tone: (p.tone || 'friendly').toLowerCase(),
           length: p.response_length || 'short',
           model: MODEL_OPTIONS.some(([v]) => v === s.model) ? s.model : DEFAULT_MODEL[stage],
@@ -84,7 +88,7 @@ export default function PersonaPanel({ agentId, stage, onSaved }: { agentId: str
     setSaving(true);
     setMsg(null);
     try {
-      await savePersona(agentId, { name, role, tone, response_length: length });
+      await savePersona(agentId, { name, role, description, tone, response_length: length });
       await saveSettings(agentId, { model, embedding_model: embedding, similarity });
       setSaved(fields);
       setMsg({ type: 'success', text: 'Persona saved.' });
@@ -164,6 +168,18 @@ export default function PersonaPanel({ agentId, stage, onSaved }: { agentId: str
               <option key={v} value={v}>{label}</option>
             ))}
           </select>
+        </div>
+        <div>
+          <label htmlFor="as-description" className="block text-sm font-semibold text-fg mb-1">Description</label>
+          <p className="text-sm text-fg/60 mb-2">Who the agent is, what it does, how it behaves and who it serves. Sent to the AI with every message.</p>
+          <textarea
+            id="as-description"
+            className={`${input} resize-y min-h-[9rem] leading-relaxed`}
+            rows={7}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="You are the Custody Service Agent of an Indian custodian…"
+          />
         </div>
       </div>
       <div className="h-8 flex-shrink-0" aria-hidden="true" />

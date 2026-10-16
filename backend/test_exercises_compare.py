@@ -14,7 +14,7 @@ class CompareServiceTests(unittest.TestCase):
         cat = compare.catalog()
         ids = [row["id"] for row in cat["models"]]
         self.assertEqual(ids, [row["id"] for row in tokeniser.MODELS])
-        self.assertEqual(cat["defaults"]["lanes"], ["claude", "gpt", "gemini"])
+        self.assertEqual(cat["defaults"]["lanes"], ["gemini-38-flash", "gpt-6-luna", "claude-haiku-55"])
         self.assertEqual(cat["defaults"]["maxLanes"], 4)
         self.assertIn("sys", cat["sample"])
         self.assertTrue(cat["sample"]["messages"])
@@ -71,14 +71,14 @@ class CompareServiceTests(unittest.TestCase):
                         "text": "Pick a material for a bicycle frame that must be light and stiff.",
                     }
                 ],
-                model="gpt",
+                model="gpt-6-luna",
                 temp=0.3,
                 topp=1.0,
                 cap=300,
             )
         self.assertTrue(result["simulated"])
         self.assertTrue(result["text"])
-        self.assertEqual(result["model"], "gpt")
+        self.assertEqual(result["model"], "openai/gpt-6-luna")  # GPT runs through OpenRouter
         self.assertIn("cost", result)
         self.assertIn("modelId", result)
 

@@ -18,7 +18,7 @@ class PersonaServiceTests(unittest.TestCase):
         self.assertEqual(keys, ["zero", "one", "few"])
         self.assertIn("task", cat["types"])
         self.assertIn("sys", cat["sample"])
-        self.assertEqual(cat["defaults"]["model"], "gemini")
+        self.assertEqual(cat["defaults"]["model"], "gemini-38-flash")
         self.assertIn("tradeoff", cat["explain"])
 
     def test_prices_match_exercise_5(self) -> None:

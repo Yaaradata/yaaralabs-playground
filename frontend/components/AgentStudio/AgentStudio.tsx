@@ -73,17 +73,18 @@ export default function AgentStudio({ agentId, sessionId, stage, backHref }: Age
       </div>
 
       {tab === 'train' ? (
-        <div className="flex-1 min-h-0 flex">
-          <nav className="w-72 flex-shrink-0 border-r border-magenta-brand/20 p-4 overflow-y-auto dark-scrollbar" aria-label="Train">
-            <h2 className="text-sm font-semibold text-fg/60 mb-3 px-2">TRAIN</h2>
-            <ul className="space-y-1.5">
+        // phones: the sections become a scrollable strip above the content; md and up: the sidebar on the left
+        <div className="flex-1 min-h-0 flex flex-col md:flex-row">
+          <nav className="md:w-72 flex-shrink-0 border-b md:border-b-0 md:border-r border-magenta-brand/20 p-2 md:p-4 overflow-x-auto md:overflow-x-visible md:overflow-y-auto dark-scrollbar" aria-label="Train">
+            <h2 className="hidden md:block text-sm font-semibold text-fg/60 mb-3 px-2">TRAIN</h2>
+            <ul className="flex md:flex-col gap-1.5">
               {items.map((it) => (
-                <li key={it.id}>
+                <li key={it.id} className="flex-shrink-0">
                   <button
                     type="button"
                     onClick={() => setSection(it.id)}
                     aria-current={section === it.id ? 'page' : undefined}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
+                    className={`md:w-full flex items-center gap-2 md:gap-3 px-3 py-2 md:py-2.5 rounded-lg text-left whitespace-nowrap md:whitespace-normal transition-colors ${
                       section === it.id ? 'bg-purple-brand/20 text-fg' : 'text-fg/65 hover:bg-raised/40 hover:text-fg'
                     }`}
                   >
@@ -92,7 +93,7 @@ export default function AgentStudio({ agentId, sessionId, stage, backHref }: Age
                     </svg>
                     <span className="min-w-0">
                       <span className="block text-sm font-medium">{it.label}</span>
-                      <span className="block text-xs text-fg/55">{it.hint}</span>
+                      <span className="hidden md:block text-xs text-fg/55">{it.hint}</span>
                     </span>
                   </button>
                 </li>

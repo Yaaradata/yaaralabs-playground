@@ -130,9 +130,13 @@ export default function KnowledgePanel({ agentId, sessionId }: { agentId: string
         <div className="flex items-center gap-2 text-fg/60 text-sm"><Spinner /> Loading…</div>
       ) : sample ? (
         <div className="border border-magenta-brand/20 rounded-xl overflow-hidden">
-          <div className="grid grid-cols-1 md:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-            <div className="p-4 space-y-3 border-b md:border-b-0 md:border-r border-magenta-brand/15">
-              <p className="text-sm text-fg/70">Two public SEBI documents. Tick the ones to use.</p>
+          {/* one fixed height: the list scrolls on its own, the PDF stays beside it */}
+          <div className="grid grid-cols-1 md:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] md:h-[70vh] md:min-h-[26rem]">
+            <div className="flex flex-col min-h-0 border-b md:border-b-0 md:border-r border-magenta-brand/15">
+              <p className="px-4 pt-4 pb-2 text-sm text-fg/70">
+                {library.length} public circulars from SEBI and NSE. Click one to read it, tick the ones to use.
+              </p>
+              <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 space-y-3 max-h-[50vh] md:max-h-none">
               {library.map((d) => (
                 <div
                   key={d.id}
@@ -158,19 +162,24 @@ export default function KnowledgePanel({ agentId, sessionId }: { agentId: string
                   </div>
                 </div>
               ))}
+              </div>
             </div>
-            <div className="h-[60vh] min-h-[22rem]">
-              {previewDoc && (
+            <div className="h-[60vh] min-h-[22rem] md:h-full md:min-h-0">
+              {previewDoc ? (
                 <PdfViewer
-                  target={{ url: libraryPdfUrl(previewDoc.pdf_url), title: previewDoc.short, page: 1 }}
+                  key={previewDoc.id}
+                  target={{ url: libraryPdfUrl(previewDoc.pdf_url), title: previewDoc.title, page: 1, pages: previewDoc.pages }}
                   agentId={agentId}
                   sessionId={sessionId}
                 />
+              ) : (
+                <div className="h-full flex items-center justify-center text-sm text-fg/50 p-6 text-center">Click a document on the left to read it here.</div>
               )}
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 p-3 border-t border-magenta-brand/15 bg-card">
             <SecondaryButton onClick={() => setSample(false)}>Cancel</SecondaryButton>
+            <span className="text-sm text-fg/60">{toAdd.length} selected</span>
             <PrimaryButton onClick={saveSample} busy={Boolean(busy)} disabled={toAdd.length === 0}>Save to knowledge base</PrimaryButton>
           </div>
         </div>
@@ -199,7 +208,7 @@ export default function KnowledgePanel({ agentId, sessionId }: { agentId: string
                   <div className="text-xs text-fg/60">{d.pages} pages · {d.chunks} passages · {d.source === 'library' ? 'Sample data' : 'Uploaded'}</div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <SecondaryButton onClick={() => setViewer({ url: kbPdfUrl(agentId, sessionId, d.doc_id), title: d.title, page: 1, docId: d.doc_id })}>View</SecondaryButton>
+                  <SecondaryButton onClick={() => setViewer({ url: kbPdfUrl(agentId, sessionId, d.doc_id), title: d.title, page: 1, docId: d.doc_id, pages: d.pages })}>View</SecondaryButton>
                   <SecondaryButton onClick={() => togglePassages(d)}>{passagesOf === d.doc_id ? 'Hide the passages' : 'See the passages'}</SecondaryButton>
                   <button type="button" onClick={() => remove(d)} className="px-3 py-2 text-sm text-red-500 hover:underline">Remove</button>
                 </div>

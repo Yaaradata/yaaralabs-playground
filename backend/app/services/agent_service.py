@@ -146,7 +146,10 @@ class AgentService:
                 "tone": spec["tone"],
                 "language": spec["language"],
                 "response_length": "short",  # Default response length
-                "guidelines": "",  # Default empty guidelines
+                # The description is the persona itself: sent to the model in every reply (WHO YOU ARE) and
+                # editable in AI PERSONA. Instructions (Rules & Guardrails) start empty, for the learner's own rules
+                "description": request.agent_description.strip(),
+                "guidelines": "",
                 "created_at": datetime.now(timezone.utc),
                 "updated_at": datetime.now(timezone.utc)
             }
@@ -270,7 +273,11 @@ class AgentService:
                 persona_data['response_length'] = 'short'
             if 'guidelines' not in persona_data:
                 persona_data['guidelines'] = ''
-            
+            # Agents made before the persona kept its description: use the one saved on the agent
+            if 'description' not in persona_data:
+                agent_doc = self.agents_collection.document(agent_id).get()
+                persona_data['description'] = ((agent_doc.to_dict() or {}).get('description') or '') if agent_doc.exists else ''
+
             return Persona(**persona_data)
             
         except Exception as e:
@@ -299,6 +306,8 @@ class AgentService:
                 update_data["language"] = request.language
             if request.response_length is not None:
                 update_data["response_length"] = request.response_length
+            if request.description is not None:
+                update_data["description"] = request.description.strip()
             if request.guidelines is not None:
                 update_data["guidelines"] = request.guidelines
             

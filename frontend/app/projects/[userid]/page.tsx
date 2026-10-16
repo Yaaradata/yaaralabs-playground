@@ -16,7 +16,7 @@ import {
   isMaskedProjectId
 } from '../../../lib/session-utils';
 import { cleanupSessionWithReason, SessionCleanupReason, updateSessionActivity, checkGuestSession, leaveAfterFailedCheck } from '../../../lib/session-cleanup';
-import { DAY2_OPTIONS, TYPE_STAGE, defaultStartFrom, startFromOptions, stageToType, isStage, type Stage } from '../../../components/AgentStudio/stages';
+import { DAY2_OPTIONS, STAGE_DESCRIPTION, TYPE_STAGE, isStageDescription, stageToType, isStage, type Stage } from '../../../components/AgentStudio/stages';
 
 /**
  * Projects Page with Hash-Based Navigation
@@ -107,13 +107,7 @@ function CreateProjectPage() {
   const [projectDay, setProjectDay] = useState<'' | 'day1' | 'day2'>('');
   const [teachableLink, setTeachableLink] = useState('');
   const [agentDescription, setAgentDescription] = useState('');
-  // Day 2 RAG Chatbot / AI Agent: the earlier agent this one starts from ('' = start fresh)
-  const [startFrom, setStartFrom] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
-  // This session's Day 2 agents, for "Start from"
-  const stagedAgents = projects
-    .filter((pr) => pr.agent_id && pr.stage)
-    .map((pr) => ({ agent_id: pr.agent_id as string, stage: pr.stage, name: pr.name, created_at: pr.createdAt }));
   const [currentSection, setCurrentSection] = useState<'projects-list' | 'new-project' | 'project-details' | 'edit-project'>('projects-list');
   const [selectedProject] = useState<Project | null>(null);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -646,14 +640,12 @@ function CreateProjectPage() {
     if (projectName.trim() && projectType) {
       setIsCreatingProject(true);
       
-      // Day 2 agents: a description is needed unless the project starts from an earlier agent
+      // Day 2 agents (L1, L2, L3): every one starts from its description
       const dayTwoStage = projectDay === 'day2' ? TYPE_STAGE[projectType] : undefined;
-      if (dayTwoStage && (dayTwoStage === 'assistant' || !startFrom)) {
-        if (!agentDescription || !agentDescription.trim()) {
-          alert('Describe your agent, or start from an earlier one.');
-          setIsCreatingProject(false);
-          return;
-        }
+      if (dayTwoStage && !agentDescription.trim()) {
+        alert('Describe your agent.');
+        setIsCreatingProject(false);
+        return;
       }
       
       // Validate Teachable Machine URL if required
@@ -708,9 +700,7 @@ function CreateProjectPage() {
               session_id: sessionId,
               stage: dayTwoStage,
               project_name: projectName.trim(),
-              ...(dayTwoStage !== 'assistant' && startFrom
-                ? { copy_from_agent_id: startFrom }
-                : { agent_description: agentDescription.trim() }),
+              agent_description: agentDescription.trim(),
             }),
           });
           
@@ -763,7 +753,6 @@ function CreateProjectPage() {
         setProjectName('');
         setProjectType('');
         setProjectDay('');
-        setStartFrom('');
         setTeachableLink('');
         
         // Reload projects to get updated list
@@ -835,7 +824,6 @@ function CreateProjectPage() {
         setProjectName('');
         setProjectType('');
         setProjectDay('');
-        setStartFrom('');
         setTeachableLink('');
         setEditingProject(null);
         
@@ -960,7 +948,6 @@ function CreateProjectPage() {
     setProjectName('');
     setProjectType('');
     setProjectDay('');
-    setStartFrom('');
     setTeachableLink('');
     setAgentDescription('');
     setEditingProject(null);
@@ -1327,15 +1314,15 @@ function CreateProjectPage() {
                           project.type === 'image-recognition' ? 'Image Recognition' :
                           project.type === 'image-recognition-teachable-machine' ? 'Image Recognition - Teachable Machine' :
                           project.type === 'pose-recognition-teachable-machine' ? 'Pose Recognition - Teachable Machine' :
-                          project.type === 'custom-ai-agent' ? 'Custom AI Agent' :
+                          project.type === 'custom-ai-agent' ? 'L1 · LLM - Custody Service Agent' :
                           project.type === 'rule-based-process' ? 'Rule Based Process' :
                           project.type === 'live-object-detection' ? 'Live Object Detection' :
                           project.type === 'exercises' ? 'Exercises' :
                           project.type === 'confusion-matrix' ? 'Confusion Matrix' :
-                          project.type === 'rag-chatbot' ? 'RAG Chatbot' :
+                          project.type === 'rag-chatbot' ? 'L2 · LLM + RAG - Custody Service Agent' :
                           project.type === 'copilot-ethics' ? 'Copilot: AI Ethics' :
                           project.type === 'copilot-document-ai' ? 'Copilot: Document AI' :
-                          project.type === 'ai-agent' ? 'AI Agent' :
+                          project.type === 'ai-agent' ? 'L3 · Agentic LLM - Custody Service Agent' :
                           project.type === 'live-video-classification' ? 'Live Object Detection' :
                           project.type === 'classification' ? 'Classification' :
                           project.type === 'regression' ? 'Regression' :
@@ -1494,8 +1481,9 @@ function CreateProjectPage() {
                     onChange={(e) => {
                       const type = e.target.value;
                       setProjectType(type);
+                      // L1 / L2 / L3: fill in the ready-made description (kept if the learner wrote their own)
                       const stage = projectDay === 'day2' ? TYPE_STAGE[type] : undefined;
-                      setStartFrom(stage ? defaultStartFrom(stagedAgents, stage) : '');
+                      if (stage && (!agentDescription.trim() || isStageDescription(agentDescription))) setAgentDescription(STAGE_DESCRIPTION[stage]);
                     }}
                     disabled={!projectDay}
                     className="w-full px-4 py-3 bg-canvas border border-magenta-brand/20 rounded-lg text-fg focus:outline-none focus:border-pink-brand focus:ring-1 focus:ring-pink-brand transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1526,48 +1514,19 @@ function CreateProjectPage() {
                   </select>
                 </div>
 
-                {/* Day 2 RAG Chatbot / AI Agent: start from the participant's earlier agent */}
-                {projectDay === 'day2' && (projectType === 'rag-chatbot' || projectType === 'ai-agent') && (
-                  <div>
-                    <label htmlFor="startFrom" className="block text-sm font-medium text-fg mb-2">
-                      Start from
-                    </label>
-                    <select
-                      id="startFrom"
-                      value={startFrom}
-                      onChange={(e) => setStartFrom(e.target.value)}
-                      className="w-full px-4 py-3 bg-canvas border border-magenta-brand/20 rounded-lg text-fg focus:outline-none focus:border-pink-brand focus:ring-1 focus:ring-pink-brand transition-all duration-300"
-                    >
-                      {startFromOptions(stagedAgents, TYPE_STAGE[projectType]).map((a) => (
-                        <option key={a.agent_id} value={a.agent_id} className="bg-canvas text-fg">
-                          {a.name} ({a.stage === 'assistant' ? 'Custom AI Agent' : a.stage === 'rag' ? 'RAG Chatbot' : 'AI Agent'})
-                        </option>
-                      ))}
-                      <option value="" className="bg-canvas text-fg">Start fresh</option>
-                    </select>
-                    <p className="text-xs text-fg/60 mt-1.5">
-                      {startFrom
-                        ? projectType === 'ai-agent'
-                          ? 'Copies the persona, rules, guardrails, actions and knowledge base'
-                          : 'Copies the persona, rules, guardrails and actions'
-                        : 'Starts with a new agent from your description'}
-                    </p>
-                  </div>
-                )}
-
-                {/* Agent Description: Custom AI Agent, or a Day 2 agent that starts fresh */}
-                {(projectType === 'custom-ai-agent' || (projectDay === 'day2' && (projectType === 'rag-chatbot' || projectType === 'ai-agent') && !startFrom)) && (
+                {/* Persona Description: L1 / L2 / L3, filled in for the chosen type and editable */}
+                {(projectType === 'custom-ai-agent' || (projectDay === 'day2' && Boolean(TYPE_STAGE[projectType]))) && (
                   <div>
                     <label htmlFor="agentDescription" className="block text-sm font-medium text-fg mb-2">
-                      Agent Description
+                      Persona Description
                     </label>
                     <textarea
                       id="agentDescription"
                       value={agentDescription}
                       onChange={(e) => setAgentDescription(e.target.value)}
                       placeholder="Describe your AI agent (e.g., Create a customer support assistant that helps users with product inquiries)"
-                      rows={4}
-                      className="w-full h-40 px-4 py-3 bg-canvas border border-magenta-brand/20 rounded-lg text-fg placeholder-fg/40 focus:outline-none focus:border-pink-brand focus:ring-1 focus:ring-pink-brand transition-all duration-300 resize-none"
+                      rows={10}
+                      className="w-full h-64 px-4 py-3 bg-canvas border border-magenta-brand/20 rounded-lg text-fg placeholder-fg/40 focus:outline-none focus:border-pink-brand focus:ring-1 focus:ring-pink-brand transition-all duration-300 resize-none"
                       required
                     />
                   </div>
@@ -1698,10 +1657,10 @@ function CreateProjectPage() {
                       Confusion Matrix
                     </option>
                     <option value="rag-chatbot" className="bg-canvas text-fg">
-                      RAG Chatbot
+                      L2 · LLM + RAG - Custody Service Agent
                     </option>
                     <option value="ai-agent" className="bg-canvas text-fg">
-                      AI Agent
+                      L3 · Agentic LLM - Custody Service Agent
                     </option>
                     <option value="live-object-detection" className="bg-canvas text-fg">
                       Live Object Detection
@@ -1716,7 +1675,7 @@ function CreateProjectPage() {
                       Image Recognition
                     </option>
                     <option value="custom-ai-agent" className="bg-canvas text-fg">
-                      Custom AI Agent
+                      L1 · LLM - Custody Service Agent
                     </option>
                     <option value="copilot-ethics" className="bg-canvas text-fg">
                       Copilot: AI Ethics

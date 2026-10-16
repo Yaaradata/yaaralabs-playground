@@ -314,6 +314,10 @@ async def startup_event():
     logger.info("✅ YaaraLabs Playground API starting")
     logger.info(f"Environment: {settings.node_env}")
     logger.info(f"GCP Project: {settings.google_cloud_project}")
+    # Blocking routes (model calls, Firestore) run on AnyIO's thread pool, 40 threads by default. A model call holds
+    # its thread for the whole reply (and its retry waits), so a full room could queue behind 40: allow more.
+    import anyio.to_thread
+    anyio.to_thread.current_default_thread_limiter().total_tokens = int(os.getenv("THREADPOOL_SIZE", "200"))
     _warm_text_embedder()
     logger.info("🚀 Startup complete (no background workers)")
 

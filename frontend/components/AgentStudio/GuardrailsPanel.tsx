@@ -203,7 +203,7 @@ export default function GuardrailsPanel({ agentId }: { agentId: string }) {
           <LineList lines={instructions} onChange={setInstructions} placeholder="e.g. Reply in under 80 words" label="Instruction" />
         </Block>
 
-        <Block title="Guardrails: what it must never do" subtitle="All off to start. Try the agent first, then turn them on.">
+        <Block title="Guardrails: what it must never do">
           <div className="divide-y divide-magenta-brand/10">
             {SWITCHES.map((s) => (
               <div key={s.key} className="flex items-center justify-between gap-4 py-3 first:pt-0">

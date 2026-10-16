@@ -918,10 +918,10 @@ export default function TrainPage() {
     setDeletingLabels(prev => new Set(prev).add(labelId));
     
     try {
-             // Check if this is a truly local label (never had examples) or an API-known label
-       // Local labels: label-1234567890 (created locally, never submitted to API)
-       // API-known labels: label-1234567890-0.123456 (created from API response)
-       const isLocalLabel = label.id.startsWith('label-') && !label.id.includes('-', 6);
+      // A label that only lives in this browser (added by hand or with "Create standard labels", never
+      // given examples) is deleted here; the server does not know it. Decided by the saved local labels,
+      // not by the id: standard labels get ids like label-<time>-0 and were sent to the API, which 404'd.
+      const isLocalLabel = loadLocalLabels(actualSessionId, actualProjectId).some((l) => l.name === label.name);
       
       if (isLocalLabel) {
         // This is a locally created label that never had examples - delete locally
@@ -951,9 +951,11 @@ export default function TrainPage() {
         
         console.log('🗑️ Delete Empty Label API Response Status:', response.status);
         
-        if (response.ok) {
-          const result = await response.json();
+        // 404: the server has no such label, so it is already gone: remove it here too
+        if (response.ok || response.status === 404) {
+          const result = await response.json().catch(() => null);
           console.log('✅ API-known empty label deleted successfully:', result);
+          setLabels(prevLabels => prevLabels.filter(l => l.id !== labelId));
           
           // Remove this label from local storage since it's been deleted from API
           const currentLocalLabels = loadLocalLabels(actualSessionId, actualProjectId);

@@ -43,7 +43,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 from google.cloud import firestore
 
 from ..config import gcp_clients
-from . import agent_tools
+from . import agent_tools, llm_retry
 from .exercises_vertex_models import catalog_models, normalize_family_id, resolve_vertex_model, vertex_max_output_tokens
 from .openrouter_service import OpenRouterError, is_openrouter_model
 from .openrouter_service import generate_rest as openrouter_generate_rest
@@ -60,6 +60,7 @@ MAX_SOURCE = 20_000
 RESULT_CHARS = 4000
 HISTORY_TURNS = 6
 ANSWER_CAP = 1024
+RETRY_OUTPUT_CAP = 4096  # the second try after a MAX_TOKENS empty reply (generate)
 INR_PER_USD = 88.0
 BASELINE_CHAT = "baseline"
 
@@ -192,6 +193,11 @@ def generate(model: str, system: str, contents: List[Dict[str, Any]], tools: Lis
         if out["text"] or out["calls"] or attempt == 2:
             break
         logger.info("Agent %s gave an empty reply (%s); retrying once", vertex_model, out["finish"])
+        # Cut off by the output cap before any text or tool call (Claude Haiku 5.5 in the tool loop spends 1024 tokens
+        # thinking): the same request would stop at the same place, so the retry gets room to finish
+        if "MAX_TOKENS" in str(out["finish"]).upper():
+            cap = body["generationConfig"]["maxOutputTokens"]
+            body["generationConfig"]["maxOutputTokens"] = max(cap, min(RETRY_OUTPUT_CAP, cap * 4))
     if not out["text"] and not out["calls"]:
         raise AgentModelError(f"{meta.get('name') or vertex_model} returned an empty reply twice ({out['finish'] or 'no reason'}). Try again.")
     usage = out["usage"]
@@ -229,7 +235,8 @@ def stream_text(vertex_model: str, system: str, contents: List[Dict[str, str]], 
         yield from mock_ai.stream_pieces(system, contents)
         return
     try:
-        r = _session().post(url, json=body, timeout=120, stream=True)
+        # 429 / 5xx retried before the answer starts (llm_retry); a started stream is never restarted
+        r = llm_retry.send(lambda: _session().post(url, json=body, timeout=llm_retry.CALL_TIMEOUT, stream=True), f"Stream {vertex_model}")
     except Exception as e:
         raise AgentModelError(f"{vertex_model} didn't answer ({type(e).__name__}). Nothing was made up: try again.")
     with r:
@@ -240,6 +247,8 @@ def stream_text(vertex_model: str, system: str, contents: List[Dict[str, str]], 
                 msg = r.text[:200]
             logger.warning("Stream %s failed %s: %s", vertex_model, r.status_code, msg)
             raise AgentModelError(f"{vertex_model} returned an error ({r.status_code}). Try again. {msg[:160]}")
+        # the stream says no charset, so requests would decode it as Latin-1 ("—" became "â€”"): it is UTF-8
+        r.encoding = "utf-8"
         for raw in r.iter_lines(decode_unicode=True):
             if not raw or not raw.startswith("data:"):
                 continue
@@ -259,7 +268,7 @@ def _post(url: str, body: Dict[str, Any], label: str) -> Dict[str, Any]:
     if mock_ai.enabled():  # load tests (mock_ai.py)
         return mock_ai.rest_out(json.dumps(body.get("systemInstruction")), body.get("contents"))
     try:
-        r = _session().post(url, json=body, timeout=120)
+        r = llm_retry.send(lambda: _session().post(url, json=body, timeout=llm_retry.CALL_TIMEOUT), f"Generate {label}")  # 429 / 5xx retried
     except Exception as e:
         raise AgentModelError(f"{label} didn't answer ({type(e).__name__}). Nothing was made up: try again.")
     if r.status_code != 200:

@@ -18,12 +18,19 @@ import ast
 import csv
 import inspect
 import json
+import logging
 import math
 import operator
+import threading
+import time
 from datetime import date, datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+
+import requests
+
+logger = logging.getLogger(__name__)
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "ai_agent"
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -141,14 +148,84 @@ def validate_isin(isin: str) -> dict:
             "reason": "check digit matches" if ok else f"check digit should be {check}, not {s[11]}"}
 
 
+NOT_IN_NSE = "Not in NSE's equity list. It could be a bond, an MF unit, unlisted, or a typo."
+
+
 def lookup_isin(isin: str) -> dict:
-    """Finds the company for an ISIN in NSE's list of listed equities."""
+    """Finds the company for an ISIN: NSE's list of listed equities first (instant, with face value and listing
+    date), then OpenFIGI for anything else (bonds, mutual funds, new listings, foreign shares). If OpenFIGI can't
+    be reached the answer is the NSE one, so the tool never fails because of it."""
     s = (isin or "").strip().upper()
     row = _equities().get(s)
-    if not row:
-        return {"isin": s, "found": False, "note": "Not in NSE's equity list. It could be a bond, an MF unit, unlisted, or a typo."}
-    return {"isin": s, "found": True, "symbol": row["symbol"], "company": row["company"], "series": row["series"],
-            "face_value": row["face_value"], "listed_on": row["listed_on"], "source": "NSE equity list (EQUITY_L.csv)"}
+    if row:
+        return {"isin": s, "found": True, "symbol": row["symbol"], "company": row["company"], "series": row["series"],
+                "face_value": row["face_value"], "listed_on": row["listed_on"], "source": "NSE equity list (EQUITY_L.csv)"}
+    if not validate_isin(s)["valid"]:  # a typo: no point asking anyone
+        return {"isin": s, "found": False, "note": NOT_IN_NSE + " Its check digit is also wrong, so it is not a real ISIN."}
+    figi = openfigi_lookup(s)
+    if figi is None:
+        return {"isin": s, "found": False, "note": NOT_IN_NSE + " (OpenFIGI could not be reached to look further.)"}
+    if not figi.get("found"):
+        return {"isin": s, "found": False, "note": NOT_IN_NSE + " OpenFIGI has no match either."}
+    return {"isin": s, "found": True, "company": figi["company"], "ticker": figi["ticker"], "exchange": figi["exchange"],
+            "security_type": figi["security_type"], "market_sector": figi["market_sector"], "figi": figi["figi"],
+            "source": "OpenFIGI (Bloomberg), not NSE's equity list", "note": "Not a listed NSE equity: found on OpenFIGI."}
+
+
+# ── OpenFIGI (https://www.openfigi.com/api) ─────────────────────
+
+OPENFIGI_URL = "https://api.openfigi.com/v3/mapping"
+OPENFIGI_TIMEOUT = 6           # seconds per request
+OPENFIGI_TTL_FOUND = 24 * 3600  # an ISIN's name doesn't change during a class
+OPENFIGI_TTL_MISS = 3600
+_figi_cache: Dict[str, tuple] = {}
+_figi_lock = threading.Lock()
+
+
+def openfigi_lookup(isin: str) -> Optional[dict]:
+    """OpenFIGI's best match for an ISIN: {"found": True, company, ticker, ...} or {"found": False}.
+    None when OpenFIGI can't be reached (timeout, error, rate limit after retries). Answers are cached, so a room
+    asking about the same ISIN makes one request."""
+    now = time.time()
+    with _figi_lock:
+        hit = _figi_cache.get(isin)
+        if hit and hit[0] > now:
+            return hit[1]
+    from . import llm_retry, mock_ai
+    from ..config import settings
+
+    if mock_ai.enabled():  # load tests never call outside services
+        return None
+    headers = {"Content-Type": "application/json"}
+    key = (settings.openfigi_api_key or "").strip()
+    if key:
+        headers["X-OPENFIGI-APIKEY"] = key
+    try:
+        r = llm_retry.send(lambda: requests.post(OPENFIGI_URL, json=[{"idType": "ID_ISIN", "idValue": isin}],
+                                                 headers=headers, timeout=OPENFIGI_TIMEOUT),
+                           f"OpenFIGI {isin}", attempts=3, budget=10)
+    except requests.RequestException as e:
+        logger.warning("OpenFIGI %s failed: %s", isin, type(e).__name__)
+        return None
+    if r.status_code != 200:
+        logger.warning("OpenFIGI %s failed: HTTP %s %s", isin, r.status_code, r.text[:200])
+        return None
+    try:
+        item = (r.json() or [{}])[0]
+    except (ValueError, IndexError, TypeError):
+        return None
+    data = item.get("data") or []
+    if not data:
+        out: dict = {"found": False}
+    else:
+        # one row per exchange (Apple has hundreds): prefer the composite listing, else the first
+        best = next((d for d in data if d.get("compositeFIGI") and d.get("compositeFIGI") == d.get("figi")), data[0])
+        out = {"found": True, "company": best.get("name") or "", "ticker": best.get("ticker") or "",
+               "exchange": best.get("exchCode") or "", "security_type": best.get("securityType2") or best.get("securityType") or "",
+               "market_sector": best.get("marketSector") or "", "figi": best.get("figi") or "", "listings": len(data)}
+    with _figi_lock:
+        _figi_cache[isin] = (now + (OPENFIGI_TTL_FOUND if out["found"] else OPENFIGI_TTL_MISS), out)
+    return out
 
 
 PAN_HOLDER = {"P": "Individual", "C": "Company", "H": "Hindu Undivided Family", "F": "Firm / LLP", "A": "Association of Persons",
@@ -294,8 +371,10 @@ TOOLS: List[Dict[str, Any]] = [
      "without": "Says an ISIN “looks valid”, or silently “corrects” a typo.",
      "schema": _schema({"isin": {"type": "string", "description": "the 12-character ISIN, e.g. INE002A01018"}}, ["isin"]),
      "example": {"isin": "INE002A01019"}},
-    {"name": "lookup_isin", "fn": lookup_isin, "group": "reference", "title": "ISIN → company (NSE list)",
-     "desc": "Looks up an ISIN in NSE's list of listed equities and returns the company, symbol, face value and listing date.",
+    {"name": "lookup_isin", "fn": lookup_isin, "group": "reference", "title": "ISIN → company (NSE list, then OpenFIGI)",
+     "desc": "Looks up an ISIN in NSE's list of listed equities and returns the company, symbol, face value and listing date. "
+             "If it isn't a listed NSE equity (a bond, mutual fund, new listing or foreign share), it asks OpenFIGI and "
+             "returns the name, ticker, exchange and type.",
      "why": "Which company an ISIN belongs to is a fact to look up, not to remember. The model's memory is old and incomplete.",
      "without": "Names a plausible company, sometimes the wrong one.",
      "schema": _schema({"isin": {"type": "string", "description": "the 12-character ISIN"}}, ["isin"]),

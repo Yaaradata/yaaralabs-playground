@@ -47,7 +47,7 @@ test('stage → project type, legacy agents stay Custom AI Agents', () => {
 });
 
 test('create screen: Day 2 options in order, each maps to a stage', () => {
-  assert.deepEqual(DAY2_OPTIONS.map(([, label]) => label), ['Custom AI Agent', 'RAG Chatbot', 'AI Agent']);
+  assert.deepEqual(DAY2_OPTIONS.map(([, label]) => label), ['L1 · LLM - Custody Service Agent', 'L2 · LLM + RAG - Custody Service Agent', 'L3 · Agentic LLM - Custody Service Agent']);
   assert.deepEqual(DAY2_OPTIONS.map(([type]) => TYPE_STAGE[type]), ['assistant', 'rag', 'agent']);
 });
 

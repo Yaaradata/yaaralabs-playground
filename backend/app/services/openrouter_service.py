@@ -25,6 +25,7 @@ from __future__ import annotations
 import json
 import re
 import logging
+import time
 import uuid
 from collections import defaultdict, deque
 from types import SimpleNamespace
@@ -32,10 +33,12 @@ from typing import Any, Deque, Dict, Iterator, List, Optional, Tuple
 
 import requests
 
+from . import llm_retry
+
 logger = logging.getLogger(__name__)
 
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
-TIMEOUT = 120
+TIMEOUT = (10.0, 90.0)  # connect, read: a stuck call is dropped and retried (llm_retry); web search answers take ~25 s
 # OpenRouter asks apps to identify themselves (shown on openrouter.ai)
 APP_HEADERS = {"HTTP-Referer": "https://yaaralabs.ai", "X-Title": "YaaraLabs Playground"}
 
@@ -234,9 +237,11 @@ def _body(model: str, messages: List[Dict[str, Any]], config: Any) -> Dict[str, 
 
 
 def _post(body: Dict[str, Any], stream: bool = False) -> requests.Response:
+    headers = {"Authorization": f"Bearer {_api_key()}", **APP_HEADERS}
     try:
-        r = requests.post(API_URL, json=body, stream=stream, timeout=TIMEOUT,
-                          headers={"Authorization": f"Bearer {_api_key()}", **APP_HEADERS})
+        # 429 rate limits and 5xx (Anthropic's 529 "overloaded" too) retried with backoff before giving up
+        r = llm_retry.send(lambda: requests.post(API_URL, json=body, stream=stream, timeout=TIMEOUT, headers=headers),
+                           f"OpenRouter {body['model']}")
     except requests.RequestException as e:
         raise OpenRouterError(f"{body['model']} didn't answer ({type(e).__name__}). Nothing was made up: try again.")
     if r.status_code != 200:
@@ -250,12 +255,31 @@ def _post(body: Dict[str, Any], stream: bool = False) -> requests.Response:
     return r
 
 
+def _body_error_code(err: Any) -> Optional[int]:
+    try:
+        return int(err.get("code")) if isinstance(err, dict) else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _complete(body: Dict[str, Any]) -> Dict[str, Any]:
+    """One non-streamed completion's JSON. OpenRouter can answer 200 with the provider's error in the body
+    (e.g. {"error": {"code": 429}} when the upstream model is rate limited): those are retried too."""
+    def once() -> Dict[str, Any]:
+        data = _post(body).json()
+        err = data.get("error")
+        if err:
+            e = OpenRouterError(f"{body['model']} returned an error. {str(err)[:200]}")
+            e.code = _body_error_code(err)  # type: ignore[attr-defined]
+            raise e
+        return data
+    return llm_retry.call(once, f"OpenRouter {body['model']}",
+                          temporary=lambda e: getattr(e, "code", None) in llm_retry.RETRY_STATUS)
+
+
 def chat(model: str, messages: List[Dict[str, Any]], **params: Any) -> Dict[str, Any]:
     """One chat completion: the raw OpenRouter JSON."""
-    data = _post({"model": model, "messages": messages, **{k: v for k, v in params.items() if v is not None}}).json()
-    if data.get("error"):
-        raise OpenRouterError(f"{model} returned an error. {str(data['error'])[:200]}")
-    return data
+    return _complete({"model": model, "messages": messages, **{k: v for k, v in params.items() if v is not None}})
 
 
 # ── genai-shaped results ───────────────────────────────────────
@@ -337,10 +361,7 @@ def _response(data: Dict[str, Any], model: str) -> SimpleNamespace:
 def generate_content(model: str, contents: Any, config: Any = None) -> SimpleNamespace:
     """client.models.generate_content for an OpenRouter model."""
     body = _body(model, to_messages(_get(config, "system_instruction") if config is not None else None, contents), config)
-    data = _post(body).json()
-    if data.get("error"):
-        raise OpenRouterError(f"{model} returned an error. {str(data['error'])[:200]}")
-    return _response(data, model)
+    return _response(_complete(body), model)
 
 
 def generate_content_stream(model: str, contents: Any, config: Any = None) -> Iterator[SimpleNamespace]:
@@ -349,9 +370,34 @@ def generate_content_stream(model: str, contents: Any, config: Any = None) -> It
     body.pop("tools", None)  # streamed answers are plain text
     body.pop("tool_choice", None)
     body["stream"] = True
+    # OpenRouter can send the provider's error inside a 200 stream ({"error": {"code": 502, "message": "Network
+    # connection lost."}}, or a 429). Before any text has reached the learner that is retried like any other
+    # temporary failure (llm_retry backoff and budget); once text has been sent it is raised (never shown twice).
+    t0 = time.monotonic()
+    for attempt in range(1, llm_retry.ATTEMPTS + 1):
+        sent = False
+        try:
+            for chunk in _stream_once(body, model):
+                sent = True
+                yield chunk
+            return
+        except OpenRouterError as e:
+            pause = llm_retry.wait_for(attempt)
+            if (sent or getattr(e, "code", None) not in llm_retry.RETRY_STATUS or attempt == llm_retry.ATTEMPTS
+                    or time.monotonic() - t0 + pause >= llm_retry.BUDGET):
+                raise
+            logger.warning("OpenRouter %s: in-stream error %s, retry %d/%d in %.1fs", model, e.code, attempt,
+                           llm_retry.ATTEMPTS - 1, pause)
+            time.sleep(pause)
+
+
+def _stream_once(body: Dict[str, Any], model: str) -> Iterator[SimpleNamespace]:
+    """One streamed completion; an error event raises OpenRouterError with its code (.code)."""
     r = _post(body, stream=True)
     held = ""  # text that may hold the start of a citation marker split across chunks
     with r:
+        # the stream says no charset, so requests would decode it as Latin-1 ("—" became "â€”"): it is UTF-8
+        r.encoding = "utf-8"
         for raw in r.iter_lines(decode_unicode=True):
             if not raw or not raw.startswith("data:"):
                 continue  # keep-alive comments (": OPENROUTER PROCESSING")
@@ -363,7 +409,9 @@ def generate_content_stream(model: str, contents: Any, config: Any = None) -> It
             except ValueError:
                 continue
             if data.get("error"):
-                raise OpenRouterError(f"{model} returned an error. {str(data['error'])[:200]}")
+                e = OpenRouterError(f"{model} returned an error. {str(data['error'])[:200]}")
+                e.code = _body_error_code(data["error"])  # type: ignore[attr-defined]
+                raise e
             delta = held + (((data.get("choices") or [{}])[0].get("delta") or {}).get("content") or "")
             open_at = delta.rfind("\ue200")
             if open_at > -1 and "\ue201" not in delta[open_at:]:

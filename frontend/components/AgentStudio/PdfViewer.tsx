@@ -34,7 +34,9 @@ export default function PdfViewer({ target, agentId, sessionId, height = '100%' 
       <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-magenta-brand/15 bg-card">
         <div className="min-w-0">
           <div className="text-sm font-semibold text-fg truncate">{target.title}</div>
-          <div className="text-xs text-fg/60">Page {target.page}</div>
+          <div className="text-xs text-fg/60">
+            {target.page > 1 || target.passage ? `Opened at page ${target.page}` : target.pages ? `${target.pages} page${target.pages === 1 ? '' : 's'} · scroll to read` : 'Scroll to read'}
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {target.docId && (
@@ -62,7 +64,8 @@ export default function PdfViewer({ target, agentId, sessionId, height = '100%' 
       ) : (
         <iframe
           key={`${target.url}#${target.page}`}
-          src={`${target.url}#page=${target.page}&view=FitH`}
+          // fit to the panel's width, without the browser's PDF toolbar and sidebar ("Open ↗" has them)
+          src={`${target.url}#page=${target.page}&view=FitH&toolbar=0&navpanes=0`}
           title={`${target.title}, page ${target.page}`}
           className="flex-1 w-full bg-white"
         />

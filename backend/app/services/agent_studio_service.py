@@ -25,7 +25,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence
 
-from . import agent_guardrails, agent_stages, agent_tools, rag_text
+from . import agent_guardrails, agent_stages, agent_tools, llm_retry, rag_text
 from .chat_service import RESPONSE_LENGTH_INSTRUCTIONS, TONE_INSTRUCTIONS, rule_constraints_block
 
 logger = logging.getLogger(__name__)
@@ -41,6 +41,9 @@ KB_K = 4
 KB_RELEVANT = 0.62
 MAX_ROUNDS = 5
 MAX_TOOLS = 12
+# A web search takes up to WEB_TIMEOUT; models sometimes search 4-5 times for one question (a GPT turn took 107 s).
+# After this many in one turn the tool answers "limit reached" at once and the model writes its answer.
+WEB_MAX_PER_TURN = 2
 RESULT_CHARS = 4000
 WEB_MODEL = "gemini-2.5-flash"
 # Google Search grounding, tried in this order: a model whose quota is used up (429) does not leave the agent
@@ -179,6 +182,10 @@ def system_instruction(persona: Any, guardrails: Any, rule_constraints: Optional
            f"TONE: {tone} - {TONE_INSTRUCTIONS.get(tone, TONE_INSTRUCTIONS['friendly'])}",
            f"RESPONSE LENGTH: {length} - {RESPONSE_LENGTH_INSTRUCTIONS.get(length, RESPONSE_LENGTH_INSTRUCTIONS['short'])}",
            f"LANGUAGE: {_get(persona, 'language') or 'English'}"]
+    # the description from the create screen (AI PERSONA): who the agent is, what it does, how it behaves
+    description = (_get(persona, "description") or "").strip()
+    if description:
+        out += ["", "=== WHO YOU ARE ===", description]
     guidelines = (_get(persona, "guidelines") or "").strip()
     if guidelines:
         out += ["", "=== INSTRUCTIONS ===", guidelines]
@@ -255,10 +262,10 @@ def genai_generate(system: str, contents: List[Dict[str, str]], model: str) -> D
         cfg["thinking_config"] = tc
     t0 = time.perf_counter()
     try:
-        resp = vertex_chat_service().client.models.generate_content(
+        resp = llm_retry.call(lambda: vertex_chat_service().client.models.generate_content(  # 429 / 5xx retried
             model=vertex_model,
             contents=[types.Content(role=m["role"], parts=[types.Part.from_text(text=m["text"])]) for m in contents],
-            config=types.GenerateContentConfig(**cfg))
+            config=types.GenerateContentConfig(**cfg)), f"Studio generate {vertex_model}")
     except Exception as e:
         logger.warning("Studio generate failed (%s): %s", vertex_model, e)
         raise StudioModelError(f"{vertex_model} didn't answer ({type(e).__name__}). Nothing was made up: try again.")
@@ -385,7 +392,9 @@ def google_web_search(query: str) -> Dict[str, Any]:
         url = (f"https://aiplatform.googleapis.com/v1/projects/{clients.project_id}/locations/global/publishers/google/"
                f"models/{name}:generateContent")
         try:
-            r = _session().post(url, json=body, timeout=WEB_TIMEOUT)
+            # a short-lived 429 / 5xx is retried here before the model is skipped (and paused) for everyone
+            r = llm_retry.send(lambda: _session().post(url, json=body, timeout=WEB_TIMEOUT), f"Web search {name}",
+                               attempts=2, budget=WEB_TIMEOUT)
         except Exception as e:  # e.g. the timeout: try the next model
             error = type(e).__name__
             logger.warning("Web search with %s failed: %s", name, error)
@@ -686,7 +695,7 @@ class AgentStudioService:
         steps: List[Dict[str, Any]] = []
         passages: List[Dict[str, Any]] = []
         web_sources: List[Dict[str, str]] = []
-        rounds = calls_made = 0
+        rounds = calls_made = web_calls = 0
         answer = ""
         trace["llm_used"] = True
         while True:
@@ -724,7 +733,12 @@ class AgentStudioService:
                     result = {"passages": agent_kb_format(hits) or "The documents don't cover this. Use another tool or your own knowledge.",
                               "how_to_cite": "Cite a passage you use by its number in square brackets, like [2]."}
                     step.update(group="lookup", passages=[h["n"] for h in hits], query=str(args.get("query") or ""))
+                elif name == "web_search" and web_calls >= WEB_MAX_PER_TURN:
+                    result = {"note": f"Web search limit for this question reached ({WEB_MAX_PER_TURN}). "
+                                      "Answer now from the results you already have, and cite their sources."}
+                    step.update(group="lookup", query=str(args.get("query") or ""), sources=[], ok=False)
                 elif name == "web_search":
+                    web_calls += 1
                     query = str(args.get("query") or message)
                     result = self._web(query) if self._web else model_web_search(model, query)
                     for s in result.get("sources") or []:

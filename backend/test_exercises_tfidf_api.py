@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from app.api.exercises import get_project_service, router, validate_session
 from app.models import ProjectType
+from app.services import exercises_tfidf_service as tfidf_service
 from app.services.exercises_tfidf_service import drop_model, sample_payload
 
 
@@ -54,6 +55,9 @@ async def fake_session():
 class TfidfApiTests(unittest.TestCase):
     def setUp(self) -> None:
         drop_model(SESSION_ID, PROJECT_ID)
+        # every test trains the same project: forget the last training time so the 3 s "train again" guard
+        # (a real classroom protection) doesn't refuse the next test's training
+        tfidf_service._LAST_TRAIN.pop(tfidf_service._model_key(SESSION_ID, PROJECT_ID), None)
         app = FastAPI()
         app.include_router(router)
         app.dependency_overrides[validate_session] = fake_session

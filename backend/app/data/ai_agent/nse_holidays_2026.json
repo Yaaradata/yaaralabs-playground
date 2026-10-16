@@ -1,7 +1,7 @@
 {
  "year": 2026,
  "source": "https://www.nseindia.com/resources/exchange-communication-holidays",
- "fetched": "2026-10-11",
+ "fetched": "2026-10-17",
  "note": "Capital-market (CM) segment, weekdays only. Trading holidays: no trading. Settlement holidays: the clearing corporation does not settle (bank holidays), so a T+1 trade the day before settles one business day later.",
  "trading": [
   {

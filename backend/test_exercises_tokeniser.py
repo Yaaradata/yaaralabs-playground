@@ -13,12 +13,12 @@ class TokeniserServiceTests(unittest.TestCase):
         ids = [row["id"] for row in cat["models"]]
         self.assertEqual(
             ids,
-            ["gpt", "claude", "gemini", "grok", "deepseek", "phi", "qwen"],
+            ["gemini-38-flash", "gpt-6-luna", "claude-haiku-55"],
         )
         self.assertIn("en", {row["id"] for row in cat["langs"]})
         self.assertIn("ta", {row["id"] for row in cat["langs"]})
         self.assertEqual(cat["lengths"], [50, 100, 150])
-        self.assertEqual(cat["defaults"]["models"], ["gpt", "claude", "deepseek"])
+        self.assertEqual(cat["defaults"]["models"], ["gemini-38-flash", "gpt-6-luna", "claude-haiku-55"])
 
     def test_english_cheaper_than_tamil_on_gpt2(self) -> None:
         en = tokeniser.tokenize("gpt2", tokeniser.REF["en"])["count"]

@@ -53,7 +53,10 @@ class Settings(BaseSettings):
     # OpenRouter: the OpenAI and Anthropic chat models in the model pickers (services/openrouter_service.py).
     # Gemini models keep going to Vertex AI.
     openrouter_api_key: Optional[str] = Field(default=None, env="OPENROUTER_API_KEY")
-    
+    # OpenFIGI: the ISIN lookup tool asks it for ISINs that are not in NSE's equity list (services/agent_tools.py).
+    # Optional: without a key it still works, at OpenFIGI's lower anonymous rate limit.
+    openfigi_api_key: Optional[str] = Field(default=None, env="OPENFIGI_API_KEY")
+
     class Config:
         env_file = ".env"
 

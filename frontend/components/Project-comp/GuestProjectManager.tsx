@@ -359,10 +359,10 @@ const GuestProjectManager: React.FC<GuestProjectManagerProps> = ({ sessionId }) 
                             <option value="rule-based-process">Rule Based Process</option>
                             <option value="text-recognition">Text Recognition</option>
                             <option value="confusion-matrix">Confusion Matrix</option>
-                            <option value="rag-chatbot">RAG Chatbot</option>
+                            <option value="rag-chatbot">L2 · LLM + RAG - Custody Service Agent</option>
                             <option value="copilot-ethics">Copilot: AI Ethics</option>
                             <option value="copilot-document-ai">Copilot: Document AI</option>
-                            <option value="ai-agent">AI Agent</option>
+                            <option value="ai-agent">L3 · Agentic LLM - Custody Service Agent</option>
                             <option value="live-object-detection">Live Object Detection</option>
                             <option value="image-recognition">Image Recognition</option>
                             <option value="image-recognition-teachable-machine">Image Recognition - Teachable Machine</option>
@@ -497,10 +497,11 @@ const GuestProjectManager: React.FC<GuestProjectManagerProps> = ({ sessionId }) 
                                          project.type === 'live-video-classification' ? 'Live Object Detection' :
                                          project.type === 'exercises' ? 'Exercises' :
                                          project.type === 'confusion-matrix' ? 'Confusion Matrix' :
-                                         project.type === 'rag-chatbot' ? 'RAG Chatbot' :
+                                         project.type === 'custom-ai-agent' ? 'L1 · LLM - Custody Service Agent' :
+                                         project.type === 'rag-chatbot' ? 'L2 · LLM + RAG - Custody Service Agent' :
                                          project.type === 'copilot-ethics' ? 'Copilot: AI Ethics' :
                                          project.type === 'copilot-document-ai' ? 'Copilot: Document AI' :
-                                         project.type === 'ai-agent' ? 'AI Agent' :
+                                         project.type === 'ai-agent' ? 'L3 · Agentic LLM - Custody Service Agent' :
                                          project.type || 'Unknown'}
                                     </span>
                                     <span className={`text-xs px-2 py-1 rounded ${

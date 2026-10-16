@@ -5,6 +5,10 @@ Download the PDFs into RAW_DIR first (public SEBI circulars):
                                       (page: https://www.sebi.gov.in/legal/circulars/mar-2026/guidelines-for-custodians_100118.html)
   sebi_t0_beta_2024.pdf               https://www.sebi.gov.in/sebi_data/attachdocs/mar-2024/1711019839112.pdf
                                       (page: https://www.sebi.gov.in/legal/circulars/mar-2024/introduction-of-beta-version-of-t-0-rolling-settlement-cycle-on-optional-basis-in-addition-to-the-existing-t-1-settlement-cycle-in-equity-cash-markets_82455.html)
+  sebi_t0_enhancement_2024.pdf        https://www.sebi.gov.in/sebi_data/attachdocs/dec-2024/1733829354031.pdf
+                                      (page: https://www.sebi.gov.in/legal/circulars/dec-2024/enhancement-in-the-scope-of-optional-t-0-rolling-settlement-cycle-in-addition-to-the-existing-t-1-settlement-cycle-in-equity-cash-markets_89443.html)
+  nse_cmpt_66135_2025.pdf             https://nsearchives.nseindia.com/content/circulars/CMPT66135.pdf
+                                      (NSE blocks plain downloads: send a browser User-Agent and Referer: https://www.nseindia.com/)
 
 Each JSON holds the document's metadata and its text page by page, extracted the same way an
 upload is (rag_text.extract_pdf), so the library and learners' own files go through one pipeline.
@@ -55,6 +59,38 @@ DOCS = [
         "pdfUrl": "https://www.sebi.gov.in/sebi_data/attachdocs/mar-2024/1711019839112.pdf",
         "licence": "Public regulatory circular, published by SEBI",
         "summary": "Same-day (T+0) settlement as an optional beta next to T+1: 25 scrips, trading hours, price band, netting.",
+        "recommended": True,
+    },
+    {
+        "id": "sebi-t0-enhancement-2024",
+        "file": "sebi_t0_enhancement_2024.pdf",
+        "title": "Enhancement in the scope of optional T+0 rolling settlement cycle",
+        "short": "T+0 enhancement circular",
+        "issuer": "Securities and Exchange Board of India (SEBI)",
+        "reference": "SEBI/HO/MRD/MRD-PoD-3/P/CIR/2024/172",
+        "date": "2024-12-10",
+        "effective": "2025-01-31",
+        "sourceUrl": "https://www.sebi.gov.in/legal/circulars/dec-2024/enhancement-in-the-scope-of-optional-t-0-rolling-settlement-cycle-in-addition-to-the-existing-t-1-settlement-cycle-in-equity-cash-markets_89443.html",
+        "pdfUrl": "https://www.sebi.gov.in/sebi_data/attachdocs/dec-2024/1733829354031.pdf",
+        "licence": "Public regulatory circular, published by SEBI",
+        "summary": "T+0 widened to the top 500 scrips, all brokers allowed, a T+0 block deal window, and custodians "
+                   "to put systems in place so institutional investors can take part (from 1 May 2025).",
+        "recommended": True,
+    },
+    {
+        "id": "nse-clearing-t0-custodians-2025",
+        "file": "nse_cmpt_66135_2025.pdf",
+        "title": "Additional clarification on custodian transactions in T+0 settlement cycle",
+        "short": "NSE Clearing T+0 custodian circular",
+        "issuer": "NSE Clearing Limited",
+        "reference": "NCL/CMPT/66135",
+        "date": "2025-01-15",
+        "effective": "2025-02-10",
+        "sourceUrl": "https://www.nseindia.com/static/products-services/t0-settlement-cycle",
+        "pdfUrl": "https://nsearchives.nseindia.com/content/circulars/CMPT66135.pdf",
+        "licence": "Public circular, published by NSE Clearing",
+        "summary": "How custodians settle T+0 trades: family account CP codes, trade confirmation by 2:45 PM, "
+                   "securities pay-in by 3:30 PM, funds pay-in by 4:00 PM. Check it is still current.",
         "recommended": True,
     },
 ]

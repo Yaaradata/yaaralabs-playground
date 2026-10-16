@@ -16,13 +16,13 @@ class DialsServiceTests(unittest.TestCase):
         self.assertEqual(ids, [row["id"] for row in tokeniser.MODELS])
         self.assertEqual(
             ids,
-            ["gpt", "claude", "gemini", "grok", "deepseek", "phi", "qwen"],
+            ["gemini-38-flash", "gpt-6-luna", "claude-haiku-55"],
         )
         keys = [row["key"] for row in cat["dials"]]
         self.assertEqual(keys, ["temp", "topk", "topp", "cap"])
         self.assertIn("temp", cat["presets"])
         self.assertEqual(cat["defaults"]["view"], "temp")
-        self.assertEqual(cat["defaults"]["model"], "gemini")
+        self.assertEqual(cat["defaults"]["model"], "gemini-38-flash")
         self.assertIn("factual", cat["explain"])
 
     def test_prices_match_exercise_5(self) -> None:
@@ -74,31 +74,34 @@ class DialsServiceTests(unittest.TestCase):
         with patch.dict("sys.modules", {"google.genai": None, "google.genai.types": None}):
             result = dials.generate_once(
                 prompt="Say hello in one short line.",
-                model="gpt",
+                model="gpt-6-luna",
                 dials={"temp": 0.2, "topk": 0, "topp": 1, "cap": 40},
                 index=0,
             )
         self.assertTrue(result["simulated"])
         self.assertTrue(result["text"])
         self.assertIn("cost", result)
-        self.assertEqual(result["model"], "gpt")
+        self.assertEqual(result["model"], "openai/gpt-6-luna")  # GPT runs through OpenRouter
         self.assertEqual(result["dials"]["temp"], 0.2)
 
     def test_cost_scales_with_tokens(self) -> None:
-        cheap = dials.cost_of(100, 100, "gemini")
-        dear = dials.cost_of(100, 100, "claude")
-        self.assertGreater(dear, cheap)
+        # cost follows the price table (exercises_vertex_models) and doubles with twice the tokens
+        for model in ("gemini-38-flash", "gpt-6-luna", "claude-haiku-55"):
+            one = dials.cost_of(100, 100, model)
+            self.assertGreater(one, 0)
+            self.assertAlmostEqual(dials.cost_of(200, 200, model), 2 * one)
+        self.assertGreater(dials.cost_of(100, 100, "gemini-38-flash"), dials.cost_of(100, 100, "gpt-6-luna"))
 
     def test_topk_disabled_for_gpt(self) -> None:
         with patch.dict("sys.modules", {"google.genai": None, "google.genai.types": None}):
             result = dials.generate_once(
                 prompt="Short note.",
-                model="gpt",
+                model="gpt-6-luna",
                 dials={"temp": 0.7, "topk": 20, "topp": 1, "cap": 40},
                 index=0,
             )
         self.assertEqual(result["dials"]["topk"], 0)
-        self.assertEqual(result["model"], "gpt")
+        self.assertEqual(result["model"], "openai/gpt-6-luna")  # GPT runs through OpenRouter
 
 
 if __name__ == "__main__":

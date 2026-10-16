@@ -63,7 +63,8 @@ gcloud run deploy $SERVICE_NAME `
     --allow-unauthenticated `
     --service-account="yl-backend@${PROJECT_ID}.iam.gserviceaccount.com" `
     --set-env-vars="^@^$envVars" `
-    --set-secrets="GOOGLE_API_KEY=yaaralabs-google-api-key:latest,GOOGLE_CSE_ID=yaaralabs-google-cse-id:latest" `
+    --set-secrets="GOOGLE_API_KEY=yaaralabs-google-api-key:latest,GOOGLE_CSE_ID=yaaralabs-google-cse-id:latest,OPENROUTER_API_KEY=yaaralabs-openrouter-api-key:latest,OPENFIGI_API_KEY=yaaralabs-openfigi-api-key:latest" `
+    --min-instances=1 `
     --memory=8Gi `
     --cpu=4 `
     --concurrency=320 `

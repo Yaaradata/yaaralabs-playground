@@ -7,16 +7,16 @@ import type { ReactNode } from 'react';
 export function PanelHeader({ icon, title, subtitle, action }: { icon: string; title: string; subtitle: string; action?: ReactNode }) {
   return (
     // scrolls with the panel; the Save button lives in the SaveBar at the bottom
-    <div className="-mx-6 px-6 py-5 mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-magenta-brand/15">
+    <div className="-mx-6 px-6 py-3 mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-magenta-brand/15">
       <div className="flex items-center gap-3 min-w-0">
-        <span className="w-11 h-11 rounded-xl bg-purple-brand/15 flex items-center justify-center flex-shrink-0" aria-hidden="true">
-          <svg className="w-5 h-5 text-purple-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <span className="w-9 h-9 rounded-lg bg-purple-brand/15 flex items-center justify-center flex-shrink-0" aria-hidden="true">
+          <svg className="w-[18px] h-[18px] text-purple-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
           </svg>
         </span>
         <div className="min-w-0">
-          <h2 className="text-2xl font-bold text-fg">{title}</h2>
-          <p className="text-sm text-fg/60">{subtitle}</p>
+          <h2 className="text-lg font-bold leading-tight text-fg">{title}</h2>
+          <p className="text-xs text-fg/60">{subtitle}</p>
         </div>
       </div>
       {action && <div className="flex flex-wrap items-center gap-2">{action}</div>}

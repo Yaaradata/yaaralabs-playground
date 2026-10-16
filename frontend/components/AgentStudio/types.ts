@@ -7,6 +7,8 @@ export interface Persona {
   tone: string;
   language: string;
   response_length: string;
+  /** Who the agent is and what it does (from the create screen); sent to the model in every reply. */
+  description?: string;
   guidelines: string;
   created_at?: string;
   updated_at?: string;
@@ -180,4 +182,6 @@ export interface PdfTarget {
   page: number;
   passage?: Passage | null;
   docId?: string;
+  /** Page count, shown in the header when the PDF opens at its start. */
+  pages?: number;
 }

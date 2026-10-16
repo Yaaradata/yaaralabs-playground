@@ -124,7 +124,7 @@ export const ROUTES: Route[] = [
 
   /* ── Day 2: Agent Studio ── */
   ...(['assistant', 'rag', 'agent'] as const).flatMap((key) => {
-    const name = { assistant: 'Custom AI Agent', rag: 'RAG Chatbot', agent: 'AI Agent' }[key];
+    const name = { assistant: 'L1 · LLM - Custody Service Agent', rag: 'L2 · LLM + RAG - Custody Service Agent', agent: 'L3 · Agentic LLM - Custody Service Agent' }[key];
     const tabs: [string, string][] = [
       ['persona', 'AI PERSONA'],
       ['rules', 'RULES & GUARDRAILS'],

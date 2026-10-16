@@ -1,0 +1,32 @@
+{
+ "id": "nse-clearing-t0-custodians-2025",
+ "title": "Additional clarification on custodian transactions in T+0 settlement cycle",
+ "short": "NSE Clearing T+0 custodian circular",
+ "issuer": "NSE Clearing Limited",
+ "reference": "NCL/CMPT/66135",
+ "date": "2025-01-15",
+ "effective": "2025-02-10",
+ "sourceUrl": "https://www.nseindia.com/static/products-services/t0-settlement-cycle",
+ "pdfUrl": "https://nsearchives.nseindia.com/content/circulars/CMPT66135.pdf",
+ "licence": "Public circular, published by NSE Clearing",
+ "summary": "How custodians settle T+0 trades: family account CP codes, trade confirmation by 2:45 PM, securities pay-in by 3:30 PM, funds pay-in by 4:00 PM. Check it is still current.",
+ "recommended": true,
+ "fileName": "nse_cmpt_66135_2025.pdf",
+ "fileSha1": "82d8fe6f4c450088b50f717cd946a678aed9c692",
+ "pages": [
+  {
+   "page": 1,
+   "text": "Circular\nDepartment: CAPITAL MARKET\nDownload Ref No: NCL/CMPT/66135 Date: January 15, 2025\nCircular Ref. No: 0022 /2025\nAll Members and Custodians,\nSub:- Additional clarification on custodian transactions in T+0 settlement cycle\nThis is with reference to circular no. NSE/CMTR/66128 dated January 15, 2025 and\nnotice no. 20250115-1 dated January 15, 2025 regarding ‘Enablement of Trading in T+0\nrolling settlement cycle for Custodial Participants’ and further to circular no.\nNCL/CMPT/65509 and SEBI circular no. SEBI/HO/MRD/MRD-PoD-3/P/CIR/2024/172\ndated 10-Dec-2024 regarding ‘Enhancement in the scope of optional T+0 rolling\nsettlement cycle in addition to the existing T+1 settlement cycle in Equity Cash Market’\nand circular no. NCL/CMPT/63165 dated 31-Jul-2024 regarding ‘Introduction of\ncustodian transactions in T+0 settlement cycle’ and circular no. NCL/CMPT/61301 dated\n22-Mar-2024 providing Operational guidelines for T+0 rolling settlement cycle.\nMembers and custodians are requested to take note of the following–\n1. Activation/ Procurement of Family Account CP code:\na. Name of the client field specifically suffix with “FAMILYAC”.\nb. PAN and SEBI registration no. shall be mentioned as “FAMIL999999Y”.\nc. Family account shall consist only of Non-Marginable CP codes.\nd. It shall be the responsibility of the Custodian to maintain the audit trail of any\ninclusion/ exclusion in Family account.\n2. Trade confirmations shall be done by the custodians at Family Account CP code level\nto clearing corporations (CCs).\n3. Post trade confirmation by custodians, obligations shall be provided by CCs at the\nCP code level (family or individual as applicable) and settle at the Custodian level.\n4. Custodians shall ensure to carry out the settlement to the end investor i.e. to the\nindividual CP code within the day.\n5. In case of rejection/ non confirmation of trades, obligation shall be devolved on the\nmember."
+  },
+  {
+   "page": 2,
+   "text": "6. Early pay-in / pay-in of securities\na. Members executing sale trades for non-custodian UPI/ non-UPI clients shall\ncontinue to provide the pay-in only in from of early pay-in using block mechanism\nby specified deadline.\nb. Custodians will be able to provide the early pay-in / pay-in of securities by\nspecified deadline.\n7. Auto Delivery out instructions\na. Post custodian trade confirmation, NCL shall upload auto delivery out instructions\nfor the net deliverable obligations of the custodians before the pay-in cut off at\ndepositories in respect of custodians that have opted for the facility\nb. In case of any additional obligations of the clearing member on account of\nrejection/ non-confirmation of custodial transactions, auto delivery out\ninstructions for such incremental net deliverable obligations for such clearing\nmembers only shall be uploaded to depositories.\nExample-\n• Net sell position of Proprietary obligation = 1000 shares\n• Revised obligation on account of custodian trade rejection= 1200 shares\nThen\n- Member is required to do EPI using block mechanism for its original\nobligation of 1000 quantity\n- NCL shall provide Auto Do instruction in member pool for 200 quantity only.\n8. There will be no changes in existing mechanism of Pay-in/ Early Pay-in of funds.\n9. Timelines for T+0 settlement considering CP code are provided in Annexure 1.\nThe above provisions are applicable with effect from 10-Feb-2025.\nFor and on behalf of\nNSE Clearing Limited\nAshwini Goraksha\nAssociate Vice President\nTelephone No Email id\n18002660050 (IVR 2) cm_clearing_ops@nsccl.co.in"
+  },
+  {
+   "page": 3,
+   "text": "Annexure 1- TIMELINES\nActivities Timelines\nCapital Market Segment – Regular market close 1:30 PM\nClient and CP code modification 1:45 PM\nCut off for trade confirmations by custodians 2:45 PM\nDownload of final obligations to members 3:15 PM\nEPI cut off for clearing members and custodians 1:45 PM\nUpload of client EPI file 1:45 PM\nUpload of CPD files 3:00 PM\nSecurities Pay-in cut off at depositories 3:30 PM\nFunds Payin by clearing member/ custodians 4:00 PM"
+  }
+ ],
+ "words": 606,
+ "version": "0af6cbdfde4c"
+}

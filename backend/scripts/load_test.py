@@ -16,6 +16,12 @@ A prober calls /health every second: if it stays fast, the event loop is not blo
   --real-ai            A short run against a real backend (staging) to see true latency and quota
                        errors; prints the expected cost and asks before starting.
 
+  --day2               Day 2 workshop mix instead of A-E: 20 users split 7/7/6 over the Custody Service Agent
+                       L1 (stage "assistant"), L2 (stage "rag", sample library added) and L3 (stage "agent",
+                       tools), each created from a description only, models round-robin over Gemini 3.8 Flash,
+                       GPT-6 Luna and Claude Haiku 5.5 (PUT /agent/{id}/settings). Chat goes through
+                       /chat/stream like the frontend. Here 429 and 503 count as errors (nothing may reach users).
+
 Outcomes: 5xx and unexpected 4xx are errors; 409 "Already training", 503 "Busy" and 429 rate limits
 are the designed friendly replies ("handled"). Report: load-report/ (JSON + Markdown).
 
@@ -39,6 +45,17 @@ import httpx
 ROOT = Path(__file__).resolve().parents[2]
 DATASETS = ROOT / "frontend" / "public" / "datasets"
 HANDLED = {409: "already training", 503: "busy", 429: "rate limited"}
+DAY2_MODELS = ["gemini-3.8-flash", "openai/gpt-6-luna", "anthropic/claude-haiku-5.5"]
+DAY2_DESCRIPTION = ("A client-service agent for a custody desk: answers questions on custody fees, corporate actions "
+                    "(dividends, bonus issues, record dates), KYC documents, settlements and complaints.")
+DAY2_QUESTIONS = {
+    "assistant": ["When will the TCS dividend be paid?", "Why was I charged a custody fee twice?",
+                  "What documents do you need for KYC?", "Please escalate my complaint about a failed settlement"],
+    "rag": ["What is T+0 settlement and which securities are eligible?", "What does the SEBI circular say about the optional T+0 cycle?",
+            "What must custodians do for T+0 trades according to NSE Clearing?", "What are the timelines for T+0 settlement?"],
+    "agent": ["What is 4500 * 1.5 plus 18% GST?", "Is INE467B01029 a valid ISIN?",
+              "If I sell today, what is the T+1 settlement date?", "Is the NSE open today?"],
+}
 TRAINING_ROUTES = {"image train", "text train", "rag add library"}
 MODEL_ROUTES = {"agent create", "agent chat", "rbp ask", "lod detect"}
 
@@ -55,14 +72,21 @@ class Recorder:
     def __init__(self):
         self.calls: List[Dict[str, Any]] = []
         self.health: List[float] = []
+        self.checks: Dict[str, Dict[str, int]] = {}
+        self.handled = HANDLED
+
+    def check(self, name: str, ok: bool):
+        c = self.checks.setdefault(name, {"ok": 0, "failed": 0})
+        c["ok" if ok else "failed"] += 1
 
     def add(self, route: str, status: int, ms: float, detail: str = ""):
         self.calls.append({"route": route, "status": status, "ms": ms, "detail": detail[:160], "t": time.time()})
 
 
 class Participant:
-    def __init__(self, base: str, rec: Recorder, group: str, n: int, deadline: float, think: tuple):
+    def __init__(self, base: str, rec: Recorder, group: str, n: int, deadline: float, think: tuple, model: str = ""):
         self.base, self.rec, self.group, self.n, self.deadline, self.think = base, rec, group, n, deadline, think
+        self.model = model
         self.c: Optional[httpx.AsyncClient] = None
         self.sid = ""
 
@@ -207,15 +231,97 @@ class Participant:
                     await asyncio.sleep(2)
                 await self.pause()
 
+    # ── Day 2: Custody Service Agent L1 / L2 / L3 ──
+    async def group_L1(self):
+        await self.day2("assistant")
+
+    async def group_L2(self):
+        await self.day2("rag")
+
+    async def group_L3(self):
+        await self.day2("agent")
+
+    async def day2(self, stage: str):
+        aid = await self.agent(stage, DAY2_DESCRIPTION)
+        self.rec.check(f"{stage}: agent created", bool(aid))
+        if not aid:
+            return
+        q = {"session_id": self.sid}
+        p = await self.call("agent persona", "GET", f"/agent/{aid}/persona", params=q)
+        self.rec.check(f"{stage}: description on persona",
+                       p is not None and p.status_code == 200 and "custody" in json.dumps(p.json()).lower())
+        s = await self.call("agent settings", "PUT", f"/agent/{aid}/settings", params=q, json={"model": self.model})
+        self.rec.check(f"{stage}: model set", s is not None and s.status_code == 200 and s.json()["settings"]["model"] == self.model)
+        if stage == "rag":
+            lib = await self.call("rag library", "GET", f"/agent/{aid}/kb/library", params=q)
+            ids = [d["id"] for d in (lib.json().get("library") or [])] if lib is not None and lib.status_code == 200 else []
+            add = await self.call("rag add library", "POST", f"/agent/{aid}/kb/library", params=q, json={"library_ids": ids})
+            self.rec.check("rag: library added", bool(ids) and add is not None and add.status_code == 200)
+        if stage == "agent":
+            await self.call("agent tools", "GET", f"/agent/{aid}/tools", params=q)
+        questions = DAY2_QUESTIONS[stage]
+        while self.alive():
+            for text in questions:
+                if not self.alive():
+                    break
+                done = await self.stream(f"{stage} chat [{self.model.split('/')[-1]}]", aid, text)
+                self.rec.check(f"{stage}: turn completed", done is not None)
+                if done is not None and stage == "rag":
+                    self.rec.check("rag: doc question answered from the documents", bool(done["trace"].get("kb_used")))
+                if done is not None and stage == "agent":
+                    self.rec.check("agent: turn called a tool", bool(done["trace"].get("tools_called")))
+                await self.pause()
+
+    async def stream(self, route: str, aid: str, message: str) -> Optional[Dict[str, Any]]:
+        """POST /chat/stream like the frontend; an error event in a 200 stream counts as an error
+        (429 when it reads like a rate limit, else 502). Returns the done event."""
+        t0 = time.perf_counter()
+        first = None
+        done = None
+        status, detail = 0, ""
+        try:
+            async with self.c.stream("POST", self.base + "/chat/stream",
+                                     json={"agent_id": aid, "session_id": self.sid, "message": message}) as r:
+                status = r.status_code
+                if status >= 400:
+                    body = (await r.aread()).decode("utf-8", "replace")
+                    try:
+                        detail = str(json.loads(body).get("detail"))
+                    except Exception:  # noqa: BLE001
+                        detail = body[:160]
+                else:
+                    async for line in r.aiter_lines():
+                        if not line.strip():
+                            continue
+                        ev = json.loads(line)
+                        if ev.get("type") == "delta" and first is None:
+                            first = (time.perf_counter() - t0) * 1000
+                        elif ev.get("type") == "done":
+                            done = ev
+                        elif ev.get("type") == "error":
+                            detail = str(ev.get("detail"))
+                            low = detail.lower()
+                            rl = ("429", "rate limit", "rate-limit", "quota", "resource_exhausted", "too many")
+                            status = 429 if any(k in low for k in rl) else 502
+                    if done is None and status < 400:
+                        status, detail = 599, detail or "stream ended without a done event"
+        except Exception as e:  # timeouts, dropped connections
+            status, detail = 0, f"{type(e).__name__}: {e}"
+        ms = (time.perf_counter() - t0) * 1000
+        self.rec.add(route, status, ms, detail)
+        if first is not None:
+            self.rec.add("first token (all stages)", 200, first)
+        return done
+
     # ── helpers ──
     async def project(self, ptype: str) -> Optional[str]:
         r = await self.call("project create", "POST", f"/api/guests/session/{self.sid}/projects", json={"name": f"Load {ptype} {self.n}", "type": ptype})
         return (r.json().get("data") or {}).get("id") if r is not None and r.status_code < 300 else None
 
-    async def agent(self, stage: str) -> Optional[str]:
+    async def agent(self, stage: str, description: str = "") -> Optional[str]:
         r = await self.call("agent create", "POST", "/agent/create", json={
             "session_id": self.sid, "stage": stage, "project_name": f"Load {stage} {self.n}",
-            "agent_description": "A client-service assistant for a custody desk: fees, corporate actions, KYC, complaints."})
+            "agent_description": description or "A client-service assistant for a custody desk: fees, corporate actions, KYC, complaints."})
         return (r.json().get("data") or {}).get("agent_id") if r is not None and r.status_code < 300 else None
 
 
@@ -245,7 +351,7 @@ def report(rec: Recorder, out: Path, label: str, args) -> Dict[str, Any]:
         r["count"] += 1
         r["ms"].append(c["ms"])
         s = c["status"]
-        if s in HANDLED:
+        if s in rec.handled:
             r["handled"][str(s)] = r["handled"].get(str(s), 0) + 1
         elif s == 0 or s >= 400:
             r["errors"][str(s)] = r["errors"].get(str(s), 0) + 1
@@ -253,11 +359,14 @@ def report(rec: Recorder, out: Path, label: str, args) -> Dict[str, Any]:
     for name, r in sorted(routes.items()):
         rows.append({"route": name, "count": r["count"], "errors": r["errors"], "handled": r["handled"],
                      "p50": round(pct(r["ms"], 50)), "p95": round(pct(r["ms"], 95)), "max": round(max(r["ms"]))})
-    errors = [c for c in rec.calls if c["status"] not in HANDLED and (c["status"] == 0 or c["status"] >= 400)]
+    errors = [c for c in rec.calls if c["status"] not in rec.handled and (c["status"] == 0 or c["status"] >= 400)]
     summary = {
         "label": label, "users": args.users, "minutes": args.minutes, "mode": "real-ai" if args.real_ai else "mock-ai",
         "requests": len(rec.calls), "errors": len(errors),
-        "handled": sum(1 for c in rec.calls if c["status"] in HANDLED),
+        "handled": sum(1 for c in rec.calls if c["status"] in rec.handled),
+        "rate_limited_429": sum(1 for c in rec.calls if c["status"] == 429),
+        "server_5xx": sum(1 for c in rec.calls if c["status"] >= 500),
+        "checks": rec.checks,
         "health": {"p50": round(pct(rec.health, 50)), "p95": round(pct(rec.health, 95)), "max": round(max(rec.health or [0])),
                    "over_500ms": sum(1 for h in rec.health if h > 500), "samples": len(rec.health)},
         "routes": rows,
@@ -267,12 +376,16 @@ def report(rec: Recorder, out: Path, label: str, args) -> Dict[str, Any]:
     out.mkdir(parents=True, exist_ok=True)
     (out / f"{label}.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     lines = [f"# Load test: {label}", "", f"{args.users} users, {args.minutes} min, {summary['mode']}. "
-             f"{summary['requests']} requests, {summary['errors']} errors, {summary['handled']} handled (409/503/429).", "",
+             f"{summary['requests']} requests, {summary['errors']} errors, {summary['handled']} handled ({'/'.join(map(str, rec.handled)) or 'none'}).", "",
              f"/health: p50 {summary['health']['p50']} ms, p95 {summary['health']['p95']} ms, max {summary['health']['max']} ms, "
              f"{summary['health']['over_500ms']} of {summary['health']['samples']} samples over 500 ms.", "",
              "| Route | Requests | Errors | Handled | p50 ms | p95 ms | max ms |", "|---|---|---|---|---|---|---|"]
     for r in rows:
         lines.append(f"| {r['route']} | {r['count']} | {r['errors'] or '-'} | {r['handled'] or '-'} | {r['p50']} | {r['p95']} | {r['max']} |")
+    if rec.checks:
+        lines += ["", f"429s reaching users: {summary['rate_limited_429']}, 5xx: {summary['server_5xx']}", "",
+                  "| Check | OK | Failed |", "|---|---|---|"]
+        lines += [f"| {k} | {v['ok']} | {v['failed']} |" for k, v in sorted(rec.checks.items())]
     lines += ["", "Slowest 10:", ""] + [f"- {c['route']} {c['status']} {round(c['ms'])} ms {c['detail']}" for c in summary["slowest"]]
     if summary["error_samples"]:
         lines += ["", "Errors (first 15):", ""] + [f"- {e['route']} {e['status']} {e['detail']}" for e in summary["error_samples"]]
@@ -290,9 +403,20 @@ async def main():
     ap.add_argument("--out", default=str(ROOT / "load-report"))
     ap.add_argument("--real-ai", action="store_true")
     ap.add_argument("--yes", action="store_true", help="real-ai: skip the cost question")
+    ap.add_argument("--day2", action="store_true", help="Day 2 mix: L1/L2/L3 Custody Service Agent, models mixed")
     args = ap.parse_args()
 
-    if args.real_ai:
+    if args.real_ai and args.day2:
+        # a turn every ~15 s per user (think 5-20 s + answer); L3 turns take ~2 model rounds; ~3,000 tokens a call
+        # (system prompt, passages or tool declarations); blended ~$2 per million tokens over the three models
+        turns = args.users * args.minutes * 4
+        calls = turns * 1.4
+        cost = calls * 3000 / 1e6 * 2.0
+        print(f"Real AI (Day 2): about {int(turns)} chat turns, {int(calls)} model calls, roughly ${cost:.2f} "
+              f"(upper bound ~${cost * 2:.2f}), plus embeddings and web search.")
+        if not args.yes and input("Start? [y/N] ").strip().lower() != "y":
+            return
+    elif args.real_ai:
         # about 2 model calls per user per minute, ~1,500 tokens each, Gemini Flash prices
         calls = args.users * args.minutes * 2
         cost = calls * 1500 / 1e6 * 0.6
@@ -300,11 +424,24 @@ async def main():
         if not args.yes and input("Start? [y/N] ").strip().lower() != "y":
             return
 
-    groups = ["A", "B", "C", "D", "E"]
-    per = max(1, args.users // len(groups))
     deadline = time.time() + args.minutes * 60
     rec = Recorder()
-    people = [Participant(args.base.rstrip("/"), rec, g, i, deadline, (5, 20)) for g in groups for i in range(per)]
+    if args.day2:
+        rec.handled = {}  # Day 2: no 429 / 503 may reach a participant
+        n1 = round(args.users * 7 / 20)
+        n2 = round(args.users * 7 / 20)
+        split = [("L1", n1), ("L2", n2), ("L3", args.users - n1 - n2)]
+        people, k = [], 0
+        for g, count in split:
+            for i in range(count):
+                people.append(Participant(args.base.rstrip("/"), rec, g, i, deadline, (5, 20), DAY2_MODELS[k % len(DAY2_MODELS)]))
+                k += 1
+        print("Day 2 mix: " + ", ".join(f"{g} {c}" for g, c in split) + "; models: " +
+              ", ".join(f"{m} {sum(1 for p in people if p.model == m)}" for m in DAY2_MODELS))
+    else:
+        groups = ["A", "B", "C", "D", "E"]
+        per = max(1, args.users // len(groups))
+        people = [Participant(args.base.rstrip("/"), rec, g, i, deadline, (5, 20)) for g in groups for i in range(per)]
     print(f"{len(people)} participants for {args.minutes} min against {args.base} ({'real' if args.real_ai else 'mock'} AI)")
     await asyncio.gather(probe_health(args.base.rstrip("/"), rec, deadline + 30), *(p.run() for p in people))
     report(rec, Path(args.out), args.label, args)

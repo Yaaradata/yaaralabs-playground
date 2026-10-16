@@ -20,6 +20,8 @@ from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
+from . import llm_retry
+
 logger = logging.getLogger(__name__)
 
 MODELS: Dict[str, Dict[str, object]] = {
@@ -85,7 +87,8 @@ def embed(texts: Sequence[str], model: str = DEFAULT_MODEL, task: str = "RETRIEV
     def flush():
         nonlocal batch, budget
         if batch:
-            res = m.get_embeddings([TextEmbeddingInput(t, task) for t in batch])
+            items = [TextEmbeddingInput(t, task) for t in batch]
+            res = llm_retry.call(lambda: m.get_embeddings(items), f"Embeddings {model}")  # quota 429 / 5xx retried
             out.extend(r.values for r in res)
             batch, budget = [], 0
 

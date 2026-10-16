@@ -412,6 +412,28 @@ class Tools(unittest.TestCase):
         self.assertEqual(step["group"], "unknown")
         self.assertFalse(out["trace"]["web_sources"])
 
+    def test_web_search_capped_per_turn(self):
+        searched = []
+        many = [{"id": f"w{i}", "name": "web_search", "args": {"query": f"q{i}"}} for i in range(4)]
+        seq = iter(many + [None])
+
+        def agent_gen(model, system, contents, decls, final):
+            nxt = next(seq)
+            if nxt is None or final:
+                return {"content": {"role": "model", "parts": [{"text": "Done."}]}, "text": "Done.", "calls": [], "ms": 1}
+            return {"content": {"role": "model", "parts": []}, "text": "", "calls": [nxt], "ms": 1}
+
+        def web(q):
+            searched.append(q)
+            return studio.shape_web_result("• rate 5.5%", [{"title": "RBI", "uri": "https://rbi.org.in"}])
+
+        svc, _ = service(agent_generate=agent_gen, tools=["web_search"], web=web)
+        out = svc.answer(AGENT("agent"), "What is the repo rate?", "s")
+        self.assertEqual(len(searched), studio.WEB_MAX_PER_TURN)  # the 3rd and 4th searches never run
+        capped = [s for s in out["trace"]["steps"] if s["kind"] == "tool" and not s["ok"]]
+        self.assertEqual(len(capped), 4 - studio.WEB_MAX_PER_TURN)
+        self.assertIn("limit", str(capped[0]["result"]))
+
     def test_loop_stops_after_the_round_limit(self):
         many = [{"id": f"c{i}", "name": "today", "args": {}} for i in range(20)]
         out = self._loop(None, ["today"], many)

@@ -487,6 +487,7 @@ class Persona(BaseModel):
     tone: str = Field(..., description="Persona tone")
     language: str = Field("English", description="Persona language")
     response_length: str = Field("short", description="Response length: minimal, short, long, chatty")
+    description: str = Field("", description="Who the agent is and what it does (from the create screen), sent in every reply")
     guidelines: str = Field("", description="Custom chat guidelines")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -497,6 +498,7 @@ class PersonaUpdateRequest(BaseModel):
     tone: Optional[str] = Field(None, description="Persona tone (friendly, professional, casual)")
     language: Optional[str] = Field(None, description="Persona language")
     response_length: Optional[str] = Field(None, description="Response length: minimal, short, long, chatty")
+    description: Optional[str] = Field(None, description="Who the agent is and what it does")
     guidelines: Optional[str] = Field(None, description="Custom chat guidelines")
 
 class PersonaUpdateResponse(BaseModel):
