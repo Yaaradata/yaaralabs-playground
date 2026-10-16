@@ -9,6 +9,8 @@ export const ETHICS: Activity = {
   id: 'ethics',
   title: 'AI Ethics lab: one email, three checks',
   point: 'The AI will redact, reply and sound confident. A person still owns what gets sent.',
+  // Steps 3 and 4 and the closing pages stay here (content, scoring, saved answers) but are not shown for now
+  hidden: { steps: ['s3', 's4'], result: true, aiCheck: true },
   steps: [
     {
       id: 's1',

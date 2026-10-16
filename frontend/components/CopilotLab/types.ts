@@ -81,6 +81,8 @@ export interface Activity {
   title: string;
   point: string;
   steps: Step[];
+  /** Pages kept in the content and saved answers but not shown: step ids, and the closing result / AI check pages. */
+  hidden?: { steps?: string[]; result?: boolean; aiCheck?: boolean };
 }
 
 export interface AiCheck {

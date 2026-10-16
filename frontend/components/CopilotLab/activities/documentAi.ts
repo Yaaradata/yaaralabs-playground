@@ -12,6 +12,8 @@ export const DOC_AI: Activity = {
   id: 'document-ai',
   title: 'Document AI: read a dividend notice',
   point: 'The AI reads fast. The risk is in what’s missing or doesn’t match. A person signs off.',
+  // Step 4 and the closing pages stay here (content, scoring, saved answers) but are not shown for now
+  hidden: { steps: ['s4'], result: true, aiCheck: true },
   steps: [
     {
       id: 's1',

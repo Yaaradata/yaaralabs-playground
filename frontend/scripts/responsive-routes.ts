@@ -161,10 +161,8 @@ export const ROUTES: Route[] = [
   /* ── Day 2: Copilot labs ── */
   ...(['ethics', 'docai'] as const).flatMap((key): Route[] => {
     const name = key === 'ethics' ? 'Copilot AI Ethics' : 'Copilot Document AI';
-    return [
-      { id: `${key}-step`, title: `${name}: step 1`, path: proj(key), ready: '.rail-item', primary: ['button:has-text("Next →")'], mustNotClip: ['h1', '.rail-item'], workspace: true },
-      { id: `${key}-result`, title: `${name}: result card`, path: proj(key), ready: '.rail-item', steps: click('.rail-item:has-text("Your result")', 1200), primary: ['.rail-item:has-text("Your result")'], mustNotClip: ['h1'], workspace: true },
-      { id: `${key}-check`, title: `${name}: AI check`, path: proj(key), ready: '.rail-item', steps: click('.rail-item:has-text("Your AI check")', 1200), primary: ['.rail-item:has-text("Your AI check")'], mustNotClip: ['h1'], workspace: true },
-    ];
+    const step = { id: `${key}-step`, title: `${name}: step 1`, path: proj(key), ready: '.rail-item', primary: ['button:has-text("Next →")'], mustNotClip: ['h1', '.rail-item'], workspace: true };
+    // both labs hide their result and AI check pages for now (activities/*.ts, hidden)
+    return [step];
   }),
 ];

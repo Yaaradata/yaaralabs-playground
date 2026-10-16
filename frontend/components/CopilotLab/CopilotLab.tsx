@@ -367,9 +367,15 @@ export default function CopilotLab({ activity, projectName, sessionId, projectId
   const latest = useRef<Answers>({});
   const mainRef = useRef<HTMLDivElement>(null);
 
+  // pages an activity hides (act.hidden) keep their content and saved answers, they just aren't listed
+  const visibleSteps = useMemo(() => act.steps.filter((s) => !act.hidden?.steps?.includes(s.id)), [act]);
   const pages: Page[] = useMemo(
-    () => [...act.steps.map((s) => ({ kind: 'step' as const, step: s })), { kind: 'result', title: 'Your result' }, { kind: 'aicheck', title: 'Your AI check' }],
-    [act],
+    () => [
+      ...visibleSteps.map((s) => ({ kind: 'step' as const, step: s })),
+      ...(act.hidden?.result ? [] : [{ kind: 'result' as const, title: 'Your result' }]),
+      ...(act.hidden?.aiCheck ? [] : [{ kind: 'aicheck' as const, title: 'Your AI check' }]),
+    ],
+    [act, visibleSteps],
   );
   const page = pages[Math.min(stepIx, pages.length - 1)];
 
@@ -481,7 +487,7 @@ export default function CopilotLab({ activity, projectName, sessionId, projectId
     return () => window.removeEventListener('keydown', esc);
   }, [confirmReset]);
 
-  const doneSteps = act.steps.filter((s) => stepDone(s, answers)).length;
+  const doneSteps = visibleSteps.filter((s) => stepDone(s, answers)).length;
 
   return (
     <div className="cpl">
@@ -497,7 +503,7 @@ export default function CopilotLab({ activity, projectName, sessionId, projectId
 
       <div className="body">
         <nav className="rail no-print" aria-label="Steps">
-          <div className="small muted rail-sum num">{doneSteps} of {act.steps.length} steps done</div>
+          <div className="small muted rail-sum num">{doneSteps} of {visibleSteps.length} steps done</div>
           {pages.map((p, i) => {
             const isStep = p.kind === 'step';
             const done = isStep && stepDone(p.step, answers);
@@ -527,7 +533,7 @@ export default function CopilotLab({ activity, projectName, sessionId, projectId
                 {page.kind === 'step' && (
                   <>
                     <div className="step-head">
-                      <div className="eyebrow">Step {stepIx + 1} of {act.steps.length}</div>
+                      <div className="eyebrow">Step {stepIx + 1} of {visibleSteps.length}</div>
                       <h2 className="h2">{page.step.title}</h2>
                     </div>
                     {page.step.blocks.map((b, i) => {
