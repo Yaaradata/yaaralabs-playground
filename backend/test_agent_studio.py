@@ -337,6 +337,22 @@ class Knowledge(unittest.TestCase):
         self.assertNotIn("Passages:", contents[-1]["text"])
         self.assertFalse(out["trace"].get("passages"))
 
+    def test_description_decides_what_to_say_when_documents_do_not_cover(self):
+        # L2's description says what to say when the documents don't cover a question: with no passages the prompt
+        # must put that first, not "answer from your own knowledge" (production answered GST 18% from memory)
+        desc = 'If the documents do not cover it, say "Not in the documents provided."'
+        svc, calls = service(kb=FakeKb())
+        persona = SimpleNamespace(name="Custody Service Agent", role="custody assistant", tone="professional",
+                                  language="English", response_length="short", guidelines="", description=desc)
+        with mock.patch.object(FakeAgents, "get_persona", lambda self, a: persona), \
+                mock.patch.object(studio, "KB_RELEVANT", 1.01):  # nothing matches
+            svc.answer(AGENT("rag"), "What is the GST rate on custody fees?", "s")
+        system = calls["generate"][0][0]
+        self.assertIn("=== WHO YOU ARE ===\n" + desc, system)
+        self.assertIn("1) WHO YOU ARE", system)
+        self.assertIn("say exactly that", system)
+        self.assertLess(system.index("say exactly that"), system.index("Only if they don't, answer from your own knowledge"))
+
     def test_document_filter(self):
         hits = FakeKb().search("A1", "trading hours", k=3, doc_title="T+0 beta circular")
         self.assertTrue(hits and all(h["doc_title"] == "T+0 beta circular" for h in hits))
@@ -347,7 +363,7 @@ class Knowledge(unittest.TestCase):
             out = svc.answer(AGENT("rag"), "By when must a custodian put a wind-down framework in place?", "s")
         system, contents, _ = calls["generate"][0]
         self.assertIn("match the question. Answer from them", system)
-        self.assertIn("1) your INSTRUCTIONS", system)
+        self.assertIn("1) WHO YOU ARE, your INSTRUCTIONS", system)
         self.assertIn("Passages:", contents[-1]["text"])
         self.assertEqual(out["trace"]["citations"], [1])
         empty, calls2 = service(kb=FakeKb(rows=[]))

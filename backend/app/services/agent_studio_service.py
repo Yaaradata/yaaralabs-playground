@@ -56,29 +56,31 @@ _web_paused: Dict[str, float] = {}
 # Every stage answers in the same order: (1) the instructions, guardrails and action constraints above,
 # (2) the documents, (3) the model's own knowledge. Steps 1-2 of answer_events (guardrail pre-check,
 # actions) run before any of this; the order below is what the model itself is told.
-ANSWER_ORDER = ("Decide how to answer in this order: 1) your INSTRUCTIONS, guardrails and any ACTION rules above come "
-                "first: if they say how to answer, or not to answer, do exactly that. 2) Otherwise use the documents "
+ANSWER_ORDER = ("Decide how to answer in this order: 1) WHO YOU ARE, your INSTRUCTIONS, guardrails and any ACTION rules "
+                "above come first: if they say how to answer, or not to answer (for example what to say when the "
+                "documents don't cover a question), do exactly that. 2) Otherwise use the documents "
                 "when they cover the question. 3) Otherwise answer from your own general knowledge, as yourself, "
                 "without mentioning documents.")
 # The documents and tools widen the role: an instruction carried over from Exercise 6 such as "Answer only
 # questions about corporate actions, fees and billing..." must not stop the RAG bot or the agent from using them.
-DOCS_IN_SCOPE = ("A question your documents cover is always within your role, even if your INSTRUCTIONS list fewer "
+DOCS_IN_SCOPE = ("A question your documents cover is always within your role, even if WHO YOU ARE or your INSTRUCTIONS list fewer "
                  "topics: answer it from the documents. Other guardrails still apply.")
 TOOLS_IN_SCOPE = ("A question your documents or tools can answer (dates, settlement, ISIN, PAN, IFSC, web search) is "
-                  "always within your role, even if your INSTRUCTIONS list fewer topics: use them and answer. "
+                  "always within your role, even if WHO YOU ARE or your INSTRUCTIONS list fewer topics: use them and answer. "
                   "Other guardrails still apply.")
 DOCS_SCOPE = ", or any question your documents cover"
 TOOLS_SCOPE = ", or any question your documents or tools can answer (web search, dates, settlement, ISIN, PAN, IFSC)"
 RAG_RULE = (ANSWER_ORDER + "\n" + DOCS_IN_SCOPE + "\nThe numbered passages below come from the documents and match the question. Answer from "
             "them and cite every passage you use with its number in square brackets, right after the sentence it "
             "supports. If they only cover part of the question, answer the rest from your own knowledge without a "
-            "citation.")
-NO_KB_RULE = (ANSWER_ORDER + "\nThe documents don't cover this question, so step 2 does not apply: follow step 1, "
-              "then answer from your own knowledge. Greetings and small talk are answered normally.")
+            "citation, unless step 1 says what to say when the documents don't cover something: then say that.")
+NO_KB_RULE = (ANSWER_ORDER + "\nThe documents don't cover this question, so step 2 does not apply. Follow step 1: if "
+              "WHO YOU ARE or your INSTRUCTIONS say what to say when the documents don't cover a question, say exactly "
+              "that. Only if they don't, answer from your own knowledge. Greetings and small talk are answered normally.")
 TOOL_RULE = (ANSWER_ORDER + "\n" + TOOLS_IN_SCOPE + "\nUse your tools when they help: search_knowledge_base for SEBI or company documents, "
              "web_search for anything current or not in the documents, and the calculators for any date or number. "
              "Say which source you used, and cite every document passage you use with its number in square brackets, like [2]. "
-             "If no tool helps, answer from your own knowledge.\n"
+             "If no tool helps, answer from your own knowledge, unless step 1 says what to say instead.\n"
              "Indian equity trades settle T+1 (one business day after the trade) unless the user says otherwise.")
 FORCE_KB_RULE = "An action requires it: call search_knowledge_base before you answer, and answer from what it returns."
 EMPTY_KB_REPLY = "Add documents in Knowledge Base first."
