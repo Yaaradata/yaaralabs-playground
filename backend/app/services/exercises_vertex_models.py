@@ -56,8 +56,9 @@ VERTEX_CHAT_MODELS: Dict[str, Dict[str, Any]] = {
         "hint": "OpenRouter · OpenAI's own web search",
         "label": "GPT-6 Luna",
         "webSearch": "OpenAI's own search, through OpenRouter",
-        "thinking": False,
-        "thinkingOverhead": 0,
+        # reasons before it answers: a 800-token cap went entirely to reasoning and the answer came back empty
+        "thinking": True,
+        "thinkingOverhead": 2048,
     },
     "anthropic/claude-haiku-5.5": {
         "id": "claude-haiku-55",
@@ -76,8 +77,9 @@ VERTEX_CHAT_MODELS: Dict[str, Dict[str, Any]] = {
         "hint": "OpenRouter · Anthropic's own web search",
         "label": "Haiku 5.5",
         "webSearch": "Anthropic's own search, through OpenRouter",
-        "thinking": False,
-        "thinkingOverhead": 0,
+        # reasons before it answers: a 800-token cap went entirely to reasoning and the answer came back empty
+        "thinking": True,
+        "thinkingOverhead": 2048,
     },
 }
 

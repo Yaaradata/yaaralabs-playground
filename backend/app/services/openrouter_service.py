@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 TIMEOUT = (10.0, 90.0)  # connect, read: a stuck call is dropped and retried (llm_retry); web search answers take ~25 s
 # OpenRouter asks apps to identify themselves (shown on openrouter.ai)
+REASONING_EFFORT = "low"
 APP_HEADERS = {"HTTP-Referer": "https://yaaralabs.ai", "X-Title": "YaaraLabs Playground"}
 
 
@@ -230,6 +231,9 @@ def _body(model: str, messages: List[Dict[str, Any]], config: Any) -> Dict[str, 
                 body["tool_choice"] = choice
         if web:
             body["plugins"] = [{"id": "web", "engine": "native"}]  # the provider's own web search
+    # GPT-6 Luna and Haiku 5.5 reason before answering, and the reasoning counts against max_tokens: at the default
+    # effort a hard question spent all 800 tokens reasoning and the learner got an empty answer. Keep it short.
+    body.setdefault("reasoning", {"effort": REASONING_EFFORT})
     return body
 
 
