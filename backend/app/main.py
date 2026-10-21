@@ -37,6 +37,7 @@ from .api import (
 )
 from .api.guests import router as guests_router
 from .api.admin import is_production, require_admin
+from .api.admin_portal import router as admin_portal_router
 
 # --------------------------------------------------
 # Logging
@@ -202,6 +203,7 @@ app.include_router(students.router)
 app.include_router(classrooms.router)
 app.include_router(demo_projects.router)
 app.include_router(guests_router)
+app.include_router(admin_portal_router)
 app.include_router(scratch_services.router)
 app.include_router(rule_based_process.router)
 app.include_router(rules_bot.router)

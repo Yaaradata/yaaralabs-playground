@@ -1,13 +1,11 @@
 import json
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import StreamingResponse
-from typing import Optional, List
 
 from .rate_limits import CHAT_PER_MINUTE, rate_limit
 from .agent_access import agent_guard
 from ..models import (
-    ChatRequest, ChatResponse, ChatTeachRequest, ChatTeachResponse,
-    ErrorResponse
+    ChatRequest, ChatResponse, ChatTeachRequest, ChatTeachResponse
 )
 from ..services.chat_service import ChatService
 from ..services.agent_service import AgentService

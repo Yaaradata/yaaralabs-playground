@@ -147,7 +147,6 @@ export default function ImagePicker({ labels, namesKey, busy, error, onPick, onC
                     className="block w-full rounded-md overflow-hidden border border-fg/10 hover:border-pink-brand bg-white"
                     title={tab === 'deep' ? t.defects ?? '' : fileName(t.file)}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={sampleImageUrl(t.file)} alt={fileName(t.file)} className="w-full aspect-[3/4] object-cover object-top" />
                   </button>
                 </li>

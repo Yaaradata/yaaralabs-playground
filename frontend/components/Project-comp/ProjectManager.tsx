@@ -43,6 +43,7 @@ const ProjectManager: React.FC = () => {
     // Load projects on component mount
     useEffect(() => {
         projects.execute();
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on mount
     }, []);
 
     // Handle form submission

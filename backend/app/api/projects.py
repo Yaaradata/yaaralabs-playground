@@ -1,13 +1,10 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query, Depends
-from typing import List, Optional
-import json
-from datetime import datetime, timezone
+from typing import Optional
 
 from ..models import (
-    Project, ProjectCreate, ProjectUpdate, ProjectListResponse, 
+    ProjectCreate, ProjectUpdate, ProjectListResponse, 
     ProjectResponse, ProjectStatusResponseWrapper, TrainingConfig,
-    FileUploadResponse, TrainingResponse, ErrorResponse,
-    ExampleAdd, ExamplesBulkAdd, PredictionRequest, PredictionResponse
+    FileUploadResponse, TrainingResponse, ExamplesBulkAdd, PredictionRequest, PredictionResponse
 )
 from ..services.project_service import ProjectService
 from ..training_service import trainer

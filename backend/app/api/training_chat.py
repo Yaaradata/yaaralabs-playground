@@ -18,7 +18,7 @@ from ..services.training_chat_service import TrainingChatService
 from ..models import (
     CreateChatRequest, CreateChatResponse,
     GetChatsResponse, GetChatResponse,
-    ArchiveChatRequest, ArchiveChatResponse,
+    ArchiveChatResponse,
     DeleteChatResponse,
     Chat
 )

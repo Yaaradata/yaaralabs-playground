@@ -120,6 +120,7 @@ export default function Home() {
 
   useEffect(() => {
     checkExistingSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on mount
   }, []);
 
   // Add useEffect to log final state changes

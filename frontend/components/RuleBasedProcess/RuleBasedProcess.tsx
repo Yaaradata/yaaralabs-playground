@@ -354,6 +354,7 @@ export default function RuleBasedProcess({
       setStageHost(null);
       if (root) root.innerHTML = '';
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- remount only on session/project/storage key/retry changes, not on starter
   }, [sessionId, projectId, localStorageKey, attempt]);
 
   return (

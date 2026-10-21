@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import config from '../../lib/config';
-import ChatMessage, { Message } from './ChatMessage';
+import { Message } from './ChatMessage';
 import ChatHistorySidebar from './ChatHistorySidebar';
 import ChatMessagesArea from './ChatMessagesArea';
 
@@ -40,7 +40,6 @@ const chatCache: Map<string, Message[]> = new Map();
 export default function TeachYourAgent({
   agentId,
   sessionId,
-  agentName = 'AI Agent',
   agentAvatar,
   onPersonaUpdated,
   onKnowledgeAdded,
@@ -135,6 +134,7 @@ export default function TeachYourAgent({
     } finally {
       setIsInitializing(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-create when agentId/sessionId change
   }, [agentId, sessionId]);
 
   // Actually create a new chat in the backend

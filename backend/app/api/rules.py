@@ -1,11 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import List
 from pydantic import BaseModel
 
 from .agent_access import agent_guard
 from ..models import (
-    RuleSaveRequest, RuleResponse, RuleListResponse,
-    ErrorResponse
+    RuleSaveRequest, RuleResponse, RuleListResponse
 )
 from ..services.rules_service import RulesService
 

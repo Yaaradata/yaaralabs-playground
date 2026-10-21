@@ -4,7 +4,6 @@ import re
 import json
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
-from google.cloud import firestore
 
 from ..models import Rule, RuleSaveRequest, RuleCondition, RuleAction, RuleMatchType
 from ..config import gcp_clients

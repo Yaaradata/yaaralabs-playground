@@ -3,14 +3,13 @@ Guest Service - Handles guest session and project operations in Firestore
 """
 
 import logging
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
 from datetime import datetime, timezone, timedelta
 import uuid
 
-from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 
-from ..models import Guest, GuestCreate, GuestUpdate, GuestSession
+from ..models import GuestCreate, GuestUpdate, GuestSession
 from ..config import gcp_clients
 
 logger = logging.getLogger(__name__)

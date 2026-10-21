@@ -1,8 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Optional
 
 from ..models import (
-    Teacher, TeacherCreate, ClassroomCreate, TeacherResponse, 
+    TeacherCreate, ClassroomCreate, TeacherResponse, 
     TeacherListResponse, ClassroomResponse, TeacherDashboardResponse
 )
 from ..services.teacher_service import TeacherService

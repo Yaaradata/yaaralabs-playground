@@ -36,10 +36,7 @@ export default function ChatHistory({
   agentId,
   ongoingChat,
   onClose,
-  onSwitchToOngoing,
-  onSwitchToPrevious,
-  onEditMessage,
-  onDeleteMessage
+  onSwitchToOngoing
 }: ChatHistoryProps) {
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
@@ -53,6 +50,7 @@ export default function ChatHistory({
     if (agentId) {
       loadChats();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only reload when agentId changes
   }, [agentId]);
 
   // Load messages when a chat is selected

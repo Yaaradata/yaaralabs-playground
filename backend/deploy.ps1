@@ -56,6 +56,18 @@ $envVars = @(
     "GCS_CHUNK_SIZE=8388608"
 ) -join "@"
 
+# Secret Manager secrets the service account reads at startup. The admin area (/admin) needs
+# yaaralabs-admin-jwt-secret (signs admin logins, 32+ chars) and yaaralabs-admin-signup-code
+# (required to create an admin account); both must exist before deploying.
+$secrets = @(
+    "GOOGLE_API_KEY=yaaralabs-google-api-key:latest"
+    "GOOGLE_CSE_ID=yaaralabs-google-cse-id:latest"
+    "OPENROUTER_API_KEY=yaaralabs-openrouter-api-key:latest"
+    "OPENFIGI_API_KEY=yaaralabs-openfigi-api-key:latest"
+    "ADMIN_JWT_SECRET=yaaralabs-admin-jwt-secret:latest"
+    "ADMIN_SIGNUP_CODE=yaaralabs-admin-signup-code:latest"
+) -join ","
+
 gcloud run deploy $SERVICE_NAME `
     --image="${IMAGE_NAME}:$TAG" `
     --region=$REGION `
@@ -63,7 +75,7 @@ gcloud run deploy $SERVICE_NAME `
     --allow-unauthenticated `
     --service-account="yl-backend@${PROJECT_ID}.iam.gserviceaccount.com" `
     --set-env-vars="^@^$envVars" `
-    --set-secrets="GOOGLE_API_KEY=yaaralabs-google-api-key:latest,GOOGLE_CSE_ID=yaaralabs-google-cse-id:latest,OPENROUTER_API_KEY=yaaralabs-openrouter-api-key:latest,OPENFIGI_API_KEY=yaaralabs-openfigi-api-key:latest" `
+    --set-secrets="$secrets" `
     --min-instances=1 `
     --memory=8Gi `
     --cpu=4 `

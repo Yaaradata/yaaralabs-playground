@@ -17,13 +17,14 @@ export default function ScratchEditorLauncher({
   onClose 
 }: ScratchEditorLauncherProps) {
   const [isStarting, setIsStarting] = useState(true);
-  const [isReady, setIsReady] = useState(false);
+  const [, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scratchContainerRef = useRef<HTMLDivElement>(null);
   const [scratchPort, setScratchPort] = useState<number | null>(null);
 
   useEffect(() => {
     startScratchEditor();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on mount
   }, []);
 
   const startScratchEditor = async () => {

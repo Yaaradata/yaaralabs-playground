@@ -259,7 +259,7 @@ var CAT = {
   function notchDown(x) { // travelling left to right along a top edge
     return "L " + x + ",0 L " + (x + 4) + "," + G.nd + " L " + (x + 14) + "," + G.nd + " L " + (x + 18) + ",0 ";
   }
-  function bumpAt(y, w) { // travelling right to left along a bottom edge
+  function bumpAt(y) { // travelling right to left along a bottom edge
     return "L 30," + y + " L 26," + (y + G.nd) + " L 16," + (y + G.nd) + " L 12," + y + " ";
   }
   function innerNotch(y) { // underside of a C top bar, travelling right to left

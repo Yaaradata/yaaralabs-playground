@@ -70,6 +70,7 @@ const GuestProjectManager: React.FC<GuestProjectManagerProps> = ({ sessionId }) 
         if (sessionId) {
             guestProjects.execute();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-load when sessionId changes
     }, [sessionId]);
 
     // Cleanup timeout on unmount
@@ -171,6 +172,7 @@ const GuestProjectManager: React.FC<GuestProjectManagerProps> = ({ sessionId }) 
                 openScratchEditor(latestProject.id);
             }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- openScratchEditor is recreated every render; trigger only on data/form changes
     }, [guestProjects.data, formData.type, formData.name, selectedProject]);
 
     // Handle form submission

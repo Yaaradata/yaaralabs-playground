@@ -3,7 +3,6 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List, Tuple
-from google.cloud import firestore
 
 from ..models import ChatLog, ChatRequest, Persona, Knowledge
 from ..config import gcp_clients

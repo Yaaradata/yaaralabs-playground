@@ -184,7 +184,6 @@ export default function SampleImageTest({ projectLabels, namesKey, predict }: Pr
                   </button>
                 </div>
                 <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={sampleImageUrl(picked)} alt={title(picked)} className="w-full max-h-[26rem] object-contain rounded-md border border-fg/10 bg-white" />
                   <div aria-live="polite">
                     {typeof res === 'string' && <p className="text-sm text-pink-brand" role="alert">{res}</p>}
@@ -234,7 +233,6 @@ export default function SampleImageTest({ projectLabels, namesKey, predict }: Pr
                       picked === t.file ? 'border-pink-brand ring-2 ring-pink-brand/40' : 'border-fg/10 hover:border-magenta-brand/50'
                     }`}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={sampleImageUrl(t.file)} alt={title(t.file)} className="w-full aspect-[4/3] object-cover object-top bg-white" loading="lazy" />
                     <span className="flex items-center gap-1 px-2 py-1 text-xs">
                       <span className="flex-1 text-fg/80">{title(t.file)}</span>

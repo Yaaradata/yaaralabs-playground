@@ -2,12 +2,9 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 import subprocess
 import os
-import signal
-import psutil
 import asyncio
 from typing import Dict, Optional
 import logging
-from ..config import settings
 
 logger = logging.getLogger(__name__)
 

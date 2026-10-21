@@ -2860,6 +2860,7 @@ function TfidfLogisticRegression({ meta, swapLab = false }: { meta: ExerciseMeta
         })
         .catch(() => undefined);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- activeDataset kept so the callback is rebuilt when the dataset switches
     [activeDataset, markComplete, markInProgress, meta.id, projectId, reduceMotion, reviewText, saveEx2Result, sessionId],
   );
 
@@ -3359,6 +3360,7 @@ function TfidfLogisticRegression({ meta, swapLab = false }: { meta: ExerciseMeta
         }
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- dispatchSetup deliberately left out; deps unchanged to avoid re-creating the callback
     [activeDataset, data, datasetMeta, finishTrain, persistLabNow, projectId, reduceMotion, representation, reviewText, saveEx2Result, sessionId, showTrainComplete, swapLab, training],
   );
 
@@ -4172,6 +4174,7 @@ function TfidfLogisticRegression({ meta, swapLab = false }: { meta: ExerciseMeta
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- openPreviewStep is recreated every render; only re-bind on modal state changes
   }, [closeConcept, closePreview, conceptOpen, conceptSlides.length, fullTableOpen, inspectOpen, previewFromEye, previewOpen]);
 
   const dataClasses = data ? uniqueLabels(data) : datasetMeta?.classes || [];

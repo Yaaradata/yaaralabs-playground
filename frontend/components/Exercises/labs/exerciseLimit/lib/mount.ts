@@ -147,7 +147,6 @@ const MSG_PLACEHOLDER = 'Type your message here…';
 
 /* ============ State ============ */
 let UID = 1;
-  let aborted = false;
   let markedComplete = false;
   let LIMITS: number[] = [1000, 2000, 4000, 8000];
   let models: Record<string, LimitModel> = {};
@@ -247,15 +246,12 @@ const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">"
 const fmt = n => Math.round(n).toLocaleString("en-IN");
 const estTok = s => Math.ceil((s||"").length/4);
 const msgTok = m => estTok(m.text)+MSG_OVERHEAD;
-const words = s => ((s||"").trim().match(/\S+/g)||[]).length;
-const sleep = ms => new Promise(r=>setTimeout(r,ms));
 const P = () => models[S.prov] || models[defaultProv] || Object.values(models)[0];
 const syncVer = () => {
   S.ver = defaultVersionOf(P());
 };
 const chatMsgs = () => S.msgs.filter(m=>m.role==="user"||m.role==="assistant");
 const inCtx = () => chatMsgs().filter(m=>m.state==="in");
-const connected = () => true;
 function md(s){
   return esc(s).replace(/`([^`\n]+)`/g,"<b>$1</b>").replace(/\*\*(.+?)\*\*/g,"<b>$1</b>")
     .replace(/^#{1,4}\s+(.+)$/gm,"<b>$1</b>").replace(/^(\s*)[-*•]\s+/gm,"$1• ");
@@ -373,7 +369,7 @@ function renderMeter(){
   const push=(cls,tok,title,mid)=>{ if(tok>0) segs.push({cls,tok,title,mid}); };
   push("persona",u.persona,`Persona · ≈${fmt(u.persona)} tokens`);
   push("summary",u.summary,`Summary · ≈${fmt(u.summary)} tokens`);
-  inCtx().forEach((m,i)=>push(m.role,msgTok(m),`${m.role==="user"?"You":P().name} · ≈${fmt(msgTok(m))} tokens · click to find it`,m.id));
+  inCtx().forEach((m)=>push(m.role,msgTok(m),`${m.role==="user"?"You":P().name} · ≈${fmt(msgTok(m))} tokens · click to find it`,m.id));
   push("draft",u.draft,`The message you are typing · ≈${fmt(u.draft)} tokens`);
   push("reply",u.reply,`Room kept for the reply (output cap) · ${fmt(u.reply)} tokens`);
   let y=0, html="";
@@ -510,7 +506,6 @@ async function send(){
   $("#msg").focus();
 }
 /* Keep the message box a comfortable typing height; grow with content up to a modest max */
-const appLayout = () => matchMedia("(min-width:1101px) and (min-height:620px)").matches;
 function sizeMsg(){
   const el=$("#msg"), card=$(".convo"), empty=!S.msgs.length && !S.pending;
   card.classList.toggle("is-empty",empty);
@@ -670,7 +665,6 @@ elapsedTimer = setInterval(() => {
 
   void boot();
   return () => {
-    aborted = true;
     S.ctrl?.abort();
     if (elapsedTimer) clearInterval(elapsedTimer);
     document.removeEventListener('fullscreenchange', renderFs);

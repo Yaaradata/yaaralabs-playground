@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useRouter, usePathname } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import Header from '../../../../components/Header';
 import config from '../../../../lib/config';
 import { 
@@ -177,17 +177,16 @@ interface KnowledgeItem {
 }
 
 export default function ProjectDetailsPage() {
-  const [guestSession, setGuestSession] = useState<GuestSession | null>(null);
+  const [, setGuestSession] = useState<GuestSession | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isValidSession, setIsValidSession] = useState(false);
   const [actualSessionId, setActualSessionId] = useState<string>('');
-  const [actualProjectId, setActualProjectId] = useState<string>('');
+  const [, setActualProjectId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'train' | 'publish'>('train');
   const [exerciseOpen, setExerciseOpen] = useState(false);
   const [exerciseBackLabel, setExerciseBackLabel] = useState('All Exercise');
   const exerciseBackRef = useRef<(() => void) | null>(null);
-  const [showPreview, setShowPreview] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [trainSection, setTrainSection] = useState<'settings' | 'persona' | 'knowledge' | 'actions' | 'tools' | 'forms' | 'teach'>('settings');
   const contentAreaRef = useRef<HTMLDivElement>(null);
@@ -266,7 +265,6 @@ export default function ProjectDetailsPage() {
   const actionsContainerRef = useRef<HTMLDivElement>(null);
 
   const params = useParams();
-  const router = useRouter();
   const pathname = usePathname();
   const urlUserId = params?.userid as string;
   const urlProjectId = params?.projectid as string;
@@ -460,7 +458,7 @@ export default function ProjectDetailsPage() {
       loadPersona(selectedProject.agent_id);
       loadSettings(selectedProject.agent_id);
     }
-  }, [selectedProject]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedProject]);
 
   // Refresh persona when switching to persona section (ensures data is fresh after Teach Your Agent changes)
   useEffect(() => {
@@ -1056,7 +1054,7 @@ export default function ProjectDetailsPage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        await response.json();
         setRuleSaveMessage({ type: 'success', text: editingRule ? 'Rule updated successfully!' : 'Rule saved successfully!' });
         
         // Reset form
@@ -1105,48 +1103,6 @@ export default function ProjectDetailsPage() {
       setRuleSaveMessage({ type: 'error', text: 'Failed to delete rule' });
     } finally {
       setDeletingRuleId(null);
-    }
-  };
-
-  // Clone a rule
-  const cloneRule = async (rule: SavedRule) => {
-    setActiveRuleMenu(null);
-    try {
-      const clonedConditions = rule.conditions.map((c, i) => ({
-        id: `${Date.now()}-${i}`,
-        type: c.type,
-        value: c.value || '',
-        isDropdownOpen: false
-      }));
-      const clonedActions = rule.actions.map((a, i) => ({
-        id: `${Date.now()}-${i}`,
-        type: a.type,
-        value: a.value,
-        isDropdownOpen: false,
-        kbDropdownOpen: false
-      }));
-
-      // Save cloned rule via API
-      const response = await fetch(`${config.apiBaseUrl}/rules`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agent_id: selectedProject?.agent_id,
-          name: `${rule.name} (Copy)`,
-          conditions: clonedConditions.map(c => ({ type: c.type, value: c.value })),
-          actions: clonedActions.map(a => ({ type: a.type, value: a.value })),
-          match_type: rule.match_type
-        }),
-      });
-
-      if (response.ok) {
-        await loadRules();
-        setRuleSaveMessage({ type: 'success', text: 'Rule cloned successfully!' });
-        setTimeout(() => setRuleSaveMessage(null), 3000);
-      }
-    } catch (error) {
-      console.error('Error cloning rule:', error);
-      setRuleSaveMessage({ type: 'error', text: 'Failed to clone rule' });
     }
   };
 
@@ -1353,20 +1309,6 @@ export default function ProjectDetailsPage() {
     });
   };
   
-  // Extract clean domain name from URL (handles vertexai redirect URLs)
-  const getCleanDomain = (uri: string): string => {
-    // If it's a vertexai redirect URL, use the title instead
-    if (uri.includes('vertexaisearch.cloud.google.com')) {
-      return ''; // Will use title instead
-    }
-    try {
-      const url = new URL(uri);
-      return url.hostname.replace('www.', '');
-    } catch {
-      return uri;
-    }
-  };
-  
   // Get display URL - clean version without vertexai redirect
   const getDisplayUrl = (source: WebSource): string => {
     // If it's a vertexai redirect, just show the title/domain
@@ -1382,7 +1324,7 @@ export default function ProjectDetailsPage() {
   };
   
   // Add inline citations to content (Perplexity style)
-  const addInlineCitations = (content: string, sources: WebSource[]): string => {
+  const addInlineCitations = (content: string, _sources: WebSource[]): string => {
     // Remove any existing source section that backend might have added (for backward compatibility)
     const { cleanContent } = parseSourcesFromContent(content);
     return cleanContent;
@@ -3479,7 +3421,7 @@ export default function ProjectDetailsPage() {
                                                 {knowledgeList.length > 0 && (
                                                   <>
                                                     <div className="px-4 py-2 bg-card text-xs font-semibold text-fg/60 uppercase">Text Knowledge</div>
-                                                    {knowledgeList.map((kb, i) => (
+                                                    {knowledgeList.map((kb) => (
                                                       <button
                                                         key={kb.knowledge_id}
                                                         onClick={() => {

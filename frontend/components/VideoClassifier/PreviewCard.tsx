@@ -204,7 +204,6 @@ export const PreviewCard = forwardRef<HTMLDivElement, Props>(function PreviewCar
             >
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { pickFile(e.target.files?.[0]); e.target.value = ''; }} />
               {img ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img ref={imgRef} src={img} alt="Input" onLoad={(e) => runOnImage(e.currentTarget)} className="mx-auto max-h-56 rounded object-contain bg-white" />
               ) : (
                 <p className="py-6 text-sm text-fg/60">Drop an image or click to choose a file</p>

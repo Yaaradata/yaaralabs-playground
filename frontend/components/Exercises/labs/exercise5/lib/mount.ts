@@ -354,7 +354,6 @@ export function mountExercise5(host: HTMLElement, opts: MountOptions): () => voi
   const stat = (l: string, m: TokeniserModel) => {
     const p = price(m);
     const f = fresh(l);
-    const r = S.res[l];
     const prompt = promptFor(l);
     const outText = answerTextFor(l, m);
     // Metrics only use real token counts from generated text — never word-budget guesses.

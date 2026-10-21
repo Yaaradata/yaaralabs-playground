@@ -9,7 +9,7 @@ import {
   type BuildRagCatalog,
 } from './api';
 import { THEME_TOGGLE_HTML, bindExerciseTheme } from '../../../theme';
-import { cloneState, createUndoStack, syncUndoButton, UNDO_BUTTON_HTML } from '../../../undoHistory';
+import { createUndoStack, syncUndoButton, UNDO_BUTTON_HTML } from '../../../undoHistory';
 import { exerciseBrandHtml } from '../../../exerciseHeaderIcons';
 import { bindHostFullscreen } from '../../../fullscreen';
 import { labBuddyHtml } from '../../../labBuddy';
@@ -216,7 +216,6 @@ const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">"
 const fmt = n => Math.round(n).toLocaleString("en-IN");
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
 const P = () => PROVIDERS[S.prov] || PROVIDERS[defaultProv] || Object.values(PROVIDERS)[0] || {name:'Model',tempMax:2};
-const connected = () => true;
 const wc = s => (s.match(/\S+/g)||[]).length;
 const tokEst = s => Math.ceil(String(s).length/4);
 function hash(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; } return h; }
@@ -225,7 +224,6 @@ function announce(m){ $("#live").textContent=m; }
 function md(s){ return esc(s).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/^#{1,4}\s+(.+)$/gm,"<b>$1</b>").replace(/^(\s*)[-*•]\s+/gm,"$1• "); }
 
 /* ============ 1 Load ============ */
-const docRaw = () => ($("#doc")?.value ?? S.raw ?? "");
 S.raw="";
 let pdfjsReady=null;
 function loadPdfjs(){
@@ -325,14 +323,6 @@ function chunks(){
 }
 
 /* ============ 4 Embed ============ */
-function wordsOf(s){ return (s.toLowerCase().match(/[\p{L}\p{N}_]+/gu)||[]).filter(w=>[...w].length>=2); }   /* scikit-learn's default tokens */
-function tfidfFit(docs){
-  const toks=docs.map(wordsOf), vocab=[...new Set(toks.flat())].sort(), idx=new Map(vocab.map((w,i)=>[w,i])), n=docs.length;
-  const df=new Array(vocab.length).fill(0); toks.forEach(t=>new Set(t).forEach(w=>df[idx.get(w)]++));
-  const idf=df.map(d=>Math.log((1+n)/(1+d))+1);
-  const vec=t=>{ const v=new Array(vocab.length).fill(0); t.forEach(w=>{ const k=idx.get(w); if(k!=null) v[k]++; }); for(let k=0;k<v.length;k++) v[k]*=idf[k]; const L=Math.sqrt(v.reduce((a,x)=>a+x*x,0)); return L?v.map(x=>x/L):v; };
-  return {vocab, idf, vecs:toks.map(vec), embedQuery:q=>vec(wordsOf(q))};
-}
 const embSig = () => chunks().sig+"|"+S.model;
 function embState(){ if(!S.emb) return "wait"; return S.emb.sig===embSig() ? "done" : "stale"; }
 async function embed(){
@@ -349,29 +339,6 @@ async function embed(){
   S.embBusy=false; setBusy(""); renderAll(); return true;
 }
 async function ensureEmbedded(){ if(embState()==="done") return true; return await embed(); }
-
-/* Flatten the vectors to 2D (principal component analysis) so the chunks can be drawn as a map */
-function pca2(vecs){
-  const n=vecs.length, d=vecs[0]?.length||0;
-  if(n<2||!d) return null;
-  const mean=new Array(d).fill(0); vecs.forEach(v=>v.forEach((x,k)=>mean[k]+=x/n));
-  const X=vecs.map(v=>v.map((x,k)=>x-mean[k]));
-  const G=X.map(a=>X.map(b=>{ let s=0; for(let k=0;k<d;k++) s+=a[k]*b[k]; return s; }));
-  const comps=[];
-  for(let c=0;c<2;c++){
-    let u=Array.from({length:n},(_, i)=>Math.sin(i*1.7+c*2.1)+1.1);
-    for(let it=0;it<80;it++){
-      let w=G.map(row=>row.reduce((a,x,j)=>a+x*u[j],0));
-      comps.forEach(pc=>{ const dot=w.reduce((a,x,j)=>a+x*pc.u[j],0); w=w.map((x,j)=>x-dot*pc.u[j]); });
-      const L=Math.sqrt(w.reduce((a,x)=>a+x*x,0))||1; u=w.map(x=>x/L);
-    }
-    const dir=new Array(d).fill(0); X.forEach((row,i)=>row.forEach((x,k)=>dir[k]+=x*u[i]));
-    const L=Math.sqrt(dir.reduce((a,x)=>a+x*x,0))||1;
-    comps.push({u, dir:dir.map(x=>x/L)});
-  }
-  const proj=v=>comps.map(pc=>v.reduce((a,x,k)=>a+(x-mean[k])*pc.dir[k],0));
-  return {proj, pts:vecs.map(proj)};
-}
 
 /* ============ 6 Retrieve ============ */
 const dot=(a,b)=>{ let s=0; for(let i=0;i<a.length;i++) s+=a[i]*b[i]; return s; };
@@ -425,7 +392,6 @@ async function ask(){
 }
 
 /* ============ 9 Evaluate ============ */
-const norm = s => String(s).toLowerCase().replace(/[’']/g,"'").replace(/\s+/g," ").trim();
 function evalState(){ if(!S.evalRes) return "wait"; return S.evalRes.sig===evalSig() ? "done" : "stale"; }
 const evalSig = () => [embSig(),S.template,S.k,S.minScore,S.numbered,S.prov,S.evalGen,JSON.stringify(S.tests)].join("|");
 async function runEval(){
@@ -1006,7 +972,7 @@ function renderLoadStats(){
 /* ---- 2 Clean: rule switches and a view of every change ---- */
 const RULES=[["headers","Page headers & numbers","lines"],["hyphen","Hyphen splits","words"],["wraps","Broken lines","lines"],["spaces","Extra spaces","characters"]];
 const RULE_TIP={headers:"Lines like “Page 2 of 3”, and any short line seen 3 or more times",hyphen:"com-⏎pacted → compacted",wraps:"A line break before a lower-case word becomes a space",spaces:"Runs of spaces become one; 3+ line breaks become one blank line"};
-function rulePills(){ const c=cleaned(); return RULES.map(([k,t,u])=>`<button class="rule ${S.clean[k]?"on":""}" data-rule="${k}" aria-pressed="${S.clean[k]}" title="${RULE_TIP[k]}"><span class="tg"></span>${t}<b>${S.clean[k]?fmt(c.n[k]):"off"}</b></button>`).join(""); }
+function rulePills(){ const c=cleaned(); return RULES.map(([k,t])=>`<button class="rule ${S.clean[k]?"on":""}" data-rule="${k}" aria-pressed="${S.clean[k]}" title="${RULE_TIP[k]}"><span class="tg"></span>${t}<b>${S.clean[k]?fmt(c.n[k]):"off"}</b></button>`).join(""); }
 function cleanChips(){ const c=cleaned(); return `<span class="chip">Before <b>${fmt(wc(S.raw))}</b> words</span><span class="chip li">After <b>${fmt(wc(c.text))}</b> words</span>`; }
 function cleanOut(){
   const c=cleaned();
@@ -1191,7 +1157,6 @@ function promptOut(){
 
 /* ---- 8 Generate: the answer, typed out, with its sources beside it ---- */
 function withCites(text,ids){
-  const L=chunks().list;
   return md(text).replace(/\[(\d{1,2})\]/g,(m,n)=>{ const i=ids?.[+n-1]; return i!=null?`<span class="cite" data-src="${n}" title="Chunk #${i+1}">${n}</span>`:m; });
 }
 function genOut(){

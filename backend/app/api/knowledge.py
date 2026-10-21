@@ -1,18 +1,17 @@
 import asyncio
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, Query
-from typing import Optional, List
+from typing import Optional
 from pydantic import BaseModel
 import logging
 
 from .rate_limits import rate_limit
 from .agent_access import agent_guard
 from ..models import (
-    KnowledgeTextRequest, KnowledgeFileRequest, KnowledgeLinkRequest, KnowledgeQnARequest,
-    KnowledgeResponse, KnowledgeFileResponse, ErrorResponse
+    KnowledgeTextRequest, KnowledgeLinkRequest, KnowledgeQnARequest,
+    KnowledgeResponse
 )
 from ..services.knowledge_service import KnowledgeService
-from ..services.file_service import FileService, get_file_service
-from ..config import gcp_clients
+from ..services.file_service import get_file_service
 
 logger = logging.getLogger(__name__)
 

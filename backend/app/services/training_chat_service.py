@@ -13,7 +13,7 @@ import logging
 import json
 import re
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, List
 from enum import Enum
 from google.cloud import firestore
 

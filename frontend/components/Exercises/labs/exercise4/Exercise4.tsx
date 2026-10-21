@@ -178,7 +178,7 @@ function asDirectoryHandle(item: DataTransferItem): Promise<FileSystemHandle | n
   return withHandle.getAsFileSystemHandle().catch(() => null);
 }
 
-export default function Exercise4({ sessionId, projectId, onComplete }: Exercise4Props) {
+export default function Exercise4({ sessionId, projectId }: Exercise4Props) {
   const { setChromeBack } = useExerciseSession();
   const [theme, setTheme] = useState<ExerciseTheme>(() => readExerciseTheme());
   const [step, setStep] = useState<Step>(2);
@@ -196,7 +196,7 @@ export default function Exercise4({ sessionId, projectId, onComplete }: Exercise
   const [draft, setDraft] = useState<ParamMap | null>(null);
   const [frac, setFrac] = useState(0.5);
   const [modal, setModal] = useState<"info" | "params" | "cell" | "path" | null>(null);
-  const [cell, setCell] = useState<{ real: number; guess: number } | null>(null);
+  const [cell] = useState<{ real: number; guess: number } | null>(null);
   const [toast, setToast] = useState<{ text: string; warn: boolean } | null>(null);
   const [filter, setFilter] = useState<TrayFilter>("all");
   const [classFilter, setClassFilter] = useState(-1);
@@ -212,7 +212,6 @@ export default function Exercise4({ sessionId, projectId, onComplete }: Exercise
   const toastTimer = useRef<number | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const announced = useRef("");
-  const finished = useRef(false);
   const ownSeq = useRef(0);
   const keepSeq = useRef(0);
   /** Bumped on Clear / restart so late keep/share/ingest responses cannot restore wiped uploads. */

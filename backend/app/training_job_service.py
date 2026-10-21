@@ -1,9 +1,8 @@
 import uuid
 import json
 from datetime import datetime, timezone, timedelta
-from typing import List, Optional, Dict, Any
-from google.cloud import firestore, storage, pubsub_v1
-from google.cloud.exceptions import NotFound
+from typing import List, Optional
+from google.cloud import firestore
 
 from .models import TrainingJob, TrainingJobStatus, Project, TextExample
 from .training_service import trainer

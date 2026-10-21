@@ -1,8 +1,5 @@
 import json
 import logging
-from typing import Optional
-from google.cloud import pubsub_v1
-from google.cloud.exceptions import NotFound
 import asyncio
 
 from .training_job_service import training_job_service

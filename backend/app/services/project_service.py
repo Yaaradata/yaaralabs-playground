@@ -3,8 +3,6 @@ import logging
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from google.cloud import firestore
-from google.cloud import storage
-from google.cloud import pubsub_v1
 
 from ..models import Project, ProjectCreate, ProjectUpdate, Dataset, TrainedModel, ProjectConfig, TextExample, ExampleAdd, ImageExampleAdd
 from ..config import gcp_clients

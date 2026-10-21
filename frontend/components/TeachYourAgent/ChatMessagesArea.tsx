@@ -44,7 +44,6 @@ export default function ChatMessagesArea({
   onApprove,
   onReject,
   onEditMessage,
-  onDeleteMessage,
   onStartEditMessage,
   onCancelEditMessage,
   onToggleHistory,

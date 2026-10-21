@@ -1,13 +1,10 @@
-import joblib
 import pickle
-from typing import List, Dict, Any, Tuple, Optional
-from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from typing import List, Dict, Any, Tuple
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import accuracy_score
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
-import numpy as np
 from datetime import datetime, timezone
 import re
 import spacy

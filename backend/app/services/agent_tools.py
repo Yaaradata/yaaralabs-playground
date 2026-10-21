@@ -26,7 +26,7 @@ import time
 from datetime import date, datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import requests
 

@@ -67,7 +67,7 @@ export default function TrainPage() {
   const [selectedLabelId, setSelectedLabelId] = useState<string>('');
   const [newLabelName, setNewLabelName] = useState('');
   const [newExampleText, setNewExampleText] = useState('');
-  const [guestSession, setGuestSession] = useState<GuestSession | null>(null);
+  const [, setGuestSession] = useState<GuestSession | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isValidSession, setIsValidSession] = useState(false);
@@ -77,8 +77,7 @@ export default function TrainPage() {
   const [isSubmittingToAPI, setIsSubmittingToAPI] = useState(false);
   const [isDeletingExample, setIsDeletingExample] = useState(false);
   const [deletingExampleId, setDeletingExampleId] = useState<string | null>(null);
-  const [isDeletingLabel, setIsDeletingLabel] = useState(false);
-  const [deletingLabelId, setDeletingLabelId] = useState<string | null>(null);
+  const [, setDeletingLabelId] = useState<string | null>(null);
   const [deletingLabels, setDeletingLabels] = useState<Set<string>>(new Set());
   const [deletingExamplesByLabel, setDeletingExamplesByLabel] = useState<Set<string>>(new Set());
   const [hasInitialDataLoaded, setHasInitialDataLoaded] = useState(false);
@@ -609,7 +608,7 @@ export default function TrainPage() {
         try {
           errorDetails = await response.json();
           console.error('📋 Error Details:', errorDetails);
-        } catch (jsonError) {
+        } catch {
           const errorText = await response.text();
           console.error('📝 Error Text:', errorText);
           errorDetails = { message: errorText };
@@ -865,7 +864,7 @@ export default function TrainPage() {
         try {
           errorDetails = await response.json();
           console.error('📋 Error Details:', errorDetails);
-        } catch (jsonError) {
+        } catch {
           const errorText = await response.text();
           console.error('📝 Error Text:', errorText);
           errorDetails = { detail: errorText };
@@ -973,7 +972,7 @@ export default function TrainPage() {
           try {
             errorDetails = await response.json();
             console.error('📋 Error Details:', errorDetails);
-          } catch (jsonError) {
+          } catch {
             const errorText = await response.text();
             console.error('📝 Error Text:', errorText);
             errorDetails = { detail: errorText };
@@ -1059,7 +1058,7 @@ export default function TrainPage() {
         try {
           errorDetails = await response.json();
           console.error('📋 Error Details:', errorDetails);
-        } catch (jsonError) {
+        } catch {
           const errorText = await response.text();
           console.error('📝 Error Text:', errorText);
           errorDetails = { detail: errorText };
@@ -1142,7 +1141,7 @@ export default function TrainPage() {
         try {
           errorDetails = await response.json();
           console.error('📋 Error Details:', errorDetails);
-        } catch (jsonError) {
+        } catch {
           const errorText = await response.text();
           console.error('📝 Error Text:', errorText);
           errorDetails = { detail: errorText };
@@ -1387,7 +1386,7 @@ export default function TrainPage() {
         try {
           errorDetails = await response.json();
           console.error('📋 Error Details:', errorDetails);
-        } catch (jsonError) {
+        } catch {
           const errorText = await response.text();
           console.error('📝 Error Text:', errorText);
           errorDetails = { detail: errorText };
@@ -1469,7 +1468,7 @@ export default function TrainPage() {
         try {
           errorDetails = await response.json();
           console.error('📋 Error Details:', errorDetails);
-        } catch (jsonError) {
+        } catch {
           const errorText = await response.text();
           console.error('📝 Error Text:', errorText);
           errorDetails = { detail: errorText };
@@ -1544,7 +1543,7 @@ export default function TrainPage() {
         try {
           errorDetails = await response.json();
           console.error('📋 Error Details:', errorDetails);
-        } catch (jsonError) {
+        } catch {
           const errorText = await response.text();
           console.error('📝 Error Text:', errorText);
           errorDetails = { detail: errorText };
@@ -1630,7 +1629,7 @@ export default function TrainPage() {
         try {
           errorDetails = await response.json();
           console.error('📋 Error Details:', errorDetails);
-        } catch (jsonError) {
+        } catch {
           const errorText = await response.text();
           console.error('📝 Error Text:', errorText);
           errorDetails = { detail: errorText };

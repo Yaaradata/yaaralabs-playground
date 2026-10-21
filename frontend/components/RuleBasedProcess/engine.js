@@ -1477,12 +1477,6 @@ export function mountRuleBasedProcess(root, options) {
     function drawWatchers() {
       // Variable chips removed from the Stage UI.
     }
-    function fmtWatch(v) {
-      if (Array.isArray(v)) {
-        try { return JSON.stringify(v); } catch (e) { return "[list]"; }
-      }
-      return String(v);
-    }
     function ensureList(name) {
       if (!Array.isArray(R.vars[name])) R.vars[name] = [];
       return R.vars[name];
@@ -3167,7 +3161,7 @@ export function mountRuleBasedProcess(root, options) {
         }
         throw perr(line, "I do not understand: " + text);
       }
-      function call(nm, innerTk, line2, whole) {
+      function call(nm, innerTk, line2) {
         var src = tkText(innerTk);
         var args = splitArgs(src).filter(function (a) { return a.indexOf("=") < 0; });
         function E(x) { return parseExpr(x, line2, seen); }
@@ -3601,7 +3595,7 @@ export function mountRuleBasedProcess(root, options) {
       e.classList.toggle("codeok", ok === true);
       e.classList.toggle("codewarn", ok === "warn");
       if (text) {
-        try { e.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (err) {}
+        try { e.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch {}
       }
     }
     function codeIsEmpty(src) {
@@ -3685,7 +3679,7 @@ export function mountRuleBasedProcess(root, options) {
       }
       codeMsg(msg, (res.soft && res.soft.length) ? "warn" : true);
       // On stacked/narrow layouts the canvas sits below the Python panel
-      try { $("#wrap").scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (err2) {}
+      try { $("#wrap").scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch {}
     };
   
     // ------------------------------------------------------------------ concepts UI
@@ -3799,14 +3793,14 @@ export function mountRuleBasedProcess(root, options) {
 
       function readStore() {
         try { return JSON.parse(localStorage.getItem(STORE) || "{}") || {}; }
-        catch (e) { return {}; }
+        catch { return {}; }
       }
 
       function writeStore(partial) {
         var cur = readStore();
         if (partial.pal != null) cur.pal = partial.pal;
         if (partial.side != null) cur.side = partial.side;
-        try { localStorage.setItem(STORE, JSON.stringify(cur)); } catch (e) {}
+        try { localStorage.setItem(STORE, JSON.stringify(cur)); } catch {}
       }
 
       function applyWidth(pane, which, px) {
@@ -3833,7 +3827,7 @@ export function mountRuleBasedProcess(root, options) {
           var startW = pane.getBoundingClientRect().width;
           split.classList.add("is-drag");
           root.classList.add("resizing");
-          try { split.setPointerCapture(e.pointerId); } catch (err) {}
+          try { split.setPointerCapture(e.pointerId); } catch {}
 
           function onMove(ev) {
             var dx = ev.clientX - startX;
@@ -3843,7 +3837,7 @@ export function mountRuleBasedProcess(root, options) {
           function onUp(ev) {
             split.classList.remove("is-drag");
             root.classList.remove("resizing");
-            try { split.releasePointerCapture(ev.pointerId); } catch (err2) {}
+            try { split.releasePointerCapture(ev.pointerId); } catch {}
             document.removeEventListener("pointermove", onMove);
             document.removeEventListener("pointerup", onUp);
             document.removeEventListener("pointercancel", onUp);
@@ -3902,7 +3896,7 @@ export function mountRuleBasedProcess(root, options) {
       $("#fullscreen").onclick = function () {
         if (fsElement() === root) {
           var exit = document.exitFullscreen || document.webkitExitFullscreen;
-          if (exit) try { exit.call(document); } catch (e1) {}
+          if (exit) try { exit.call(document); } catch {}
           return;
         }
         var req = root.requestFullscreen || root.webkitRequestFullscreen;
@@ -3910,7 +3904,7 @@ export function mountRuleBasedProcess(root, options) {
         try {
           var p = req.call(root);
           if (p && typeof p.catch === "function") p.catch(function () {});
-        } catch (e2) {}
+        } catch {}
       };
       on(document, "fullscreenchange", paintFullscreenBtn);
       on(document, "webkitfullscreenchange", paintFullscreenBtn);
@@ -3918,17 +3912,6 @@ export function mountRuleBasedProcess(root, options) {
     }
   
     // concept editor
-    function syncConceptInPresets() {
-      if (!concept) return;
-      var idx = PRESETS.indexOf(concept);
-      if (idx < 0) {
-        for (var i = 0; i < PRESETS.length; i++) {
-          if (PRESETS[i].id === concept.id) { idx = i; break; }
-        }
-      }
-      if (idx > -1) PRESETS[idx] = concept;
-    }
-
     $("#edit").onclick = function () {
       $("#f-title").value = concept.title;
       $("#f-brief").value = concept.brief;
@@ -4119,8 +4102,8 @@ export function mountRuleBasedProcess(root, options) {
 
   return {
     cleanup: function cleanup() {
-      cleanups.forEach(function (fn) { try { fn(); } catch (e) {} });
-      try { if (R && R.on) R.stop = true; } catch (e) {}
+      cleanups.forEach(function (fn) { try { fn(); } catch {} });
+      try { if (R && R.on) R.stop = true; } catch {}
     },
     getState: getState,
     applyState: applyState,

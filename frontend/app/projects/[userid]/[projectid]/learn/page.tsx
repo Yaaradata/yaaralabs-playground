@@ -84,19 +84,6 @@ interface ProjectDetailResponse {
   };
 }
 
-interface Example {
-  id: string;
-  text: string;
-  createdAt: string;
-}
-
-interface Label {
-  id: string;
-  name: string;
-  examples: Example[];
-  createdAt: string;
-}
-
 interface TrainedModel {
   id: string;
   status: 'training' | 'available' | 'failed';
@@ -159,9 +146,9 @@ interface PredictionResponse {
 }
 
 export default function LearnPage() {
-  const [guestSession, setGuestSession] = useState<GuestSession | null>(null);
+  const [, setGuestSession] = useState<GuestSession | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [projectDataset, setProjectDataset] = useState<Dataset | null>(null);
+  const [, setProjectDataset] = useState<Dataset | null>(null);
   const [isValidSession, setIsValidSession] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   // A failed load (server error, network) shows Retry instead of sending the learner back to the list
@@ -622,6 +609,7 @@ export default function LearnPage() {
       // Initial status check only once when page loads
       fetchTrainingStatus();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when session/project IDs change
   }, [actualSessionId, actualProjectId]); // Only depend on session and project IDs, not training state
 
 
@@ -764,7 +752,7 @@ export default function LearnPage() {
         try {
           errorDetails = await response.json();
           console.error('📋 Error Details:', errorDetails);
-        } catch (jsonError) {
+        } catch {
           const errorText = await response.text();
           console.error('📝 Error Text:', errorText);
           errorDetails = { message: errorText };
@@ -902,7 +890,7 @@ export default function LearnPage() {
          try {
            errorDetails = await response.json();
            console.error('📋 Error Details:', errorDetails);
-         } catch (jsonError) {
+         } catch {
            const errorText = await response.text();
            console.error('📝 Error Text:', errorText);
            errorDetails = { detail: errorText };
@@ -1302,7 +1290,6 @@ export default function LearnPage() {
       setIsUploadingImage(true);
       setIsPredictingImage(true);
 
-      const predictionLabel = 'prediction';
       let finalImageUrl: string;
 
       if (predictionMode === 'upload' || predictionMode === 'webcam') {
@@ -1415,11 +1402,6 @@ export default function LearnPage() {
       setIsUploadingImage(false);
       setIsPredictingImage(false);
     }
-  };
-
-  const handleDescribeModel = () => {
-    // This could open a modal or navigate to a description page
-    console.log('Describe model clicked');
   };
 
   // "Use the AI" opens once a trained model is ready (and the training steps have finished).

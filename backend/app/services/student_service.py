@@ -1,9 +1,8 @@
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
-from google.cloud import firestore
 
-from ..models import Student, StudentJoin
+from ..models import Student
 from ..config import gcp_clients
 
 

@@ -21,8 +21,6 @@ from google.cloud import storage
 from google.cloud import firestore
 import json
 import gc
-import time
-from sklearn.metrics.pairwise import cosine_similarity
 
 # Configure logging
 logger = logging.getLogger(__name__)

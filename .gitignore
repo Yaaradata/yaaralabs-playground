@@ -25,6 +25,8 @@ node_modules/
 out/
 dist/
 build/
+# ...but not Next.js route folders named "build" (app/projects/[userid]/[projectid]/build)
+!frontend/app/**/build/
 *.tsbuildinfo
 
 # Logs and OS

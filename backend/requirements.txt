@@ -23,6 +23,8 @@ python-dotenv==1.0.0
 # Security and Authentication
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+# Admin password hashing (app/services/admin_auth.py) uses bcrypt directly
+bcrypt==5.0.0
 
 # File Handling
 aiofiles==23.2.1

@@ -1,18 +1,15 @@
 """
 File Service - Handles file uploads to GCS and text extraction
 """
-import os
 import io
 import logging
-from typing import Optional, Tuple, List, Dict, Any
+from typing import Tuple, List, Dict, Any
 from datetime import datetime, timezone
 import uuid
 
-from google.cloud import storage
 import PyPDF2
 import pdfplumber
 import pandas as pd
-from openpyxl import load_workbook
 
 logger = logging.getLogger(__name__)
 

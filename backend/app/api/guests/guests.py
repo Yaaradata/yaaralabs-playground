@@ -1,20 +1,17 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query, Depends, Request
 from typing import List, Optional
-import json
 import logging
 import asyncio
 import contextlib
 from datetime import datetime, timezone
 import secrets
-import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 from ..off_loop import off_loop
 from ...models import (
-    Project, ProjectCreate, ProjectUpdate, ProjectListResponse, 
+    ProjectCreate, ProjectUpdate, ProjectListResponse, 
     ProjectResponse, ProjectStatusResponseWrapper, TrainingConfig,
-    FileUploadResponse, TrainingResponse, ErrorResponse,
-    ExampleAdd, ExamplesBulkAdd, PredictionRequest, PredictionResponse,
+    FileUploadResponse, TrainingResponse, ExamplesBulkAdd, PredictionRequest, PredictionResponse,
     GuestSessionResponse, TrainedModel, Dataset, TextExample, GuestUpdate,
     PaginationInfo, ProjectType,
 )
@@ -144,7 +141,6 @@ async def debug_projects(session_id: str):
 async def fix_project_types(session_id: str):
     """Fix project types for a session by updating invalid enum values"""
     try:
-        from google.cloud import firestore
         from ...config import gcp_clients
         
         db = gcp_clients.get_firestore_client()

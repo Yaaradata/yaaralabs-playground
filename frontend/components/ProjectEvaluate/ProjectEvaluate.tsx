@@ -655,7 +655,6 @@ function Confusion({ items, labels, unit, desk, className = '' }: { items: EvalI
             {picked.map((i) => (
               <li key={i.text} className="flex items-center gap-3">
                 {i.image && (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={i.image} alt={i.text} className="w-14 h-14 rounded-md object-cover border border-magenta-brand/20 shrink-0" />
                 )}
                 <span>{i.image ? i.text : `“${i.text}”`}</span>

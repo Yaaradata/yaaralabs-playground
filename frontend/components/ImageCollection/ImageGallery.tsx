@@ -201,7 +201,6 @@ export default function ImageGallery({
                       }}
                       title={image.filename}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={getImageUrl(image.image_url)}
                         alt={`${image.label}: ${image.filename}`}
@@ -242,7 +241,6 @@ export default function ImageGallery({
               </button>
             </div>
             <div className="p-4 bg-white">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={getImageUrl(selectedImage.image_url)}
                 alt={`${selectedImage.label}: ${selectedImage.filename}`}

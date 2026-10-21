@@ -634,6 +634,7 @@ export function TrainStep(props: Props) {
       probe.decoding = "async";
       probe.src = imageSrc(index);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- beltKey captures belt contents; only re-warm when it changes
   }, [beltKey]); // imageSrc only changes with dataset.key, which rebuilds wall/belt
   const brain: IconName = run?.model === "knn" ? "search" : run?.model === "rf" ? "tree" : "brain";
   const predictReady = Boolean((run?.done && run.res && !training) || runs.some((item) => item.done && item.res));

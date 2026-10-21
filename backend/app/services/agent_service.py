@@ -1,8 +1,7 @@
 import uuid
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
-from google.cloud import firestore
+from typing import Optional, List
 
 from ..models import (
     Agent, Persona, AgentCreateRequest, PersonaUpdateRequest, AgentSettings, SettingsUpdateRequest,

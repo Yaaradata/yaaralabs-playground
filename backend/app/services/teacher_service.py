@@ -2,8 +2,7 @@ import uuid
 import random
 import string
 from datetime import datetime, timezone
-from typing import List, Optional, Dict, Any
-from google.cloud import firestore
+from typing import Optional, Dict, Any
 
 from ..models import Teacher, TeacherCreate, ClassroomCreate, Classroom
 from ..config import gcp_clients

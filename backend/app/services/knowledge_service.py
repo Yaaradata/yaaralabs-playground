@@ -3,11 +3,10 @@ import logging
 import requests
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
-from google.cloud import firestore, storage
 from bs4 import BeautifulSoup
 import re
 
-from ..models import Knowledge, KnowledgeType, KnowledgeTextRequest, KnowledgeFileRequest, KnowledgeLinkRequest, KnowledgeQnARequest
+from ..models import Knowledge, KnowledgeType, KnowledgeTextRequest, KnowledgeLinkRequest, KnowledgeQnARequest
 from ..config import gcp_clients, settings
 from .vertex_ai_service import VertexAIService
 from .agent_service import AgentService

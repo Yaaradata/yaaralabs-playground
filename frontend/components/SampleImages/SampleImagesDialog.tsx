@@ -163,7 +163,6 @@ export default function SampleImagesDialog({ namesKey, existing, onAdd, onClose 
                         className="aspect-[3/4] rounded-md overflow-hidden border border-fg/10 hover:border-pink-brand bg-canvas focus:outline-none focus:ring-2 focus:ring-pink-brand/50"
                         title={`View ${fileName(f)}`}
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={sampleImageUrl(f)} alt={`${l.label}: ${fileName(f)}`} className="w-full h-full object-cover object-top" loading="lazy" />
                       </button>
                     ))}
@@ -193,7 +192,6 @@ export default function SampleImagesDialog({ namesKey, existing, onAdd, onClose 
 
       {zoom && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4" onClick={() => setZoom(null)}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={sampleImageUrl(zoom)} alt={fileName(zoom)} className="max-w-full max-h-[90vh] rounded-lg shadow-2xl bg-white" />
         </div>
       )}

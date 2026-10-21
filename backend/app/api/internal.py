@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 
-from ..models import CleanupRequest, CleanupResponse, ErrorResponse
+from ..models import CleanupRequest, CleanupResponse
 from .admin import require_admin
 from ..services.agent_service import AgentService
 

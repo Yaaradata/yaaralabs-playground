@@ -1,7 +1,5 @@
 import uuid
-from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
-from google.cloud import firestore
 
 from ..models import DemoProject, DemoProjectCreate
 from ..config import gcp_clients

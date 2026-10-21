@@ -239,7 +239,6 @@ export const ClassCard = forwardRef<HTMLDivElement, Props>(function ClassCard(p,
             <div className="flex-1 min-w-0 flex gap-1.5 overflow-x-auto pb-1" aria-label={`${p.data.name} samples`}>
               {p.data.samples.slice().reverse().map((s) => (
                 <div key={s.id} className="relative group flex-shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={s.thumb} alt="" className="w-12 h-12 rounded object-cover border border-fg/10" />
                   {!p.readOnly && (
                     <button

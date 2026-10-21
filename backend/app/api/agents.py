@@ -1,11 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import List, Optional
 
 from .rate_limits import rate_limit
 from .agent_access import agent_guard, public_agent
 from ..models import (
-    AgentCreateRequest, AgentCreateResponse, Agent,
-    ErrorResponse, PersonaUpdateRequest, PersonaUpdateResponse, Persona,
+    AgentCreateRequest, PersonaUpdateRequest, PersonaUpdateResponse, Persona,
     SettingsUpdateRequest, SettingsUpdateResponse, AgentSettings,
     AgentGuardrails, GuardrailsUpdateRequest, GuardrailsUpdateResponse,
 )

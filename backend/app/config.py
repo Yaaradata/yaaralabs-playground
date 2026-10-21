@@ -1,4 +1,3 @@
-import os
 from typing import Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -38,6 +37,11 @@ class Settings(BaseSettings):
     
     # Security
     jwt_secret: str = Field(default="your-super-secret-jwt-key-here", env="JWT_SECRET")
+    # Admin area (/admin, api/admin_portal.py). The secret signs admin JWTs: no default on purpose, admin
+    # login is off until it is set (32+ characters). Signup needs ADMIN_SIGNUP_CODE; empty = signup off.
+    admin_jwt_secret: str = Field(default="", env="ADMIN_JWT_SECRET")
+    admin_jwt_expire_minutes: int = Field(default=480, env="ADMIN_JWT_EXPIRE_MINUTES")
+    admin_signup_code: str = Field(default="", env="ADMIN_SIGNUP_CODE")
     
     # Google Custom Search API (for image search)
     google_api_key: Optional[str] = Field(default=None, env="GOOGLE_API_KEY")
