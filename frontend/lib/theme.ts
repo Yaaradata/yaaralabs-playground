@@ -5,7 +5,7 @@
  *
  * One stored preference drives <html data-theme>, which flips the semantic colour
  * tokens in app/globals.css. Exercises, the Rules Bot and the header toggle all use
- * this store, so every toggle changes the same theme. Default: dark (the brand look).
+ * this store, so every toggle changes the same theme. Default: light, matching yaaralabs.ai.
  */
 
 import { useEffect, useState } from 'react';

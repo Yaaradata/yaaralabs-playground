@@ -155,13 +155,13 @@ export default function ProjectsPage() {
         <Header />
         <main className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold mb-8" suppressHydrationWarning>
+            <h1 className="font-serif text-4xl md:text-6xl font-normal mb-8" suppressHydrationWarning>
               Your AI workspace
             </h1>
             <button
               type="button"
               disabled
-              className="brand-gradient text-white px-10 py-4 rounded-full text-lg font-semibold opacity-50 cursor-not-allowed"
+              className="bg-fg text-canvas px-10 py-4 text-lg font-semibold opacity-50 cursor-not-allowed"
               suppressHydrationWarning
             >
               Loading...
@@ -184,7 +184,7 @@ export default function ProjectsPage() {
           <div className="flex justify-start mb-8">
             <Link
               href="/"
-              className="p-2 text-fg/70 hover:text-white hover:bg-purple-brand/10 rounded-lg transition-all duration-300 flex items-center gap-2 text-sm"
+              className="p-2 text-fg/70 hover:text-fg hover:bg-purple-brand/10 rounded-lg transition-all duration-300 flex items-center gap-2 text-sm"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -195,7 +195,7 @@ export default function ProjectsPage() {
           
           <div className="text-center">
             {/* Main Heading */}
-            <h1 className="text-4xl md:text-6xl font-bold mb-8">
+            <h1 className="font-serif text-4xl md:text-6xl font-normal mb-8">
               Your AI workspace
             </h1>
           
@@ -204,7 +204,7 @@ export default function ProjectsPage() {
           <button 
             onClick={handleTryNow}
             disabled={isLoading || isCreatingSession}
-            className="brand-gradient text-white px-10 py-4 rounded-full text-lg font-semibold hover:brightness-110 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-fg text-canvas px-10 py-4 text-lg font-semibold hover:opacity-90 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Loading...' : isCreatingSession ? 'Setting up your workspace…' : guestSession ? 'Go to your projects →' : 'Open my workspace →'}
           </button>

@@ -4,7 +4,7 @@
 export type AppTheme = 'light' | 'dark';
 
 export const THEME_STORAGE_KEY = 'yaaralabs-theme';
-export const DEFAULT_THEME: AppTheme = 'dark';
+export const DEFAULT_THEME: AppTheme = 'light';
 
 // Earlier keys (Exercises labs); read once and migrated
 export const LEGACY_KEYS = ['np-exercises-theme', 'np-ex2-theme', 'ex3-theme', 'ex4-theme'] as const;

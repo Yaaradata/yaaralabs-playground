@@ -42,13 +42,13 @@ export default function AboutPage() {
 
       <main className="pt-16">
         {/* Hero */}
-        <section className="hero-radial pt-20 pb-16 px-4 sm:px-6 lg:px-8">
+        <section className="pt-20 pb-16 px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto text-center">
-            <p className="text-sm font-semibold uppercase tracking-widest text-pink-brand mb-4">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-purple-brand mb-4">
               About the playground
             </p>
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
-              Where AI fluency becomes <span className="text-brand-gradient">hands-on.</span>
+            <h1 className="font-serif text-4xl md:text-5xl font-normal tracking-tight leading-[1.05] mb-6">
+              Where AI fluency becomes <span className="italic text-purple-brand">hands-on.</span>
             </h1>
             <p className="text-lg md:text-xl text-fg/75 max-w-3xl mx-auto leading-relaxed">
               The YaaraLabs Playground is the lab environment used in YaaraLabs cohorts. Participants
@@ -61,10 +61,10 @@ export default function AboutPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 space-y-16">
           {/* Who it's for */}
           <section>
-            <h2 className="text-2xl md:text-3xl font-bold text-purple-brand mb-6">Who it&apos;s for</h2>
+            <h2 className="font-serif text-2xl md:text-3xl font-normal text-fg mb-6">Who it&apos;s for</h2>
             <div className="grid sm:grid-cols-2 gap-5">
               {audiences.map((a) => (
-                <div key={a.title} className="brand-gradient-soft border border-magenta-brand/30 rounded-2xl p-6">
+                <div key={a.title} className="bg-surface border border-fg/10 rounded-xl p-6">
                   <h3 className="text-lg font-bold mb-2">{a.title}</h3>
                   <p className="text-fg/70 leading-relaxed">{a.description}</p>
                 </div>
@@ -74,12 +74,12 @@ export default function AboutPage() {
 
           {/* How the labs work */}
           <section>
-            <h2 className="text-2xl md:text-3xl font-bold text-purple-brand mb-6">How the labs work</h2>
+            <h2 className="font-serif text-2xl md:text-3xl font-normal text-fg mb-6">How the labs work</h2>
             <ol className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
               {labSteps.map((step, i) => (
-                <li key={step.title} className="bg-surface border border-fg/10 rounded-2xl p-6">
-                  <span className="brand-gradient inline-flex w-9 h-9 items-center justify-center rounded-full text-sm font-bold mb-4">
-                    {i + 1}
+                <li key={step.title} className="bg-card border border-fg/10 rounded-xl p-6">
+                  <span className="font-serif text-2xl text-purple-brand block mb-3">
+                    {String(i + 1).padStart(2, '0')}
                   </span>
                   <h3 className="text-lg font-bold mb-2">{step.title}</h3>
                   <p className="text-fg/70 text-sm leading-relaxed">{step.description}</p>
@@ -89,8 +89,8 @@ export default function AboutPage() {
           </section>
 
           {/* Data */}
-          <section className="bg-surface border border-fg/10 rounded-2xl p-6 md:p-8">
-            <h2 className="text-2xl font-bold mb-5">Your data in the playground</h2>
+          <section className="bg-surface border border-fg/10 rounded-xl p-6 md:p-8">
+            <h2 className="font-serif text-2xl font-normal mb-5">Your data in the playground</h2>
             <ul className="space-y-3">
               {safeguards.map((item) => (
                 <li key={item} className="flex gap-3 text-fg/80 leading-relaxed">
@@ -104,15 +104,15 @@ export default function AboutPage() {
           </section>
 
           {/* CTA */}
-          <section className="text-center brand-gradient-soft border border-magenta-brand/30 rounded-3xl px-6 py-12">
-            <h2 className="text-3xl font-bold mb-4">Start building</h2>
+          <section className="text-center bg-surface border border-fg/10 rounded-xl px-6 py-12">
+            <h2 className="font-serif text-3xl font-normal mb-4">Start building</h2>
             <p className="text-fg/70 mb-8 max-w-xl mx-auto">
               Open the playground and create your first project. No sign-up needed.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/projects"
-                className="brand-gradient text-white px-8 py-4 rounded-full font-semibold hover:brightness-110 transition-all"
+                className="bg-fg text-canvas px-8 py-4 font-semibold hover:opacity-90 transition-all"
               >
                 Open the playground →
               </Link>
@@ -120,7 +120,7 @@ export default function AboutPage() {
                 href="https://www.yaaralabs.ai"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="border border-magenta-brand/60 text-fg px-8 py-4 rounded-full font-semibold hover:bg-magenta-brand/10 transition-all"
+                className="border border-fg/20 text-fg px-8 py-4 font-semibold hover:bg-card transition-all"
               >
                 Visit yaaralabs.ai ↗
               </a>

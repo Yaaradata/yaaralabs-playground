@@ -1,21 +1,23 @@
 @import "tailwindcss";
 
 /*
- * YaaraLabs brand tokens.
- * purple = brand action, pink = highlight & interaction, magenta = bridge in
- * gradients, ink = dark canvas, green = success.
+ * YaaraLabs brand tokens, matched to yaaralabs.ai:
+ * signal purple #9333ea, noise pink #e2389f, ink #1a0f24, paper #ffffff.
+ * purple = signal (kickers, emphasis, links), pink = logo accent and errors,
+ * magenta = bridge in gradients, ink = headlines and solid buttons.
  */
 @theme {
-  --color-purple-brand: #9333ea; /* primary brand / CTAs, section titles, step numbers */
-  --color-magenta-brand: #b90abd; /* middle of the gradient, card borders, highlight panels */
-  --color-pink-brand: #ec4899; /* eyebrows, links, checkmarks, focus rings, errors */
-  --color-ink: #010101; /* page background, header, inputs */
-  --color-ink-soft: #0a0a0f; /* footer, proof boxes, image frames, metric tiles */
-  --color-ink-card: #13131a; /* modals, elevated panels */
-  --color-accent-green: #dbfe87; /* success / positive outcomes */
-  --color-accent-grey: #e3dbeb; /* soft secondary accent, use sparingly */
+  --color-purple-brand: #9333ea; /* signal purple: kickers, emphasis, links */
+  --color-magenta-brand: #b90abd; /* middle of the gradient, soft highlight panels */
+  --color-pink-brand: #e2389f; /* logo noise pink: errors, checks, focus rings */
+  --color-ink: #1a0f24; /* headlines and solid buttons */
+  --color-ink-soft: #4a3d58; /* body copy */
+  --color-ink-card: #24162e; /* deep ink panels */
+  --color-accent-green: #3f6212; /* success / positive outcomes on paper */
+  --color-accent-grey: #f1ebf8; /* tile lavender */
 
-  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-sans: var(--font-hanken), "Hanken Grotesk", system-ui, sans-serif;
+  --font-serif: var(--font-instrument), "Instrument Serif", Georgia, serif;
   --font-mono: var(--font-geist-mono);
 
   /* Readable on a projector: text-xs never computes below 13.5px (docs/responsive.md) */
@@ -85,26 +87,27 @@ html {
   --color-fg: var(--fg); /* text; use /N for muted text and hairlines */
 }
 
-:root {
-  --canvas: #010101;
-  --surface: #0a0a0f;
-  --card: #13131a;
-  --raised: #2a2a35;
-  --raised-2: #3a3a47;
-  --fg: #ffffff;
-  --code-fg: #dbfe87;
-  --success: #dbfe87;
+:root,
+:root[data-theme='light'] {
+  --canvas: #ffffff; /* paper */
+  --surface: #f1ebf8; /* tile lavender */
+  --card: #ffffff;
+  --raised: #e6e6e6; /* hairline */
+  --raised-2: #d9cfe6;
+  --fg: #1a0f24; /* ink */
+  --code-fg: #6d28d9;
+  --success: #3f6212;
 }
 
-:root[data-theme='light'] {
-  --canvas: #f7f5fa;
-  --surface: #ffffff;
-  --card: #ffffff;
-  --raised: #e3dbeb;
-  --raised-2: #cfc3dd;
-  --fg: #010101;
-  --code-fg: #3f6212;
-  --success: #3f6212;
+:root[data-theme='dark'] {
+  --canvas: #120a18;
+  --surface: #1a1022;
+  --card: #24162e;
+  --raised: #3a2a48;
+  --raised-2: #4d3a5e;
+  --fg: #f7f4fa;
+  --code-fg: #e9d5ff;
+  --success: #c4f57a;
 }
 
 /* Full purple -> magenta -> pink: big CTAs, badges, numbered steps */
@@ -130,8 +133,8 @@ html {
 /* Soft purple glow from the top: hero / landing atmosphere */
 @utility hero-radial {
   background-image: radial-gradient(
-    ellipse 80% 60% at 50% 0%,
-    color-mix(in srgb, var(--color-purple-brand) 35%, transparent),
+    ellipse 80% 50% at 50% 0%,
+    color-mix(in srgb, var(--color-purple-brand) 8%, transparent),
     transparent 70%
   );
 }
@@ -150,16 +153,27 @@ html {
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-purple-brand px-6 py-3 text-sm font-semibold text-white transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-brand disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 bg-fg px-6 py-3 text-sm font-semibold text-canvas transition hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-brand disabled:cursor-not-allowed disabled:opacity-50;
   }
+}
+
+/* Official wordmark is ink-on-paper. Swap to the light fills in dark theme. */
+.brand-wordmark-dark {
+  display: none;
+}
+html[data-theme='dark'] .brand-wordmark-light {
+  display: none;
+}
+html[data-theme='dark'] .brand-wordmark-dark {
+  display: block;
 }
 
 @layer base {
   html {
-    color-scheme: dark;
-  }
-  html[data-theme='light'] {
     color-scheme: light;
+  }
+  html[data-theme='dark'] {
+    color-scheme: dark;
   }
 
   /* Links and inputs keep preflight defaults: ported pages style them per component */

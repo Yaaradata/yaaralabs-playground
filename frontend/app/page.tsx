@@ -194,13 +194,13 @@ export default function Home() {
       <Header showAboutLink={true} />
 
       {/* Hero */}
-      <section className="hero-radial pt-36 pb-24 px-4 sm:px-6 lg:px-8">
+      <section className="pt-36 pb-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
-          <p className="text-sm font-semibold uppercase tracking-widest text-pink-brand mb-5">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-purple-brand mb-5">
             The YaaraLabs AI fluency lab
           </p>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-            Learn AI by <span className="text-brand-gradient">building it.</span>
+          <h1 className="font-serif text-4xl md:text-6xl font-normal tracking-tight leading-[1.05] mb-6">
+            Learn AI by <span className="italic text-purple-brand">building it.</span>
           </h1>
           <p className="text-lg md:text-xl text-fg/75 mb-8 max-w-3xl mx-auto leading-relaxed">
             The hands-on playground behind every YaaraLabs cohort. Collect examples from your own
@@ -208,24 +208,24 @@ export default function Home() {
           </p>
 
           {isCheckingSession && (
-            <p className="text-base text-pink-brand mb-6">Setting up your workspace…</p>
+            <p className="text-base text-fg/70 mb-6">Setting up your workspace…</p>
           )}
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href={getProjectsUrl()}
               aria-disabled={isCheckingSession}
-              className={`px-8 py-4 rounded-full text-base font-semibold transition-all duration-300 text-center ${
+              className={`px-8 py-4 text-base font-semibold transition-all duration-300 text-center ${
                 isCheckingSession
                   ? 'bg-fg/10 text-fg/50 cursor-not-allowed pointer-events-none'
-                  : 'brand-gradient text-white hover:brightness-110'
+                  : 'bg-fg text-canvas hover:opacity-90'
               }`}
             >
               {getButtonText()}
             </Link>
             <Link
               href="/about"
-              className="border border-magenta-brand/60 text-fg px-8 py-4 rounded-full text-base font-semibold hover:bg-magenta-brand/10 transition-all duration-300 text-center"
+              className="border border-fg/20 text-fg px-8 py-4 text-base font-semibold hover:bg-surface transition-all duration-300 text-center"
             >
               About the playground
             </Link>
@@ -237,8 +237,8 @@ export default function Home() {
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
-            <p className="text-sm font-semibold uppercase tracking-widest text-pink-brand mb-3">How it works</p>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">From examples to a working model</h2>
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-purple-brand mb-3">How it works</p>
+            <h2 className="font-serif text-3xl md:text-4xl font-normal mb-4">From examples to a working model</h2>
             <p className="text-lg text-fg/70 max-w-2xl mx-auto">
               Three steps, the same way production AI gets built.
             </p>
@@ -248,10 +248,10 @@ export default function Home() {
             {steps.map((step, index) => (
               <div
                 key={step.title}
-                className="brand-gradient-soft border border-magenta-brand/30 rounded-2xl p-8 h-full"
+                className="bg-surface border border-fg/10 rounded-xl p-8 h-full"
               >
-                <div className="brand-gradient w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-lg mb-6">
-                  {index + 1}
+                <div className="font-serif text-3xl text-purple-brand mb-4">
+                  {String(index + 1).padStart(2, '0')}
                 </div>
                 <h3 className="text-xl font-bold mb-3">{step.title}</h3>
                 <p className="text-fg/70 leading-relaxed">{step.description}</p>
@@ -265,15 +265,15 @@ export default function Home() {
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
-            <p className="text-sm font-semibold uppercase tracking-widest text-pink-brand mb-3">Our approach</p>
-            <h2 className="text-3xl md:text-4xl font-bold">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-purple-brand mb-3">Our approach</p>
+            <h2 className="font-serif text-3xl md:text-4xl font-normal">
               Measured. Practitioner-built. Use-case-led.
             </h2>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
             {pillars.map((pillar) => (
-              <div key={pillar.title} className="bg-surface border border-fg/10 rounded-2xl p-8">
-                <div className="text-brand-gradient text-4xl font-extrabold mb-4">{pillar.letter}</div>
+              <div key={pillar.title} className="bg-card border border-fg/10 rounded-xl p-8">
+                <div className="font-serif text-4xl text-purple-brand mb-4">{pillar.letter}</div>
                 <h3 className="text-xl font-bold mb-3 text-purple-brand">{pillar.title}</h3>
                 <p className="text-fg/70 leading-relaxed">{pillar.description}</p>
               </div>
@@ -284,18 +284,18 @@ export default function Home() {
 
       {/* CTA */}
       <section className="py-24 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center brand-gradient-soft border border-magenta-brand/30 rounded-3xl px-6 py-14">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to build your first model?</h2>
+        <div className="max-w-4xl mx-auto text-center bg-surface border border-fg/10 rounded-xl px-6 py-14">
+          <h2 className="font-serif text-3xl md:text-4xl font-normal mb-4">Ready to build your first model?</h2>
           <p className="text-lg text-fg/70 mb-10 max-w-2xl mx-auto">
             No sign-up needed. Your workspace stays private to this browser and is kept for 7 days.
           </p>
           <Link
             href={getProjectsUrl()}
             aria-disabled={isCheckingSession}
-            className={`px-10 py-4 rounded-full text-base font-semibold transition-all duration-300 inline-block text-center ${
+            className={`px-10 py-4 text-base font-semibold transition-all duration-300 inline-block text-center ${
               isCheckingSession
                 ? 'bg-fg/10 text-fg/50 cursor-not-allowed pointer-events-none'
-                : 'brand-gradient text-white hover:brightness-110'
+                : 'bg-fg text-canvas hover:opacity-90'
             }`}
           >
             {hasActiveSession ? 'Go to your projects →' : 'Start building →'}

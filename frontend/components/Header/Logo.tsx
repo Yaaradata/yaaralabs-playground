@@ -4,26 +4,41 @@ interface LogoProps {
   theme?: 'dark' | 'light';
 }
 
-export default function Logo({ className = '', size = 'md', theme = 'dark' }: LogoProps) {
+export default function Logo({ className = '', size = 'md' }: LogoProps) {
   const markSize = {
     sm: 'h-7 w-7',
     md: 'h-9 w-9',
-    lg: 'h-12 w-12'
+    lg: 'h-11 w-11',
   };
-  const textSize = size === 'sm' ? 'text-base' : size === 'md' ? 'text-lg' : 'text-2xl';
+  const wordmarkSize = {
+    sm: 'h-3.5',
+    md: 'h-[22px]',
+    lg: 'h-7',
+  };
+  const playgroundSize = size === 'sm' ? 'text-[11px]' : size === 'md' ? 'text-[13px]' : 'text-sm';
 
   return (
-    <div className={`flex items-center gap-2.5 ${className}`}>
+    <div className={`flex items-center gap-2 ${className}`}>
       <img
-        src="/yaaralogo.jpg"
-        alt="YaaraLabs"
-        className={`${markSize[size]} rounded-full`}
+        src="/brand/yaaralabs-mark.svg"
+        alt=""
+        className={`${markSize[size]} shrink-0`}
       />
-      <span className={`${textSize} leading-none`}>
-        <span className={`font-extrabold tracking-wide ${theme === 'dark' ? 'text-fg' : 'text-ink'}`}>
-          YAARALABS
-        </span>{' '}
-        <span className={`font-medium ${theme === 'dark' ? 'text-fg/60' : 'text-ink/60'}`}>
+      <span className="flex min-w-0 flex-col justify-center leading-none">
+        <span className="inline-flex items-center">
+          <img
+            src="/brand/yaaralabs-wordmark.svg"
+            alt="YaaraLabs"
+            className={`brand-wordmark-light ${wordmarkSize[size]} w-auto`}
+          />
+          <img
+            src="/brand/yaaralabs-wordmark-dark.svg"
+            alt=""
+            aria-hidden="true"
+            className={`brand-wordmark-dark ${wordmarkSize[size]} w-auto`}
+          />
+        </span>
+        <span className={`font-serif italic text-purple-brand ${playgroundSize} mt-0.5`}>
           Playground
         </span>
       </span>
