@@ -3,6 +3,7 @@
 /**
  * An error in the root layout itself. It replaces the whole document, so it renders its own <html>
  * and <body> with inline styles (the app's stylesheet may not have loaded).
+ * 
  */
 
 export default function GlobalError({ error }: { error: Error & { digest?: string }; reset: () => void }) {

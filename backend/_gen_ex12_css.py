@@ -11,6 +11,7 @@ ROOT_SEL = ".ex12-root"
 PREFIX = "ex12-"
 
 
+
 def prefix_selectors(sel: str, root: str = ROOT_SEL) -> str:
     parts: list[str] = []
     for piece in sel.split(","):
